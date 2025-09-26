@@ -1,0 +1,47 @@
+[
+  {
+    "goal":"ancestor(alice,david)",
+    "goal_term": {"args": ["alice", "david" ], "name":"ancestor"},
+    "goal_unification": {"body": ["parent(alice,bob)", "ancestor(bob,david)" ], "goal":"ancestor(alice,david)"},
+    "substitution": [],
+    "subtree": [
+      {
+	"goal":"parent(alice,bob)",
+	"goal_term": {"args": ["alice", "bob" ], "name":"parent"},
+	"goal_unification": {"body": [true ], "goal":"parent(alice,bob)"},
+	"substitution": [],
+	"subtree": [true ]
+      },
+      {
+	"goal":"ancestor(bob,david)",
+	"goal_term": {"args": ["bob", "david" ], "name":"ancestor"},
+	"goal_unification": {"body": ["parent(bob,carol)", "ancestor(carol,david)" ], "goal":"ancestor(bob,david)"},
+	"substitution": [],
+	"subtree": [
+	  {
+	    "goal":"parent(bob,carol)",
+	    "goal_term": {"args": ["bob", "carol" ], "name":"parent"},
+	    "goal_unification": {"body": [true ], "goal":"parent(bob,carol)"},
+	    "substitution": [],
+	    "subtree": [true ]
+	  },
+	  {
+	    "goal":"ancestor(carol,david)",
+	    "goal_term": {"args": ["carol", "david" ], "name":"ancestor"},
+	    "goal_unification": {"body": ["parent(carol,david)" ], "goal":"ancestor(carol,david)"},
+	    "substitution": [],
+	    "subtree": [
+	      {
+		"goal":"parent(carol,david)",
+		"goal_term": {"args": ["carol", "david" ], "name":"parent"},
+		"goal_unification": {"body": [true ], "goal":"parent(carol,david)"},
+		"substitution": [],
+		"subtree": [true ]
+	      }
+	    ]
+	  }
+	]
+      }
+    ]
+  }
+]
