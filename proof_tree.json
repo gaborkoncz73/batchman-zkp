@@ -1,8 +1,8 @@
 [
   {
-    "goal":"ancestor(alice,david)",
-    "goal_term": {"args": ["alice", "david" ], "name":"ancestor"},
-    "goal_unification": {"body": ["parent(alice,bob)", "ancestor(bob,david)" ], "goal":"ancestor(alice,david)"},
+    "goal":"ancestor(alice,john)",
+    "goal_term": {"args": ["alice", "john" ], "name":"ancestor"},
+    "goal_unification": {"body": ["parent(alice,bob)", "ancestor(bob,john)" ], "goal":"ancestor(alice,john)"},
     "substitution": [],
     "subtree": [
       {
@@ -13,9 +13,9 @@
 	"subtree": [true ]
       },
       {
-	"goal":"ancestor(bob,david)",
-	"goal_term": {"args": ["bob", "david" ], "name":"ancestor"},
-	"goal_unification": {"body": ["parent(bob,carol)", "ancestor(carol,david)" ], "goal":"ancestor(bob,david)"},
+	"goal":"ancestor(bob,john)",
+	"goal_term": {"args": ["bob", "john" ], "name":"ancestor"},
+	"goal_unification": {"body": ["parent(bob,carol)", "ancestor(carol,john)" ], "goal":"ancestor(bob,john)"},
 	"substitution": [],
 	"subtree": [
 	  {
@@ -26,9 +26,9 @@
 	    "subtree": [true ]
 	  },
 	  {
-	    "goal":"ancestor(carol,david)",
-	    "goal_term": {"args": ["carol", "david" ], "name":"ancestor"},
-	    "goal_unification": {"body": ["parent(carol,david)" ], "goal":"ancestor(carol,david)"},
+	    "goal":"ancestor(carol,john)",
+	    "goal_term": {"args": ["carol", "john" ], "name":"ancestor"},
+	    "goal_unification": {"body": ["parent(carol,david)", "ancestor(david,john)" ], "goal":"ancestor(carol,john)"},
 	    "substitution": [],
 	    "subtree": [
 	      {
@@ -37,6 +37,51 @@
 		"goal_unification": {"body": [true ], "goal":"parent(carol,david)"},
 		"substitution": [],
 		"subtree": [true ]
+	      },
+	      {
+		"goal":"ancestor(david,john)",
+		"goal_term": {"args": ["david", "john" ], "name":"ancestor"},
+		"goal_unification": {"body": ["parent(david,endre)", "ancestor(endre,john)" ], "goal":"ancestor(david,john)"},
+		"substitution": [],
+		"subtree": [
+		  {
+		    "goal":"parent(david,endre)",
+		    "goal_term": {"args": ["david", "endre" ], "name":"parent"},
+		    "goal_unification": {"body": [true ], "goal":"parent(david,endre)"},
+		    "substitution": [],
+		    "subtree": [true ]
+		  },
+		  {
+		    "goal":"ancestor(endre,john)",
+		    "goal_term": {"args": ["endre", "john" ], "name":"ancestor"},
+		    "goal_unification": {"body": ["parent(endre,peter)", "ancestor(peter,john)" ], "goal":"ancestor(endre,john)"},
+		    "substitution": [],
+		    "subtree": [
+		      {
+			"goal":"parent(endre,peter)",
+			"goal_term": {"args": ["endre", "peter" ], "name":"parent"},
+			"goal_unification": {"body": [true ], "goal":"parent(endre,peter)"},
+			"substitution": [],
+			"subtree": [true ]
+		      },
+		      {
+			"goal":"ancestor(peter,john)",
+			"goal_term": {"args": ["peter", "john" ], "name":"ancestor"},
+			"goal_unification": {"body": ["parent(peter,john)" ], "goal":"ancestor(peter,john)"},
+			"substitution": [],
+			"subtree": [
+			  {
+			    "goal":"parent(peter,john)",
+			    "goal_term": {"args": ["peter", "john" ], "name":"parent"},
+			    "goal_unification": {"body": [true ], "goal":"parent(peter,john)"},
+			    "substitution": [],
+			    "subtree": [true ]
+			  }
+			]
+		      }
+		    ]
+		  }
+		]
 	      }
 	    ]
 	  }
