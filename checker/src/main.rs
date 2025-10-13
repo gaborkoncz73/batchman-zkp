@@ -1,12 +1,13 @@
 use anyhow::{anyhow, Result};
+use rand::thread_rng;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fs;
 use std::sync::{Arc, Mutex};
 
 use ark_bn254::{Bn254, Fr};
-use ark_ff::{Field, One, Zero};
-use ark_groth16::{prepare_verifying_key, Groth16, PreparedVerifyingKey, Proof};
+use ark_ff::{One, Zero};
+use ark_groth16::{prepare_verifying_key, Groth16, PreparedVerifyingKey, Proof, ProvingKey};
 use ark_r1cs_std::{
     alloc::AllocVar,
     eq::EqGadget,
@@ -282,18 +283,19 @@ fn prove_consistency(
     name_b: &str,
     arity_b: usize,
     proofs: &ProofStore,
+    pk: &Arc<ProvingKey<Bn254>>
 ) -> Result<()> {
     let mut rng = ark_std::rand::thread_rng();
 
     // Setup + prove
-    let circuit_for_setup = ConsistencyCircuit {
+    /*let circuit_for_setup = ConsistencyCircuit {
         pub_name: Fr::zero(),
         wit_name: Fr::zero(),
         pub_arity: Fr::zero(),
         wit_arity: Fr::zero(),
     };
     let (pk, vk) = Groth16::<Bn254>::setup(circuit_for_setup, &mut rng)?;
-    let pvk = prepare_verifying_key(&vk);
+    let pvk = prepare_verifying_key(&vk);*/
 
     let pub_name  = str_to_fr(name_a);
     let pub_arity = Fr::from(arity_a as u64);
@@ -312,7 +314,7 @@ fn prove_consistency(
     // Proof mentése, de nincs verify még
     //proofs.lock().unwrap().push((inputs, proof, pvk));
     proofs.cons_proofs.lock().unwrap().push((
-        vec![pub_name, pub_arity], proof, pvk
+        vec![pub_name, pub_arity], proof
     ));
     Ok(())
 }
@@ -326,6 +328,7 @@ fn prove_node(
     rules: &RuleTemplateFile,
     id_map: &BTreeMap<String, i64>,
     proofs: &ProofStore, // 🔹 új gyűjtő paraméter
+    pk_store: &Arc<ProvingKeyStore>,
     depth: usize,
 ) -> Result<()> {
     let indent = "  ".repeat(depth);
@@ -337,8 +340,8 @@ fn prove_node(
     let (u_text_name, u_text_arity) = parse_predicate_call(&goal.goal_unification.goal)
         .ok_or_else(|| anyhow!("goal_unification.goal parse hiba: '{}'", goal.goal_unification.goal))?;
     let (res1, res2) = rayon::join(
-        || prove_consistency(&g_text_name, g_text_arity, &goal.goal_term.name, goal.goal_term.args.len(), &proofs.clone()),
-        || prove_consistency(&u_text_name, u_text_arity, &goal.goal_term.name, goal.goal_term.args.len(), &proofs.clone()),
+        || prove_consistency(&g_text_name, g_text_arity, &goal.goal_term.name, goal.goal_term.args.len(), &proofs.clone(), &pk_store.consistency_pk),
+        || prove_consistency(&u_text_name, u_text_arity, &goal.goal_term.name, goal.goal_term.args.len(), &proofs.clone(), &pk_store.consistency_pk),
     );
     res1?;
     res2?;
@@ -401,20 +404,15 @@ fn prove_node(
 
             // ZK: proof generálás (párhuzamos thread)
             let mut rng = ark_std::rand::thread_rng();
-            let circuit_for_setup = DotCircuit {
-                c_vec: vec![Fr::zero(); c_vec.len()],
-                w_vec: vec![Fr::zero(); w_vec.len()],
-            };
+            let circuit = DotCircuit { c_vec: c_vec.clone(), w_vec: w_vec.clone() };
 
-            if let Ok((pk, vk)) = Groth16::<Bn254>::setup(circuit_for_setup, &mut rng) {
-                let pvk = prepare_verifying_key(&vk);
-                let circuit = DotCircuit { c_vec: c_vec.clone(), w_vec: w_vec.clone() };
-                if let Ok(proof) = Groth16::<Bn254>::prove(&pk, circuit, &mut rng) {
-                    // proof + SAJÁT pvk elmentése
-                    proofs.dot_proofs.lock().unwrap().push((c_vec.clone(), proof, pvk));
-                    println!("{}dot(c,w) = 0 ✅ (proof legenerálva, mentve)", indent);
-                    return true;
-                }
+            if let Ok(proof) = Groth16::<Bn254>::prove(&pk_store.dot_pk, circuit, &mut rng) {
+                proofs.dot_proofs.lock().unwrap().push((
+                    c_vec.clone(),
+                    proof,
+                ));
+                println!("{}dot(c,w) = 0 ✅ (proof legenerálva, mentve)", indent);
+                return true;
             }
 
             false
@@ -431,7 +429,7 @@ fn prove_node(
     // 6) Rekurzió gyerekekre
     for sub in &goal.subtree {
         if let ProofNode::GoalNode(child) = sub {
-            prove_node(child, rules, id_map, proofs, depth + 1)?;
+            prove_node(child, rules, id_map, proofs, pk_store, depth + 1)?;
         }
     }
 
@@ -441,8 +439,8 @@ fn prove_node(
 
 // ---------------- main ----------------
 //type Stored = (Vec<Fr>, Proof<Bn254>, PreparedVerifyingKey<Bn254>);
-type StoredDot = (Vec<Fr>, Proof<Bn254>, PreparedVerifyingKey<Bn254>);
-type StoredCons = (Vec<Fr>, Proof<Bn254>, PreparedVerifyingKey<Bn254>);
+type StoredDot = (Vec<Fr>, Proof<Bn254>);
+type StoredCons = (Vec<Fr>, Proof<Bn254>);
 
 #[derive(Clone)]
 struct ProofStore {
@@ -462,6 +460,8 @@ fn main() -> Result<()> {
         cons_proofs: Arc::new(Mutex::new(Vec::new())),
     };
     
+    
+    let pk_store = Arc::new(ProvingKeyStore::new());
 
     println!("A: {:?}", id_map);
 
@@ -474,7 +474,7 @@ fn main() -> Result<()> {
 
     tree.par_iter()
         .filter_map(|n| if let ProofNode::GoalNode(g) = n {Some(g) } else {None})
-        .map(|g| prove_node(g, &rules, &id_map, &proofs, 0))
+        .map(|g| prove_node(g, &rules, &id_map, &proofs, &pk_store, 0))
         .collect::<Result<Vec<_>>>()?;
 
     // gyökerek feldolgozása párhuzamosan
@@ -488,13 +488,13 @@ fn main() -> Result<()> {
 
     let (dot_ok, cons_ok) = rayon::join(
         || {
-            dot_proofs.par_iter().all(|(inputs, proof, pvk)| {
-                Groth16::<Bn254>::verify_with_processed_vk(pvk, inputs, proof).unwrap_or(false)
+            dot_proofs.par_iter().all(|(inputs, proof)| {
+                Groth16::<Bn254>::verify_with_processed_vk(&pk_store.dot_pvk, inputs, proof).unwrap_or(false)
             })
         },
         || {
-            cons_proofs.par_iter().all(|(inputs, proof, pvk)| {
-                Groth16::<Bn254>::verify_with_processed_vk(pvk, inputs, proof).unwrap_or(false)
+            cons_proofs.par_iter().all(|(inputs, proof)| {
+                Groth16::<Bn254>::verify_with_processed_vk(&pk_store.consistency_pvk, inputs, proof).unwrap_or(false)
             })
         },
     );
@@ -508,7 +508,43 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+pub struct ProvingKeyStore {
+    pub consistency_pk: Arc<ProvingKey<Bn254>>,
+    pub consistency_pvk: Arc<PreparedVerifyingKey<Bn254>>,
+    pub dot_pk: Arc<ProvingKey<Bn254>>,
+    pub dot_pvk: Arc<PreparedVerifyingKey<Bn254>>,
+}
 
-/*
+impl ProvingKeyStore {
+    /// Létrehozza az összes proving/verifying kulcsot 1×
+    pub fn new() -> Self {
+        let mut rng = thread_rng();
 
-*/
+        // 🔹 ConsistencyCircuit setup
+        let cons_circuit = ConsistencyCircuit {
+            pub_name:  Fr::zero(),
+            wit_name:  Fr::zero(),
+            pub_arity: Fr::zero(),
+            wit_arity: Fr::zero(),
+        };
+        let (cons_pk, cons_vk) = Groth16::<Bn254>::setup(cons_circuit, &mut rng)
+            .expect("failed setup for consistency circuit");
+        let cons_pvk = prepare_verifying_key(&cons_vk);
+
+        // 🔹 DotCircuit setup (ha a max hossz ismert, pl. 128)
+        let dot_circuit = DotCircuit {
+            c_vec: vec![Fr::zero(); 128],
+            w_vec: vec![Fr::zero(); 128],
+        };
+        let (dot_pk, dot_vk) = Groth16::<Bn254>::setup(dot_circuit, &mut rng)
+            .expect("failed setup for dot circuit");
+        let dot_pvk = prepare_verifying_key(&dot_vk);
+
+        Self {
+            consistency_pk: Arc::new(cons_pk),
+            consistency_pvk: Arc::new(cons_pvk),
+            dot_pk: Arc::new(dot_pk),
+            dot_pvk: Arc::new(dot_pvk),
+        }
+    }
+}
