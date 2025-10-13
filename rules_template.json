@@ -1,0 +1,44 @@
+{
+  "predicates": [
+    {
+      "name": "ancestor",
+      "arity": 2,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "parent",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(0)=ChildArg(0, 0)",
+            "HeadArg(1)=ChildArg(0, 1)"
+          ]
+        },
+        {
+          "children": [
+            {
+              "name": "parent",
+              "arity": 2
+            },
+            {
+              "name": "ancestor",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(0)=ChildArg(0, 0)",
+            "HeadArg(1)=ChildArg(1, 1)"
+          ]
+        }
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "name": "parent",
+      "arity": 2
+    }
+  ]
+}

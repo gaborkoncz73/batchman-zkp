@@ -65,7 +65,7 @@ impl DotProductCircuit {
                 return false;
             }
         }
-        println!("✅ All constraints satisfied!");
+        println!("All constraints satisfied!");
         true
     }
 
@@ -89,7 +89,7 @@ impl DotProductCircuit {
         for (i, w) in self.witness.iter().enumerate() {
             let f = big_to_fr(w);
             let var = cs.new_witness_variable(|| Ok(f)).map_err(|e| {
-                eprintln!("❌ Hiba a {}. witness változónál: {:?}", i, e);
+                eprintln!("Hiba a {}. witness változónál: {:?}", i, e);
                 e
             })?;
             vars.push(var);
@@ -123,7 +123,7 @@ impl DotProductCircuit {
                 LinearCombination::zero(),
             )
             .map_err(|e| {
-                eprintln!("❌ Hiba a {}. sorban ('{}'): {:?}", i, row.desc, e);
+                eprintln!("Hiba a {}. sorban ('{}'): {:?}", i, row.desc, e);
                 e
             })?;
         }
@@ -183,17 +183,15 @@ fn main() -> Result<()> {
     // === 6️⃣ Arkworks R1CS létrehozása ===
     /*let cs_ref = ark_relations::r1cs::ConstraintSystem::<Fr>::new_ref();
     cs_data.clone().generate_constraints(cs_ref.clone())?;
-    assert!(cs_ref.is_satisfied().unwrap(), "❌ Constraints not satisfied!");
+    assert!(cs_ref.is_satisfied().unwrap(), "Constraints not satisfied!");
 
-    println!("✅ All constraints satisfied locally, generating ZKP...");
+    println!("All constraints satisfied locally, generating ZKP...");
 
-    // === 7️⃣ Proof és setup generálása (trusted setup + proof) ===
     let mut rng = thread_rng();
     let (pk, vk) = Groth16::<Bn254>::setup(cs_data.clone(), &mut rng)?;
 
     let proof = Groth16::<Bn254>::prove(&pk, cs_data.clone(), &mut rng)?;
 
-    // === 8️⃣ Public inputok kigyűjtése ===
     let cs_borrowed = cs_ref.borrow().unwrap();
     let mut public_inputs: Vec<Fr> = cs_borrowed.instance_assignment.clone();
     drop(cs_borrowed);
@@ -201,9 +199,8 @@ fn main() -> Result<()> {
         public_inputs.remove(0); // az első elem a konstans 1
     }
 
-    println!("📤 Public inputs extracted = {:?}", public_inputs);
+    println!("Public inputs extracted = {:?}", public_inputs);
 
-    // === 9️⃣ VerifyInput struktúra összeállítása és mentése ===
     let verify_input = common::VerifyInput {
         vk: vk,
         public_inputs,
@@ -211,7 +208,7 @@ fn main() -> Result<()> {
     };
 
     serde_json::to_writer(File::create("verify.json")?, &verify_input)?;
-    println!("📝 verify.json successfully exported!");*/
+    println!("verify.json successfully exported!");*/
 
     Ok(())
 }

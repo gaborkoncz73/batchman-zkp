@@ -1,0 +1,35 @@
+{
+  "predicates": [
+    {
+      "name": "ancestor",
+      "arity": 2,
+      "clauses": [
+        {
+          "children": [
+            { "name": "parent", "arity": 2 }
+          ],
+          "equalities": [
+            { "left": { "kind": "HeadArg", "value": 0 }, "right": { "kind": "ChildArg", "value": [0, 0] } },
+            { "left": { "kind": "HeadArg", "value": 1 }, "right": { "kind": "ChildArg", "value": [0, 1] } }
+          ]
+        },
+        {
+          "children": [
+            { "name": "parent", "arity": 2 },
+            { "name": "ancestor", "arity": 2 }
+          ],
+          "equalities": [
+            { "left": { "kind": "HeadArg", "value": 0 }, "right": { "kind": "ChildArg", "value": [0, 0] } },
+            { "left": { "kind": "HeadArg", "value": 1 }, "right": { "kind": "ChildArg", "value": [1, 1] } },
+            { "left": { "kind": "ChildArg", "value": [0, 1] }, "right": { "kind": "ChildArg", "value": [1, 0] } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "parent",
+      "arity": 2,
+      "clauses": []
+    }
+  ]
+}

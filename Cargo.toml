@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
-members = [ "common",
-    "prove",
+members = [ "checker", "common",
+    "prove", "tokens",
     "verify",]
 
 [workspace.dependencies]
