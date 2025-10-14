@@ -27,3 +27,4 @@ regex = "1.11.3"
 ark-crypto-primitives = { version = "0.5"}
 rayon = "1.11.0"
 ark-serialize = "0.5.0"
+blake2 = "0.10.6"

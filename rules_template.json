@@ -33,6 +33,188 @@
           ]
         }
       ]
+    },
+    {
+      "name": "sibling",
+      "arity": 2,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "parent",
+              "arity": 2
+            },
+            {
+              "name": "parent",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(0)=ChildArg(0, 1)",
+            "HeadArg(1)=ChildArg(1, 1)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cousin",
+      "arity": 2,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "parent",
+              "arity": 2
+            },
+            {
+              "name": "parent",
+              "arity": 2
+            },
+            {
+              "name": "sibling",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(0)=ChildArg(0, 1)",
+            "HeadArg(1)=ChildArg(1, 1)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "aunt_or_uncle",
+      "arity": 2,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "sibling",
+              "arity": 2
+            },
+            {
+              "name": "parent",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(0)=ChildArg(0, 0)",
+            "HeadArg(1)=ChildArg(1, 1)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "descendant",
+      "arity": 2,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "ancestor",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(1)=ChildArg(0, 0)",
+            "HeadArg(0)=ChildArg(0, 1)"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "related",
+      "arity": 2,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "ancestor",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(0)=ChildArg(0, 0)",
+            "HeadArg(1)=ChildArg(0, 1)"
+          ]
+        },
+        {
+          "children": [
+            {
+              "name": "ancestor",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(1)=ChildArg(0, 0)",
+            "HeadArg(0)=ChildArg(0, 1)"
+          ]
+        },
+        {
+          "children": [
+            {
+              "name": "sibling",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(0)=ChildArg(0, 0)",
+            "HeadArg(1)=ChildArg(0, 1)"
+          ]
+        },
+        {
+          "children": [
+            {
+              "name": "cousin",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(0)=ChildArg(0, 0)",
+            "HeadArg(1)=ChildArg(0, 1)"
+          ]
+        },
+        {
+          "children": [
+            {
+              "name": "aunt_or_uncle",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(0)=ChildArg(0, 0)",
+            "HeadArg(1)=ChildArg(0, 1)"
+          ]
+        },
+        {
+          "children": [
+            {
+              "name": "aunt_or_uncle",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(1)=ChildArg(0, 0)",
+            "HeadArg(0)=ChildArg(0, 1)"
+          ]
+        },
+        {
+          "children": [
+            {
+              "name": "parent",
+              "arity": 2
+            },
+            {
+              "name": "related",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            "HeadArg(0)=ChildArg(0, 0)",
+            "HeadArg(1)=ChildArg(1, 1)"
+          ]
+        }
+      ]
     }
   ],
   "facts": [
