@@ -248,7 +248,7 @@ fn prove_consistency(
         .cons_proofs
         .lock()
         .unwrap()
-        .push((vec![pub_name, pub_arity], proof));
+        .push((proof));
 
     Ok(())
 }
@@ -498,7 +498,7 @@ fn prove_node(
 
 
 type StoredDot = (Vec<Fp>, Vec<u8>);
-type StoredCons = (Vec<Fp>, Vec<u8>);
+type StoredCons = Vec<u8>;
 
 #[derive(Clone)]
 struct ProofStore {
@@ -545,11 +545,9 @@ fn main() -> Result<()> {
         }
 
         if !cons_proofs.is_empty() {
-            let (inputs, proof_bytes) = &cons_proofs[0];
-            let pub_name = inputs[0];
-            let pub_arity = inputs[1];
+            let proof_bytes = &cons_proofs[0];
             assert!(
-                common::verify_consistency(&pk_store, proof_bytes, pub_name, pub_arity)?,
+                common::verify_consistency(&pk_store, proof_bytes)?,
                 "❌ single verify_consistency sanity check failed!"
             );
             println!("✅ single verify_consistency sanity check passed!");
@@ -576,14 +574,14 @@ fn main() -> Result<()> {
             })
         },
         || {
-            cons_proofs.par_iter().all(|(inputs, proof)| {
+            cons_proofs.par_iter().all(|proof| {
                 let mut transcript = Blake2bRead::<_, EqAffine, Challenge255<_>>::init(&proof[..]);
                 let strategy = SingleVerifier::new(&pk_store.params);
                 verify_proof(
                     &pk_store.params,
                     &pk_store.cons_vk,
                     strategy,
-                    &[ &[ &inputs[..] ] ], // ✅ public inputok megadása
+                    &[&[]], // ✅ public inputok megadása
                     &mut transcript,
                 ).is_ok()
             })
@@ -596,7 +594,6 @@ fn main() -> Result<()> {
     } else {
         println!("❌ At least one proof failed verification!");
     }
-
     Ok(())
 }
 

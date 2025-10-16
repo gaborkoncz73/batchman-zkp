@@ -29,8 +29,8 @@ pub struct DotConfig {
 
 #[derive(Clone, Debug)]
 pub struct DotCircuit {
-    pub c_vec: Vec<Fp>, // public (Instance column)
-    pub w_vec: Vec<Fp>, // witness (Advice column)
+    pub c_vec: Vec<Fp>, // public (Instance)
+    pub w_vec: Vec<Fp>, // witness
 }
 
 impl Circuit<Fp> for DotCircuit {
@@ -160,16 +160,16 @@ impl Circuit<Fp> for DotCircuit {
 
 #[derive(Clone, Debug)]
 pub struct ConsistencyConfig {
-    adv_w: Column<Advice>,  // row0 = wit_name, row1 = wit_arity
+    adv_pub: Column<Advice>, // row0 = pub_name, row1 = pub_arity
+    adv_wit: Column<Advice>, // row0 = wit_name, row1 = wit_arity
     fixed_q: Column<Fixed>,
-    inst: Column<Instance>, // row0 = pub_name, row1 = pub_arity
 }
 
 #[derive(Clone, Debug)]
 pub struct ConsistencyCircuit {
-    pub_name: Fp,
+    pub_name:  Fp,
     pub_arity: Fp,
-    wit_name: Fp,
+    wit_name:  Fp,
     wit_arity: Fp,
 }
 
@@ -178,48 +178,65 @@ impl Circuit<Fp> for ConsistencyCircuit {
     type FloorPlanner = SimpleFloorPlanner;
 
     fn without_witnesses(&self) -> Self {
-        Self { pub_name: Fp::zero(), pub_arity: Fp::zero(), wit_name: Fp::zero(), wit_arity: Fp::zero() }
+        Self {
+            pub_name: Fp::zero(),
+            pub_arity: Fp::zero(),
+            wit_name: Fp::zero(),
+            wit_arity: Fp::zero(),
+        }
     }
 
     fn configure(meta: &mut ConstraintSystem<Fp>) -> Self::Config {
-        let adv_w   = meta.advice_column();
+        let adv_pub = meta.advice_column();
+        let adv_wit = meta.advice_column();
         let fixed_q = meta.fixed_column();
-        let inst    = meta.instance_column();
 
-        meta.enable_equality(adv_w);
-        meta.enable_equality(inst);
+        meta.enable_equality(adv_pub);
+        meta.enable_equality(adv_wit);
 
-        meta.create_gate("advice == instance (2 rows)", |meta| {
-            let q  = meta.query_fixed(fixed_q);
-            let a0 = meta.query_advice(adv_w,Rotation::cur());
-            let i0 = meta.query_instance(inst, Rotation::cur());
-            let a1 = meta.query_advice(adv_w, Rotation::next());
-            let i1 = meta.query_instance(inst, Rotation::next());
-            Constraints::with_selector(q, [ a0 - i0, a1 - i1 ])
+        // two constraints: pub_name == wit_name, pub_arity == wit_arity
+        meta.create_gate("private equality on 2 rows", |meta| {
+            let q = meta.query_fixed(fixed_q);
+
+            let pub_name  = meta.query_advice(adv_pub, Rotation::cur());
+            let wit_name  = meta.query_advice(adv_wit, Rotation::cur());
+            let pub_arity = meta.query_advice(adv_pub, Rotation::next());
+            let wit_arity = meta.query_advice(adv_wit, Rotation::next());
+
+            Constraints::with_selector(q, [
+                wit_name - pub_name,
+                wit_arity - pub_arity,
+            ])
         });
 
-        Self::Config { adv_w, fixed_q, inst }
+        ConsistencyConfig { adv_pub, adv_wit, fixed_q }
     }
 
     fn synthesize(
         &self,
         cfg: Self::Config,
-        mut layouter: impl Layouter<Fp>
+        mut layouter: impl Layouter<Fp>,
     ) -> Result<(), Error> {
         layouter.assign_region(
-            || "consistency 2 rows",
+            || "consistency region (all private)",
             |mut region| {
-                region.assign_fixed(|| "q", cfg.fixed_q, 0, || Value::known(Fp::one()))?;
-                region.assign_fixed(|| "q", cfg.fixed_q, 1, || Value::known(Fp::one()))?;
+                // enable gate for both rows
+                region.assign_fixed(|| "q0", cfg.fixed_q, 0, || Value::known(Fp::one()))?;
+                region.assign_fixed(|| "q1", cfg.fixed_q, 1, || Value::known(Fp::one()))?;
 
-                region.assign_advice(|| "wit_name",  cfg.adv_w, 0, || Value::known(self.wit_name))?;
-                region.assign_advice(|| "wit_arity", cfg.adv_w, 1, || Value::known(self.wit_arity))?;
+                // row 0 = names
+                region.assign_advice(|| "pub_name", cfg.adv_pub, 0, || Value::known(self.pub_name))?;
+                region.assign_advice(|| "wit_name", cfg.adv_wit, 0, || Value::known(self.wit_name))?;
+
+                // row 1 = arities
+                region.assign_advice(|| "pub_arity", cfg.adv_pub, 1, || Value::known(self.pub_arity))?;
+                region.assign_advice(|| "wit_arity", cfg.adv_wit, 1, || Value::known(self.wit_arity))?;
                 Ok(())
-            }
-        )?;
-        Ok(())
+            },
+        )
     }
 }
+
 
 // ======= Kulcsok/paramok =======
 
@@ -315,30 +332,26 @@ pub fn prove_consistency(
     wit_name: Fp,
     wit_arity: Fp,
 ) -> anyhow::Result<Vec<u8>> {
-    let circuit = ConsistencyCircuit { pub_name, pub_arity, wit_name, wit_arity };
-
-    let instances: Vec<Fp> = vec![pub_name, pub_arity];
-    let public_inputs: Vec<&[Fp]> = vec![&instances];
+    let circuit = ConsistencyCircuit {
+        pub_name,
+        pub_arity,
+        wit_name,
+        wit_arity,
+    };
 
     let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
     create_proof(
         &pks.params,
         &pks.cons_pk,
         &[circuit],
-        &[&public_inputs],
+        &[&[]],  // no public inputs
         OsRng,
-        &mut transcript
+        &mut transcript,
     )?;
     Ok(transcript.finalize())
 }
 
-pub fn verify_consistency(
-    pks: &ProvingKeyStore,
-    proof: &[u8],
-    pub_name: Fp,
-    pub_arity: Fp,
-) -> anyhow::Result<bool> {
-    let instances: Vec<Fp> = vec![pub_name, pub_arity];
+pub fn verify_consistency(pks: &ProvingKeyStore, proof: &[u8]) -> anyhow::Result<bool> {
     let strategy = SingleVerifier::new(&pks.params);
     let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(proof);
 
@@ -346,10 +359,11 @@ pub fn verify_consistency(
         &pks.params,
         &pks.cons_vk,
         strategy,
-        &[ &[ &instances ] ],  // ✅ fixed nesting
+        &[&[]],
         &mut transcript,
     ).is_ok();
 
     Ok(ok)
 }
+
 

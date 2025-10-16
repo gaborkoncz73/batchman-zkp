@@ -19,9 +19,9 @@
 	"substitution": [],
 	"subtree": [
 	  {
-	    "goal":"ancestor(alice,carol)",
+	    "goal":"parent(bob,carol)",
 	    "goal_term": {"args": ["bob", "carol" ], "name":"parent"},
-	    "goal_unification": {"body": [true ], "goal":"ancestor(alice,carol)"},
+	    "goal_unification": {"body": [true ], "goal":"parent(bob,carol)"},
 	    "substitution": [],
 	    "subtree": [true ]
 	  }
