@@ -1,11 +1,13 @@
 use anyhow::{anyhow, Result};
+use halo2_proofs::pasta::group::ff::FromUniformBytes;
+use halo2_proofs::plonk::SingleVerifier;
 use rand::thread_rng;
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fs;
 use std::sync::{Arc, Mutex};
 
-use ark_bn254::{Bn254, Fr};
+/*use ark_bn254::{Bn254, Fr};
 use ark_ff::{One, PrimeField, Zero};
 use ark_groth16::{prepare_verifying_key, Groth16, PreparedVerifyingKey, Proof, ProvingKey};
 use ark_r1cs_std::{
@@ -14,12 +16,14 @@ use ark_r1cs_std::{
     fields::{fp::FpVar, FieldVar},
 };
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
-use ark_snark::{CircuitSpecificSetupSNARK, SNARK};
+use ark_snark::{CircuitSpecificSetupSNARK, SNARK};*/
 use rayon::prelude::*; // párhuzamos feldolgozás
 
 use common;
 
-pub const MAX_DOT_DIM: usize = 128;
+use halo2_proofs::pasta::{EqAffine, Fp};
+
+pub const MAX_DOT_DIM: usize = 7;
 // ---------------- JSON struktúrák ----------------
 
 #[derive(Debug, Deserialize)]
@@ -110,25 +114,29 @@ fn predicate_id(name: &str, arity: usize, id_map: &BTreeMap<String, i64>) -> i64
 
 // ---------------- Determinisztikus „random” súlyok Batchman-hez ----------------
 use blake2::{Blake2s256, Digest};
-fn fs_coeffs(seed: &str, m: usize) -> Vec<Fr> {
-    let mut coeffs = Vec::with_capacity(m);
+
+
+fn fs_coeffs(seed: &str, m: usize) -> Vec<Fp> {
+    let mut out = Vec::with_capacity(m);
     for i in 0..m {
-        // hash: Blake2s256(seed || i)
         let mut h = Blake2s256::new();
         h.update(seed.as_bytes());
         h.update(i.to_le_bytes());
-        let hash_bytes = h.finalize();
+        let hash32 = h.finalize();            // 32 bytes
 
-        // mezőelembe konverzió
-        let fr = Fr::from_le_bytes_mod_order(&hash_bytes);
-        coeffs.push(fr);
+        let mut wide = [0u8; 64];             // zero-extend to 64 bytes
+        wide[..32].copy_from_slice(&hash32);
+
+        let fp = <Fp as FromUniformBytes<64>>::from_uniform_bytes(&wide);
+        out.push(fp);
     }
-    coeffs
+    out
 }
 
-fn compress_rows(rows: &[Vec<Fr>], r: &[Fr]) -> Vec<Fr> {
+
+fn compress_rows(rows: &[Vec<Fp>], r: &[Fp]) -> Vec<Fp> {
     let m = rows[0].len();
-    let mut c = vec![Fr::zero(); m];
+    let mut c = vec![Fp::zero(); m];
     for (ri, row) in r.iter().zip(rows.iter()) {
         for j in 0..m {
             c[j] += *ri * row[j];
@@ -139,12 +147,12 @@ fn compress_rows(rows: &[Vec<Fr>], r: &[Fr]) -> Vec<Fr> {
 
 // string → mezőelem (hash nélkül, std hasherrel)
 
-fn str_to_fr(s: &str) -> Fr {
+fn str_to_fp(s: &str) -> Fp {
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
     s.hash(&mut h);
     let v = h.finish();
-    Fr::from(v)
+    Fp::from(v)
 }
 
 
@@ -168,28 +176,28 @@ fn local_universe(rules: &RuleTemplateFile, pred_name: &str) -> Vec<String> {
     set.into_iter().collect()
 }
 
-fn witness_subtree_presence(goal: &GoalEntry, universe: &[String]) -> Vec<Fr> {
+fn witness_subtree_presence(goal: &GoalEntry, universe: &[String]) -> Vec<Fp> {
     let present: HashSet<String> = goal
         .subtree
         .iter()
         .filter_map(|n| if let ProofNode::GoalNode(g) = n { Some(g.goal_term.name.clone()) } else { None })
         .collect();
-    let mut w: Vec<Fr> = universe
+    let mut w: Vec<Fp> = universe
         .iter()
-        .map(|u| if present.contains(u) { Fr::one() } else { Fr::zero() })
+        .map(|u| if present.contains(u) { Fp::one() } else { Fp::zero() })
         .collect();
-    w.push(Fr::one()); // konstans oszlop
+    w.push(Fp::one()); // konstans oszlop
     w
 }
 
-fn rows_structural_global(clause: &ClauseTemplate, universe: &[String]) -> Vec<Vec<Fr>> {
+fn rows_structural_global(clause: &ClauseTemplate, universe: &[String]) -> Vec<Vec<Fp>> {
     let expected: HashSet<String> = clause.children.iter().map(|c| c.name.clone()).collect();
-    let neg_one = -Fr::one();
+    let neg_one = -Fp::one();
     let cols = universe.len() + 1;
     let mut rows = Vec::with_capacity(universe.len());
     for (j, u) in universe.iter().enumerate() {
-        let mut v = vec![Fr::zero(); cols];
-        v[j] = Fr::one();
+        let mut v = vec![Fp::zero(); cols];
+        v[j] = Fp::one();
         if expected.contains(u) {
             v[cols - 1] = neg_one;
         }
@@ -218,33 +226,34 @@ fn prove_consistency(
     name_b: &str,
     arity_b: usize,
     proofs: &ProofStore,
-    pk: &Arc<ProvingKey<Bn254>>
+    pk_store: &Arc<common::ProvingKeyStore>,
 ) -> Result<()> {
-    let mut rng = ark_std::rand::thread_rng();
+    // Convert inputs to field elements (Fp instead of Fr)
+    let pub_name  = str_to_fp(name_a);
+    let pub_arity = Fp::from(arity_a as u64);
+    let wit_name  = str_to_fp(name_b);
+    let wit_arity = Fp::from(arity_b as u64);
 
-
-    let pub_name  = str_to_fr(name_a);
-    let pub_arity = Fr::from(arity_a as u64);
-    let wit_name  = str_to_fr(name_b);
-    let wit_arity = Fr::from(arity_b as u64);
-
-    let circuit = common::ConsistencyCircuit {
+    // Generate proof using Halo2/PLONK helper
+    let proof = common::prove_consistency(
+        pk_store,
         pub_name,
-        wit_name,
         pub_arity,
+        wit_name,
         wit_arity,
-    };
+    )?;
 
-    let proof = Groth16::<Bn254>::prove(&pk, circuit, &mut rng)?;
+    // Store the proof in the shared vector
+    proofs
+        .cons_proofs
+        .lock()
+        .unwrap()
+        .push((vec![pub_name, pub_arity], proof));
 
-    // Proof mentése, de nincs verify még
-    proofs.cons_proofs.lock().unwrap().push((
-        vec![pub_name, pub_arity], proof
-    ));
     Ok(())
 }
 
-
+use halo2_proofs::arithmetic::Field;
 // ---------------- Fő ZK ellenőrzés (node-onként) ----------------
 
 // A proofs gyűjtő: minden proofhoz mentjük a c_vec (public input) és proof párost
@@ -303,7 +312,7 @@ fn prove_node(
                     &goal.goal_term.name,
                     goal.goal_term.args.len(),
                     &proofs_cons,
-                    &pk_store_a.consistency_pk,
+                    &pk_store_a,
                 ),
                 || prove_consistency(
                     &g_text_name,
@@ -311,7 +320,7 @@ fn prove_node(
                     &u_text_name,
                     u_text_arity,
                     &proofs_cons,
-                    &pk_store_a.consistency_pk,
+                    &pk_store_a,
                 ),
             );
             r1.and(r2)
@@ -350,7 +359,7 @@ fn prove_node(
 
             // klónok a belső joinhoz
             let proofs_pairwise = proofs_b_join.clone();
-            let pk_cons = Arc::clone(&pk_store_b.consistency_pk);
+            let pk_cons = Arc::clone(&pk_store_b.cons_pk);
             let proofs_dot = proofs_b_join.clone();
             let pk_dot = Arc::clone(&pk_store_b.dot_pk);
 
@@ -396,7 +405,7 @@ fn prove_node(
                                 s_name,
                                 s_arity,
                                 &proofs_pairwise,
-                                &pk_cons,
+                                &pk_store_a,
                             )
                         })
                 },
@@ -422,9 +431,9 @@ fn prove_node(
                             let c_pad = pad(c_vec.clone());
                             let w_pad = pad(w_vec.clone());
 
-                            let dot_debug: Fr =
+                            let dot_debug: Fp =
                                 c_pad.iter().zip(&w_pad).map(|(a, b)| *a * *b).sum();
-                            if !dot_debug.is_zero() {
+                            if !dot_debug.is_zero_vartime() {
                                 return false;
                             }
 
@@ -435,16 +444,13 @@ fn prove_node(
                                 w_vec: w_pad.clone(),
                             };
 
-                            if let Ok(proof) = Groth16::<Bn254>::prove(&pk_dot, circuit, &mut rng) {
+                            if let Ok(proof) = common::prove_dot(&pk_store_b, &c_pad, &w_pad) {
                                 proofs_dot
                                     .dot_proofs
                                     .lock()
                                     .unwrap()
                                     .push((c_pad.clone(), proof));
-                                println!(
-                                    "{}dot(c,w) = 0 (proof legenerálva, mentve)",
-                                    indent
-                                );
+                                println!("{}dot(c,w) = 0 (proof generated and stored)", indent);
                                 return true;
                             }
                             false
@@ -491,8 +497,8 @@ fn prove_node(
 
 
 
-type StoredDot = (Vec<Fr>, Proof<Bn254>);
-type StoredCons = (Vec<Fr>, Proof<Bn254>);
+type StoredDot = (Vec<Fp>, Vec<u8>);
+type StoredCons = (Vec<Fp>, Vec<u8>);
 
 #[derive(Clone)]
 struct ProofStore {
@@ -506,15 +512,14 @@ fn main() -> Result<()> {
     let tree: Vec<ProofNode> = serde_json::from_str(&proof_text)?;
 
     let id_map = build_predicate_id_map(&rules);
-    
+
     let proofs = ProofStore {
         dot_proofs: Arc::new(Mutex::new(Vec::new())),
         cons_proofs: Arc::new(Mutex::new(Vec::new())),
     };
-    
-    
-    let pk_store = Arc::new(common::ProvingKeyStore::new());
 
+    // ✅ create SRS + proving keys
+    let pk_store = Arc::new(common::ProvingKeyStore::new(MAX_DOT_DIM,4));
 
     println!(
         "Betöltve {} szabály, {} fact és {} proof node.",
@@ -524,41 +529,82 @@ fn main() -> Result<()> {
     );
 
     tree.par_iter()
-        .filter_map(|n| if let ProofNode::GoalNode(g) = n {Some(g) } else {None})
+        .filter_map(|n| if let ProofNode::GoalNode(g) = n { Some(g) } else { None })
         .map(|g| prove_node(g, &rules, &id_map, &proofs, &pk_store, 0))
         .collect::<Result<Vec<_>>>()?;
 
     let dot_proofs = proofs.dot_proofs.lock().unwrap().clone();
     let cons_proofs = proofs.cons_proofs.lock().unwrap().clone();
+    if !dot_proofs.is_empty() {
+    let (c_inputs, proof_bytes) = &dot_proofs[0];
+    assert!(
+        common::verify_dot(&pk_store, proof_bytes, c_inputs)?,
+        "❌ single verify_dot sanity check failed!"
+            );
+            println!("✅ single verify_dot sanity check passed!");
+        }
 
-    println!("Batch verify ");
+        if !cons_proofs.is_empty() {
+            let (inputs, proof_bytes) = &cons_proofs[0];
+            let pub_name = inputs[0];
+            let pub_arity = inputs[1];
+            assert!(
+                common::verify_consistency(&pk_store, proof_bytes, pub_name, pub_arity)?,
+                "❌ single verify_consistency sanity check failed!"
+            );
+            println!("✅ single verify_consistency sanity check passed!");
+        }
+    println!("Batch verify...");
+
+    use halo2_proofs::{
+        plonk::{verify_proof},
+        transcript::{Blake2bRead, Challenge255},
+    };
 
     let (dot_ok, cons_ok) = rayon::join(
         || {
             dot_proofs.par_iter().all(|(inputs, proof)| {
-                Groth16::<Bn254>::verify_with_processed_vk(&pk_store.dot_pvk, inputs, proof).unwrap_or(false)
+                let mut transcript = Blake2bRead::<_, EqAffine, Challenge255<_>>::init(&proof[..]);
+                let strategy = SingleVerifier::new(&pk_store.params);
+                verify_proof(
+                    &pk_store.params,
+                    &pk_store.dot_vk,
+                    strategy,
+                    &[ &[ &inputs[..] ] ], // ✅ public inputok megadása
+                    &mut transcript,
+                ).is_ok()
             })
         },
         || {
             cons_proofs.par_iter().all(|(inputs, proof)| {
-                Groth16::<Bn254>::verify_with_processed_vk(&pk_store.consistency_pvk, inputs, proof).unwrap_or(false)
+                let mut transcript = Blake2bRead::<_, EqAffine, Challenge255<_>>::init(&proof[..]);
+                let strategy = SingleVerifier::new(&pk_store.params);
+                verify_proof(
+                    &pk_store.params,
+                    &pk_store.cons_vk,
+                    strategy,
+                    &[ &[ &inputs[..] ] ], // ✅ public inputok megadása
+                    &mut transcript,
+                ).is_ok()
             })
         },
     );
 
+
     if dot_ok && cons_ok {
-        println!("Minden proof sikeresen verifikálva!");
+        println!("✅ All proofs verified successfully!");
     } else {
-        println!("Legalább 1 proof érvénytelen volt!");
+        println!("❌ At least one proof failed verification!");
     }
 
     Ok(())
 }
 
-fn pad(mut v: Vec<Fr>) -> Vec<Fr> {
-    let const_col = v.pop().unwrap_or(Fr::one()); // a végén most a konstans van
+
+fn pad(mut v: Vec<Fp>) -> Vec<Fp> {
+    let const_col = v.pop().unwrap_or(Fp::one()); // a végén most a konstans van
     while v.len() < MAX_DOT_DIM-1 {
-        v.push(Fr::zero());
+        v.push(Fp::zero());
     }
     v.push(const_col); // visszarakjuk a konstans oszlopot a legvégére
     v

@@ -28,3 +28,4 @@ ark-crypto-primitives = { version = "0.5"}
 rayon = "1.11.0"
 ark-serialize = "0.5.0"
 blake2 = "0.10.6"
+halo2_proofs = { version = "0.3" }

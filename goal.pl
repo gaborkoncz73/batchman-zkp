@@ -6,7 +6,7 @@
 
 % run the proof for ancestor(x,y)
 run_proof(Tree) :-
-    Goal = related(laura, oliver),
+    Goal = ancestor(alice, carol),
     prove(Goal, Tree).
 
 % export proof tree as JSON

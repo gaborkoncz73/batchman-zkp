@@ -1,164 +1,355 @@
-/*use std::{fs::File, io::BufReader};
-
-use ark_bn254::{Bn254, Fr};
-use ark_groth16::{ Groth16, VerifyingKey};
-use ark_snark::SNARK;
-use serde::{ de::DeserializeOwned, Deserialize, Deserializer, Serialize, Serializer};
-use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
-use base64::{engine::general_purpose, Engine as _};
-use serde_json::from_reader;
-use anyhow::Result;
-
-#[derive(CanonicalDeserialize, CanonicalSerialize)]
-pub struct VerifyInput {
-    pub vk: VerifyingKey<Bn254>,
-    pub public_inputs: Vec<Fr>,
-    pub proof: <Groth16<Bn254> as SNARK<Fr>>::Proof,
-}
-
-impl Serialize for VerifyInput {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::Error as _;
-        let mut v = Vec::new();
-        self.serialize_uncompressed(&mut v)
-            .map_err(|e| S::Error::custom(e.to_string()))?;
-        serializer.serialize_str(&general_purpose::STANDARD.encode(&v))
-    }
-}
-
-impl<'de> Deserialize<'de> for VerifyInput {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        use serde::de::Error as _;
-        let v = String::deserialize(deserializer)?;
-        let decoded = general_purpose::STANDARD
-            .decode(v)
-            .map_err(|e| D::Error::custom(e.to_string()))?;
-        Self::deserialize_uncompressed(&decoded[..]).map_err(|e|D::Error::custom(e.to_string()))
-    }
-}
-
-pub fn load_input<T: DeserializeOwned>(path: &str) -> Result<T> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    Ok(from_reader(reader)?)
-}*/
-
-
-
-
-
 use std::sync::Arc;
 
-use ark_groth16::{prepare_verifying_key, Groth16, PreparedVerifyingKey, ProvingKey};
-use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
-use ark_r1cs_std::{
-    alloc::AllocVar,
-    eq::EqGadget,
-    fields::{fp::FpVar, FieldVar},
+use halo2_proofs::{
+    circuit::{Layouter, SimpleFloorPlanner, Value},
+    pasta::{EqAffine, Fp},
+    plonk::{
+        Advice, Circuit, Column, ConstraintSystem, Constraints, Error, Expression, Fixed, Instance,
+        ProvingKey, VerifyingKey, SingleVerifier,
+        create_proof, keygen_pk, keygen_vk, verify_proof,
+    },
+    poly::commitment::Params,
+    transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
-use ark_bn254::{Bn254, Fr};
-use ark_snark::CircuitSpecificSetupSNARK;
-use ark_ff::Zero;
-// ---------------- ZK Circuit-ek ----------------
+use rand_core::OsRng;
+use halo2_proofs::poly::Rotation;
 
-// 1) Dot-product: Σ c_i * w_i == 0
+// ======= DOT-PRODUCT CIRCUIT =======
+
+#[derive(Clone, Debug)]
+pub struct DotConfig {
+    adv_w: Column<Advice>,     // w[i]
+    adv_acc: Column<Advice>,   // running sum
+    fixed_q: Column<Fixed>,    // selector
+    fixed_last: Column<Fixed>, // last-row flag
+    fixed_first: Column<Fixed>,// <-- add this
+    instance: Column<Instance> // c[i] public inputs
+}
+
+
+#[derive(Clone, Debug)]
 pub struct DotCircuit {
-    pub c_vec: Vec<Fr>, // public
-    pub w_vec: Vec<Fr>, // witness
+    pub c_vec: Vec<Fp>, // public (Instance column)
+    pub w_vec: Vec<Fp>, // witness (Advice column)
 }
 
-impl ConstraintSynthesizer<Fr> for DotCircuit {
-    fn generate_constraints(self, cs: ConstraintSystemRef<Fr>) -> Result<(), SynthesisError> {
-        let c_var = Vec::<FpVar<Fr>>::new_input(cs.clone(), || Ok(self.c_vec))?;
-        let w_var = Vec::<FpVar<Fr>>::new_witness(cs.clone(), || Ok(self.w_vec))?;
-        let mut acc = FpVar::<Fr>::zero();
-        for (a, b) in c_var.iter().zip(w_var.iter()) {
-            acc += a * b;
-        }
-        acc.enforce_equal(&FpVar::<Fr>::zero())?;
+impl Circuit<Fp> for DotCircuit {
+    type Config = DotConfig;
+    type FloorPlanner = SimpleFloorPlanner;
 
-        // 2) konstans oszlop = 1 (utolsó elem)
-        let one = FpVar::<Fr>::one();
-        let last = w_var.last().ok_or(SynthesisError::AssignmentMissing)?;
-        last.enforce_equal(&one)?;
-
-        for wi in w_var.iter().take(w_var.len()-1) { // az utolsó a konstans
-        (wi.clone() * (wi.clone() - FpVar::<Fr>::one()))
-            .enforce_equal(&FpVar::<Fr>::zero())?;
+    fn without_witnesses(&self) -> Self {
+        Self {
+            c_vec: vec![Fp::from(0); self.c_vec.len()],
+            w_vec: vec![Fp::from(0); self.w_vec.len()],
         }
+    }
+
+    fn configure(meta: &mut ConstraintSystem<Fp>) -> Self::Config {
+        let adv_w      = meta.advice_column();
+        let adv_acc    = meta.advice_column();
+        let fixed_q    = meta.fixed_column();
+        let fixed_last = meta.fixed_column();
+        let fixed_first= meta.fixed_column(); // already created
+        let instance   = meta.instance_column();
+
+        meta.enable_equality(adv_w);
+        meta.enable_equality(adv_acc);
+        meta.enable_equality(instance);
+
+        // (A) First row: acc_0 = w_0 * c_0
+        meta.create_gate("first row acc0 = w0*c0", |meta| {
+            let q_first = meta.query_fixed(fixed_first);
+            let w0   = meta.query_advice(adv_w,   Rotation::cur());
+            let c0   = meta.query_instance(instance, Rotation::cur());
+            let acc0 = meta.query_advice(adv_acc, Rotation::cur());
+            Constraints::with_selector(q_first, [ acc0 - w0 * c0 ])
+        });
+
+        // (B) Running sum for rows i>0: acc_i - acc_{i-1} - w_i*c_i = 0
+        // selector = q * (1 - first)
+        meta.create_gate("running sum", |meta| {
+            let q        = meta.query_fixed(fixed_q);
+            let is_first = meta.query_fixed(fixed_first);
+            let sel      = q * (Expression::Constant(Fp::one()) - is_first);
+
+            let wi   = meta.query_advice(adv_w,   Rotation::cur());
+            let ci   = meta.query_instance(instance, Rotation::cur());
+            let acci = meta.query_advice(adv_acc, Rotation::cur());
+            let accp = meta.query_advice(adv_acc, Rotation::prev()); // no next!
+
+            Constraints::with_selector(sel, [ acci - accp - wi * ci ])
+        });
+
+        // (C) Boolean for non-last rows: w*(w-1)=0
+        meta.create_gate("boolean non-last", |meta| {
+            let q        = meta.query_fixed(fixed_q);
+            let is_last  = meta.query_fixed(fixed_last);
+            let sel      = q * (Expression::Constant(Fp::one()) - is_last);
+
+            let w = meta.query_advice(adv_w, Rotation::cur());
+            Constraints::with_selector(sel, [ w.clone() * (w - Expression::Constant(Fp::one())) ])
+        });
+
+        // (D) Last row: w_last = 1  AND  acc_last = 0
+        meta.create_gate("last row constraints", |meta| {
+            let q       = meta.query_fixed(fixed_q);
+            let is_last = meta.query_fixed(fixed_last);
+            let sel     = q * is_last;
+
+            let w_last   = meta.query_advice(adv_w,   Rotation::cur());
+            let acc_last = meta.query_advice(adv_acc, Rotation::cur());
+
+            Constraints::with_selector(sel, [
+                w_last - Expression::Constant(Fp::one()),
+                acc_last, // == 0
+            ])
+        });
+
+        DotConfig { adv_w, adv_acc, fixed_q, fixed_last, fixed_first, instance }
+    }
+
+    fn synthesize(
+        &self,
+        cfg: Self::Config,
+        mut layouter: impl Layouter<Fp>
+    ) -> Result<(), Error> {
+        let n = self.w_vec.len();
+        assert_eq!(self.c_vec.len(), n, "c_vec and w_vec len mismatch");
+        assert!(n >= 1, "need at least one row");
+
+        layouter.assign_region(
+        || "dot region (prev-based)",
+        |mut region| {
+            for i in 0..n {
+                // q = 1 on all rows
+                region.assign_fixed(|| "q", cfg.fixed_q, i, || Value::known(Fp::one()))?;
+
+                // FIRST flag
+                region.assign_fixed(|| "first", cfg.fixed_first, i, ||   // <-- use fixed_first
+                    Value::known(if i == 0 { Fp::one() } else { Fp::zero() })
+                )?;
+
+                // LAST flag
+                region.assign_fixed(|| "last", cfg.fixed_last, i, || {
+                    Value::known(if i + 1 == n { Fp::one() } else { Fp::zero() })
+                })?;
+
+                // w[i]
+                region.assign_advice(|| "w", cfg.adv_w, i, || Value::known(self.w_vec[i]))?;
+            }
+
+                // Accumulation values (explicitly compute them)
+                // acc_0 = w_0*c_0
+                let mut acc = self.w_vec[0] * self.c_vec[0];
+                region.assign_advice(|| "acc[0]", cfg.adv_acc, 0, || Value::known(acc))?;
+
+                for i in 1..n {
+                    acc += self.w_vec[i] * self.c_vec[i];
+                    region.assign_advice(|| format!("acc[{i}]"), cfg.adv_acc, i, || Value::known(acc))?;
+                }
+
+                Ok(())
+            }
+        )?;
+
         Ok(())
     }
 }
 
-// 2) Szigorú szintaxis-egyezés (név + aritás) külön KÉT kényszerrel, nem összegezve
-// A cél: bizonyítani, hogy (name_a == name_b) ÉS (arity_a == arity_b)
-// Itt a *_a mezők public, a *_b mezők witness (de lehetne fordítva is).
+// ======= CONSISTENCY CIRCUIT =======
+
+#[derive(Clone, Debug)]
+pub struct ConsistencyConfig {
+    adv_w: Column<Advice>,  // row0 = wit_name, row1 = wit_arity
+    fixed_q: Column<Fixed>,
+    inst: Column<Instance>, // row0 = pub_name, row1 = pub_arity
+}
+
+#[derive(Clone, Debug)]
 pub struct ConsistencyCircuit {
-    pub pub_name: Fr,
-    pub wit_name: Fr,
-    pub pub_arity: Fr,
-    pub wit_arity: Fr,
+    pub_name: Fp,
+    pub_arity: Fp,
+    wit_name: Fp,
+    wit_arity: Fp,
 }
 
-impl ConstraintSynthesizer<Fr> for ConsistencyCircuit {
-    fn generate_constraints(self, cs: ConstraintSystemRef<Fr>) -> Result<(), SynthesisError> {
-        let pub_name  = FpVar::<Fr>::new_input(cs.clone(),  || Ok(self.pub_name))?;
-        let pub_arity = FpVar::<Fr>::new_input(cs.clone(),  || Ok(self.pub_arity))?;
-        let wit_name  = FpVar::<Fr>::new_witness(cs.clone(),|| Ok(self.wit_name))?;
-        let wit_arity = FpVar::<Fr>::new_witness(cs.clone(),|| Ok(self.wit_arity))?;
+impl Circuit<Fp> for ConsistencyCircuit {
+    type Config = ConsistencyConfig;
+    type FloorPlanner = SimpleFloorPlanner;
 
-        // 1) név egyezés (külön constraint)
-        (pub_name - wit_name).enforce_equal(&FpVar::<Fr>::zero())?;
+    fn without_witnesses(&self) -> Self {
+        Self { pub_name: Fp::zero(), pub_arity: Fp::zero(), wit_name: Fp::zero(), wit_arity: Fp::zero() }
+    }
 
-        // 2) aritás egyezés (külön constraint)
-        (pub_arity - wit_arity).enforce_equal(&FpVar::<Fr>::zero())?;
+    fn configure(meta: &mut ConstraintSystem<Fp>) -> Self::Config {
+        let adv_w   = meta.advice_column();
+        let fixed_q = meta.fixed_column();
+        let inst    = meta.instance_column();
+
+        meta.enable_equality(adv_w);
+        meta.enable_equality(inst);
+
+        meta.create_gate("advice == instance (2 rows)", |meta| {
+            let q  = meta.query_fixed(fixed_q);
+            let a0 = meta.query_advice(adv_w,Rotation::cur());
+            let i0 = meta.query_instance(inst, Rotation::cur());
+            let a1 = meta.query_advice(adv_w, Rotation::next());
+            let i1 = meta.query_instance(inst, Rotation::next());
+            Constraints::with_selector(q, [ a0 - i0, a1 - i1 ])
+        });
+
+        Self::Config { adv_w, fixed_q, inst }
+    }
+
+    fn synthesize(
+        &self,
+        cfg: Self::Config,
+        mut layouter: impl Layouter<Fp>
+    ) -> Result<(), Error> {
+        layouter.assign_region(
+            || "consistency 2 rows",
+            |mut region| {
+                region.assign_fixed(|| "q", cfg.fixed_q, 0, || Value::known(Fp::one()))?;
+                region.assign_fixed(|| "q", cfg.fixed_q, 1, || Value::known(Fp::one()))?;
+
+                region.assign_advice(|| "wit_name",  cfg.adv_w, 0, || Value::known(self.wit_name))?;
+                region.assign_advice(|| "wit_arity", cfg.adv_w, 1, || Value::known(self.wit_arity))?;
+                Ok(())
+            }
+        )?;
         Ok(())
     }
 }
+
+// ======= Kulcsok/paramok =======
 
 pub struct ProvingKeyStore {
-    pub consistency_pk: Arc<ProvingKey<Bn254>>,
-    pub consistency_pvk: Arc<PreparedVerifyingKey<Bn254>>,
-    pub dot_pk: Arc<ProvingKey<Bn254>>,
-    pub dot_pvk: Arc<PreparedVerifyingKey<Bn254>>,
+    pub params: Arc<Params<EqAffine>>,
+    pub dot_vk: Arc<VerifyingKey<EqAffine>>,
+    pub dot_pk: Arc<ProvingKey<EqAffine>>,
+    pub cons_vk: Arc<VerifyingKey<EqAffine>>,
+    pub cons_pk: Arc<ProvingKey<EqAffine>>,
+    pub max_dim: usize,
 }
 
 impl ProvingKeyStore {
-    /// Létrehozza az összes proving/verifying kulcsot 1×
-    pub fn new() -> Self {
-        let mut rng = ark_std::rand::thread_rng();
+    pub fn new(max_dim: usize, k: u32) -> Self {
+        let params = Arc::new(Params::<EqAffine>::new(k));
 
-        // 🔹 ConsistencyCircuit setup
-        let cons_circuit = ConsistencyCircuit {
-            pub_name:  Fr::zero(),
-            wit_name:  Fr::zero(),
-            pub_arity: Fr::zero(),
-            wit_arity: Fr::zero(),
+        let empty_dot = DotCircuit {
+            c_vec: vec![Fp::zero(); max_dim],
+            w_vec: vec![Fp::zero(); max_dim],
         };
-        let (cons_pk, cons_vk) = Groth16::<Bn254>::setup(cons_circuit, &mut rng)
-            .expect("failed setup for consistency circuit");
-        let cons_pvk = prepare_verifying_key(&cons_vk);
+        let empty_cons = ConsistencyCircuit {
+            pub_name: Fp::zero(), pub_arity: Fp::zero(),
+            wit_name: Fp::zero(), wit_arity: Fp::zero()
+        };
 
-        // 🔹 DotCircuit setup (ha a max hossz ismert, pl. 128)
-        let dot_circuit = DotCircuit {
-            c_vec: vec![Fr::zero(); 128],
-            w_vec: vec![Fr::zero(); 128],
-        };
-        let (dot_pk, dot_vk) = Groth16::<Bn254>::setup(dot_circuit, &mut rng)
-            .expect("failed setup for dot circuit");
-        let dot_pvk = prepare_verifying_key(&dot_vk);
+        let dot_vk  = keygen_vk(&params, &empty_dot).expect("vk gen failed (dot)");
+        let dot_pk  = keygen_pk(&params, dot_vk.clone(), &empty_dot).expect("pk gen failed (dot)");
+        let cons_vk = keygen_vk(&params, &empty_cons).expect("vk gen failed (consistency)");
+        let cons_pk = keygen_pk(&params, cons_vk.clone(), &empty_cons).expect("pk gen failed (consistency)");
 
         Self {
-            consistency_pk: Arc::new(cons_pk),
-            consistency_pvk: Arc::new(cons_pvk),
+            params,
+            dot_vk: Arc::new(dot_vk),
             dot_pk: Arc::new(dot_pk),
-            dot_pvk: Arc::new(dot_pvk),
+            cons_vk: Arc::new(cons_vk),
+            cons_pk: Arc::new(cons_pk),
+            max_dim,
         }
     }
 }
+
+// ======= Helper: prove/verify =======
+
+pub fn prove_dot(pks: &ProvingKeyStore, c_vec: &[Fp], w_vec: &[Fp]) -> anyhow::Result<Vec<u8>> {
+    anyhow::ensure!(c_vec.len() == w_vec.len(), "c_vec/w_vec mismatch");
+    anyhow::ensure!(c_vec.len() <= pks.max_dim, "exceeds max_dim; pad-olj!");
+
+    let mut c_pad = c_vec.to_vec();
+    let mut w_pad = w_vec.to_vec();
+    c_pad.resize(pks.max_dim, Fp::zero());
+    if pks.max_dim > 0 {
+        if w_pad.len() != pks.max_dim { w_pad.resize(pks.max_dim, Fp::zero()); }
+        w_pad[pks.max_dim - 1] = Fp::one();
+    }
+
+    let circuit = DotCircuit { c_vec: c_pad.clone(), w_vec: w_pad };
+
+    let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
+    let public_inputs: Vec<&[Fp]> = vec![&c_pad];
+    create_proof(
+        &pks.params,
+        &pks.dot_pk,
+        &[circuit],
+        &[&public_inputs],
+        OsRng,
+        &mut transcript
+    )?;
+    Ok(transcript.finalize())
+}
+
+pub fn verify_dot(pks: &ProvingKeyStore, proof: &[u8], c_vec: &[Fp]) -> anyhow::Result<bool> {
+    anyhow::ensure!(c_vec.len() <= pks.max_dim, "exceeds max_dim; pad-olj!");
+    let mut c_pad = c_vec.to_vec();
+    c_pad.resize(pks.max_dim, Fp::zero());
+
+    let strategy = SingleVerifier::new(&pks.params);
+    let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(proof);
+    let ok = verify_proof(
+        &pks.params,
+        &pks.dot_vk,
+        strategy,
+        &[ &[ &c_pad ] ],   // ✅ fixed nesting
+        &mut transcript,
+    ).is_ok();
+
+    Ok(ok)
+}
+
+pub fn prove_consistency(
+    pks: &ProvingKeyStore,
+    pub_name: Fp,
+    pub_arity: Fp,
+    wit_name: Fp,
+    wit_arity: Fp,
+) -> anyhow::Result<Vec<u8>> {
+    let circuit = ConsistencyCircuit { pub_name, pub_arity, wit_name, wit_arity };
+
+    let instances: Vec<Fp> = vec![pub_name, pub_arity];
+    let public_inputs: Vec<&[Fp]> = vec![&instances];
+
+    let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
+    create_proof(
+        &pks.params,
+        &pks.cons_pk,
+        &[circuit],
+        &[&public_inputs],
+        OsRng,
+        &mut transcript
+    )?;
+    Ok(transcript.finalize())
+}
+
+pub fn verify_consistency(
+    pks: &ProvingKeyStore,
+    proof: &[u8],
+    pub_name: Fp,
+    pub_arity: Fp,
+) -> anyhow::Result<bool> {
+    let instances: Vec<Fp> = vec![pub_name, pub_arity];
+    let strategy = SingleVerifier::new(&pks.params);
+    let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(proof);
+
+    let ok = verify_proof(
+        &pks.params,
+        &pks.cons_vk,
+        strategy,
+        &[ &[ &instances ] ],  // ✅ fixed nesting
+        &mut transcript,
+    ).is_ok();
+
+    Ok(ok)
+}
+

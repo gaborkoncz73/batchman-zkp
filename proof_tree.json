@@ -1,51 +1,29 @@
 [
   {
-    "goal":"related(laura,oliver)",
-    "goal_term": {"args": ["laura", "oliver" ], "name":"related"},
-    "goal_unification": {"body": ["cousin(laura,oliver)" ], "goal":"related(laura,oliver)"},
+    "goal":"ancestor(alice,carol)",
+    "goal_term": {"args": ["alice", "carol" ], "name":"ancestor"},
+    "goal_unification": {"body": ["parent(alice,bob)", "ancestor(bob,carol)" ], "goal":"ancestor(alice,carol)"},
     "substitution": [],
     "subtree": [
       {
-	"goal":"cousin(laura,oliver)",
-	"goal_term": {"args": ["laura", "oliver" ], "name":"cousin"},
-	"goal_unification": {"body": ["parent(bob,laura)", "parent(helen,oliver)", "sibling(bob,helen)" ], "goal":"cousin(laura,oliver)"},
+	"goal":"parent(alice,bob)",
+	"goal_term": {"args": ["alice", "bob" ], "name":"parent"},
+	"goal_unification": {"body": [true ], "goal":"parent(alice,bob)"},
+	"substitution": [],
+	"subtree": [true ]
+      },
+      {
+	"goal":"ancestor(bob,carol)",
+	"goal_term": {"args": ["bob", "carol" ], "name":"ancestor"},
+	"goal_unification": {"body": ["parent(bob,carol)" ], "goal":"ancestor(bob,carol)"},
 	"substitution": [],
 	"subtree": [
 	  {
-	    "goal":"parent(bob,laura)",
-	    "goal_term": {"args": ["bob", "laura" ], "name":"parent"},
-	    "goal_unification": {"body": [true ], "goal":"parent(bob,laura)"},
+	    "goal":"ancestor(alice,carol)",
+	    "goal_term": {"args": ["bob", "carol" ], "name":"parent"},
+	    "goal_unification": {"body": [true ], "goal":"ancestor(alice,carol)"},
 	    "substitution": [],
 	    "subtree": [true ]
-	  },
-	  {
-	    "goal":"parent(helen,oliver)",
-	    "goal_term": {"args": ["helen", "oliver" ], "name":"parent"},
-	    "goal_unification": {"body": [true ], "goal":"parent(helen,oliver)"},
-	    "substitution": [],
-	    "subtree": [true ]
-	  },
-	  {
-	    "goal":"sibling(bob,helen)",
-	    "goal_term": {"args": ["bob", "helen" ], "name":"sibling"},
-	    "goal_unification": {"body": ["parent(alice,bob)", "parent(alice,helen)" ], "goal":"sibling(bob,helen)"},
-	    "substitution": [],
-	    "subtree": [
-	      {
-		"goal":"parent(alice,bob)",
-		"goal_term": {"args": ["alice", "bob" ], "name":"parent"},
-		"goal_unification": {"body": [true ], "goal":"parent(alice,bob)"},
-		"substitution": [],
-		"subtree": [true ]
-	      },
-	      {
-		"goal":"parent(alice,helen)",
-		"goal_term": {"args": ["alice", "helen" ], "name":"parent"},
-		"goal_unification": {"body": [true ], "goal":"parent(alice,helen)"},
-		"substitution": [],
-		"subtree": [true ]
-	      }
-	    ]
 	  }
 	]
       }
