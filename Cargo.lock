@@ -95,6 +95,8 @@ dependencies = [
  "anyhow",
  "halo2_proofs",
  "rand_core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -493,6 +495,7 @@ name = "tokens"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "common",
  "regex",
  "serde",
  "serde_json",

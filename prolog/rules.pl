@@ -1,6 +1,7 @@
 % --- Alap ---
 ancestor(X,Y) :- parent(X,Y).
 ancestor(X,Y) :- parent(X,Z), ancestor(Z,Y).
+ancestor(X,Y,T) :- parent(X,Z), ancestor(Z,Y), ancestor(T,X).
 
 % --- Testvérek, unokatestvérek, nagynéni/nagybácsi ---
 sibling(X,Y) :- parent(P,X), parent(P,Y).      

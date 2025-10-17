@@ -2,14 +2,16 @@ use anyhow::{anyhow, Result};
 use std::{collections::BTreeMap, sync::Arc};
 use rayon::prelude::*;
 use halo2_proofs::pasta::Fp;
-use crate::{data::*, proofs::{self, *}, utils::*};
+use crate::{proofs::{self, *}, utils::*};
 use halo2_proofs::arithmetic::Field;
+use common::data;
+
 
 pub const MAX_DOT_DIM: usize = 7;
 
 pub fn prove_node(
-    goal: &GoalEntry,
-    rules: &RuleTemplateFile,
+    goal: &data::GoalEntry,
+    rules: &data::RuleTemplateFile,
     id_map: &BTreeMap<String, i64>,
     proofs: &ProofStore,
     pk_store: &Arc<common::ProvingKeyStore>,
@@ -59,20 +61,20 @@ pub fn prove_node(
     // paralel recursion on the children
     goal.subtree
         .par_iter()
-        .filter_map(|n| if let ProofNode::GoalNode(g) = n { Some(g) } else { None })
+        .filter_map(|n| if let data::ProofNode::GoalNode(g) = n { Some(g) } else { None })
         .try_for_each(|child| prove_node(child, rules, id_map, proofs, pk_store, depth + 1))?;
 
     println!("{}OK (ZK proofs collected): {}", indent, goal.goal);
     Ok(())
 }
 
-fn is_fact_leaf(rules: &RuleTemplateFile, goal_id: i64, goal: &GoalEntry, id_map: &BTreeMap<String, i64>, indent: &str) -> Result<bool>{
+fn is_fact_leaf(rules: &data::RuleTemplateFile, goal_id: i64, goal: &data::GoalEntry, id_map: &BTreeMap<String, i64>, indent: &str) -> Result<bool>{
     let is_fact = rules
         .facts
         .iter()
         .any(|f| predicate_id(&f.name, f.arity, id_map) == goal_id);
     if is_fact {
-        if goal.subtree.iter().any(|n| matches!(n, ProofNode::GoalNode(_))
+        if goal.subtree.iter().any(|n| matches!(n, data::ProofNode::GoalNode(_))
             || goal.goal != goal.goal_unification.goal)
         {
             return Err(anyhow!(
@@ -88,7 +90,7 @@ fn is_fact_leaf(rules: &RuleTemplateFile, goal_id: i64, goal: &GoalEntry, id_map
 
 
 fn prove_syntax_consistency(
-    goal: &GoalEntry,
+    goal: &data::GoalEntry,
     proofs: &ProofStore,
     pk_store: &Arc<common::ProvingKeyStore>,
 ) -> Result<()> {
@@ -125,8 +127,8 @@ fn prove_syntax_consistency(
 }
 
 fn prove_structural_clause_match(
-    goal: &GoalEntry,
-    rules: &RuleTemplateFile,
+    goal: &data::GoalEntry,
+    rules: &data::RuleTemplateFile,
     id_map: &BTreeMap<String, i64>,
     proofs: &ProofStore,
     pk_store: &Arc<common::ProvingKeyStore>,
@@ -157,10 +159,10 @@ fn prove_structural_clause_match(
 }
 
 fn find_predicate_matches<'a>(
-    goal: &GoalEntry,
-    rules: &'a RuleTemplateFile,
+    goal: &data::GoalEntry,
+    rules: &'a data::RuleTemplateFile,
     id_map: &BTreeMap<String, i64>,
-) -> Result<Vec<&'a PredicateTemplate>> {
+) -> Result<Vec<&'a data::PredicateTemplate>> {
     let goal_id = predicate_id(&goal.goal_term.name, goal.goal_term.args.len(), id_map);
     let matches: Vec<_> = rules
         .predicates
@@ -174,7 +176,7 @@ fn find_predicate_matches<'a>(
     Ok(matches)
 }
 
-fn validate_body_subtree_lengths(goal: &GoalEntry) -> Result<()> {
+fn validate_body_subtree_lengths(goal: &data::GoalEntry) -> Result<()> {
     let b = goal.goal_unification.body.len();
     let s = goal.subtree.len();
     if b != s {
@@ -187,7 +189,7 @@ fn validate_body_subtree_lengths(goal: &GoalEntry) -> Result<()> {
 }
 
 fn prove_body_subtree_consistency(
-    goal: &GoalEntry,
+    goal: &data::GoalEntry,
     proofs: &ProofStore,
     pk_store: &Arc<common::ProvingKeyStore>,
 ) -> Result<()> {
@@ -198,11 +200,11 @@ fn prove_body_subtree_consistency(
         .filter_map(|v| v.as_str())
         .collect();
 
-    let sub_goals: Vec<&GoalEntry> = goal
+    let sub_goals: Vec<&data::GoalEntry> = goal
         .subtree
         .iter()
         .filter_map(|n| match n {
-            ProofNode::GoalNode(g) => Some(g),
+            data::ProofNode::GoalNode(g) => Some(g),
             _ => None,
         })
         .collect();
@@ -220,9 +222,10 @@ fn prove_body_subtree_consistency(
         })
 }
 
+use rayon::join;
 fn prove_dot_clause_match(
-    pred_matches: &[&PredicateTemplate],
-    goal: &GoalEntry,
+    pred_matches: &[&data::PredicateTemplate],
+    goal: &data::GoalEntry,
     universe: &Vec<String>,
     w_vec: &Vec<Fp>,
     proofs: &ProofStore,
@@ -251,14 +254,91 @@ fn prove_dot_clause_match(
                 return false;
             }
 
-            if let Ok(proof) = common::prove_dot(pk_store, &c_pad, &w_pad) {
-                proofs.dot_proofs.lock().unwrap().push((c_pad.clone(), proof));
-                println!("{}dot(c,w) = 0 (proof generated and stored)", indent);
-                return true;
-            }
-            false
+            let variable_rules: Vec<Vec<Fp>> = rows_equality_global(clause);
+            /*println!("Clause rows:");
+            for r in &variable_rules {
+                println!(
+                    "{:?}",
+                    r.iter()
+                        .map(|x| if *x == Fp::ZERO { 0 } else if *x == Fp::ONE { 1 } else { -1 })
+                        .collect::<Vec<_>>()
+                );
+            }*/
+
+            // Get the actual goal variables
+            let w_vec = flatten_goal_variables_fp(goal);
+            //println!("Witness vector (Fp): {:?}", w_vec);
+
+
+
+
+            let proofs1 = proofs.clone();
+            let pk_store_1 = Arc::clone(pk_store);
+            let proofs2 = proofs.clone();
+            let pk_store_2 = Arc::clone(pk_store);
+
+
+            // Run both proof groups in parallel
+            let (main_ok, vars_ok) = join(
+                // main structural dot proof
+                || {
+                    if let Ok(proof) = common::prove_dot(&pk_store_2, &c_pad, &w_pad) {
+                        proofs2.dot_proofs.lock().unwrap().push((c_pad.clone(), proof));
+                        println!("{}dot(c,w) = 0 (proof generated and stored)", indent);
+                        true
+                    } else {
+                        println!("{}dot(c,w) proof generation failed", indent);
+                        false
+                    }
+                },
+                // variable equality proofs (parallel inside)
+                || {
+                    variable_rules
+                        .par_iter()
+                        .enumerate()
+                        .map(|(i, var_rule)| {
+                            if var_rule.len() != w_vec.len() {
+                                println!(
+                                    "{}Variable rule {} length mismatch ({} vs {})",
+                                    indent, i, var_rule.len(), w_vec.len()
+                                );
+                                return false;
+                            }
+
+                            // Pad both sides for the circuit
+                            let var_pad = pad(var_rule.clone());
+                            let w_pad2 = pad(w_vec.clone());
+
+                            // Local dot check before proving
+                            let dot_check: Fp = var_pad.iter().zip(&w_pad2).map(|(a, b)| *a * *b).sum();
+                            /*println!(
+                                "var_pad={:?}\nw_pad={:?}\nsum={:?}",
+                                var_pad,
+                                w_pad,
+                                dot_check
+                            );*/
+
+                            if !dot_check.is_zero_vartime() {
+                                println!("{}dot(rule{}, w)!=0", indent, i);
+                                return false;
+                            }
+                            if let Ok(proof) = common::prove_dot(&pk_store_1, &var_pad, &w_pad2) {
+                                proofs1.dot_proofs.lock().unwrap().push((var_pad.clone(), proof));
+                                println!("{}dot(rule{}, w)=0 proof stored", indent, i);
+                                true
+                            } else {
+                                println!("{}dot(rule{}, w) proof generation failed", indent, i);
+                                false
+                          }
+                        })
+                        .all(|ok| ok)
+                },
+            );
+
+            main_ok && vars_ok
         })
     });
+
     Ok(found)
 }
 
@@ -270,4 +350,132 @@ pub fn pad(mut v: Vec<Fp>) -> Vec<Fp> {
     }
     v.push(const_col);
     v
+}
+
+
+
+/// Produce equality-rows from a ClauseTemplate.
+/// Each row is a vector over flattened term positions,
+/// encoding (a_i - a_j = 0) as (+1, -1) in the respective positions.
+pub fn rows_equality_global(clause: &data::ClauseTemplate) -> Vec<Vec<Fp>> {
+    let mut offsets = Vec::new();
+    let mut current = 0usize;
+
+    // node 0 = head (arity = head_arity)
+    let head_arity = clause.children.first().map_or(2, |_| 2); // assume 2 for head
+    offsets.push(0);
+
+    // each child starts after all previous nodes' arities
+    current += head_arity;
+    for child in &clause.children {
+        offsets.push(current);
+        current += child.arity;
+    }
+
+    let total_positions = current;
+
+
+    // collect all pairwise equalities into flattened indices
+    let mut pairs = Vec::new();
+    for eq in &clause.equalities {
+        let left_index = offsets[eq.left.node] + eq.left.arg;
+        let right_index = offsets[eq.right.node] + eq.right.arg;
+        pairs.push((left_index, right_index));
+    }
+
+    // use union-find to connect equal variables with >2 appearances
+    let mut uf = UnionFind::new(total_positions);
+    for &(a, b) in &pairs {
+        uf.union(a, b);
+    }
+
+    let mut groups: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
+    for i in 0..total_positions {
+        groups.entry(uf.find(i)).or_default().push(i);
+    }
+
+    // Generate equality rows ---
+    let mut rows = Vec::new();
+    for group in groups.values() {
+    if group.len() > 1 {
+        // connect all consecutive pairs within the group
+        for w in group.windows(2) {
+            let mut row = vec![Fp::ZERO; total_positions];
+            row[w[0]] = Fp::ONE;
+            row[w[1]] = -Fp::ONE;
+             row.push(Fp::ZERO);
+            rows.push(row);
+        }
+    }
+}
+
+
+    rows
+}
+
+/// Simple union-find (disjoint-set)
+#[derive(Clone)]
+struct UnionFind {
+    parent: Vec<usize>,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        Self {
+            parent: (0..n).collect(),
+        }
+    }
+    fn find(&mut self, x: usize) -> usize {
+        if self.parent[x] != x {
+            let p = self.parent[x];
+            self.parent[x] = self.find(p);
+        }
+        self.parent[x]
+    }
+    fn union(&mut self, a: usize, b: usize) {
+        let pa = self.find(a);
+        let pb = self.find(b);
+        if pa != pb {
+            self.parent[pa] = pb;
+        }
+    }
+}
+
+
+pub fn flatten_goal_variables(goal: &data::GoalEntry) -> Vec<String> {
+    let mut vars = Vec::new();
+
+    // Add head goal arguments
+    vars.extend(goal.goal_term.args.clone());
+
+    // Add each predicate call in the body
+    for body_entry in &goal.goal_unification.body {
+        if let Some(call_str) = body_entry.as_str() {
+            // parse something like "parent(alice,bob)"
+            if let Some((_, args)) = parse_predicate_call2(call_str) {
+                vars.extend(args);
+            }
+        }
+    }
+    vars
+}
+
+pub fn flatten_goal_variables_fp(goal: &data::GoalEntry) -> Vec<Fp> {
+    let vars = flatten_goal_variables(goal);
+    let mut v_fp: Vec<Fp> = vars.iter().map(|s| str_to_fp(s)).collect();
+    v_fp.push(Fp::ONE); // enforce non-triviality
+    v_fp
+}
+
+/// helper to parse a predicate call string like "parent(alice,bob)"
+fn parse_predicate_call2(s: &str) -> Option<(String, Vec<String>)> {
+    let open = s.find('(')?;
+    let close = s.find(')')?;
+    let name = s[..open].trim().to_string();
+    let args_str = &s[open + 1..close];
+    let args = args_str
+        .split(',')
+        .map(|x| x.trim().to_string())
+        .collect::<Vec<_>>();
+    Some((name, args))
 }

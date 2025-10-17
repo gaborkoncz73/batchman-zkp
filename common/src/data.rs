@@ -1,31 +1,43 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RuleTemplateFile {
     pub predicates: Vec<PredicateTemplate>,
     pub facts: Vec<FactTemplate>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct PredicateTemplate {
     pub name: String,
     pub arity: usize,
     pub clauses: Vec<ClauseTemplate>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ClauseTemplate {
     pub children: Vec<ChildSig>,
-    //pub equalities: Vec<String>, // later args check
+    pub equalities: Vec<Equality>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Equality {
+    pub left: TermRef,
+    pub right: TermRef,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TermRef {
+    pub node: usize, // 0 = head, 1..N = child index
+    pub arg: usize,  // argument position within that node
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ChildSig {
     pub name: String,
-    //pub arity: usize, // later args check
+    pub arity: usize, // later args check
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct FactTemplate {
     pub name: String,
     pub arity: usize,

@@ -1,4 +1,3 @@
-mod data;
 mod utils;
 mod proofs;
 mod logic;
@@ -14,6 +13,7 @@ use logic::*;
 use proofs::*;
 use utils::*;
 use writer::write_proof;
+use common::data;
 
 pub const MAX_DOT_DIM: usize = 7;
 
@@ -21,7 +21,7 @@ pub const MAX_DOT_DIM: usize = 7;
 fn main() -> Result<()> {
     // Load rules and proof tree
     let rules_text = fs::read_to_string("input/rules_template.json")?;
-    let rules: RuleTemplateFile = serde_json::from_str(&rules_text)?;
+    let rules: data::RuleTemplateFile = serde_json::from_str(&rules_text)?;
     let proof_text = fs::read_to_string("input/proof_tree.json")?;
     let tree: Vec<ProofNode> = serde_json::from_str(&proof_text)?;
 

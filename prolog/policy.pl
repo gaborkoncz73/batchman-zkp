@@ -13,3 +13,4 @@ parent(helen, oliver).
 parent(bob, carol).
 parent(helen, mike).
 parent(mike, nancy).
+

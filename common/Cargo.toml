@@ -7,3 +7,5 @@ edition = "2024"
 anyhow = { workspace = true } 
 halo2_proofs = { workspace = true }
 rand_core    = { workspace = true, features = ["getrandom"] }
+serde = { workspace = true , features = ["derive", "std"] }
+serde_json = { workspace = true, features = ["std"]}
