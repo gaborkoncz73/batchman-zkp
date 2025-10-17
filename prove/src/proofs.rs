@@ -21,6 +21,7 @@ pub fn prove_consistency(
     proofs: &ProofStore,
     pk_store: &Arc<ProvingKeyStore>,
 ) -> Result<()> {
+    println!("{:?} vs {:?}", name_a, name_b);
     let pub_name = str_to_fp(name_a);
     let pub_arity = Fp::from(arity_a as u64);
     let wit_name = str_to_fp(name_b);

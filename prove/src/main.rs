@@ -17,6 +17,7 @@ use writer::write_proof;
 
 pub const MAX_DOT_DIM: usize = 7;
 
+
 fn main() -> Result<()> {
     // Load rules and proof tree
     let rules_text = fs::read_to_string("input/rules_template.json")?;
@@ -32,6 +33,8 @@ fn main() -> Result<()> {
     };
 
     let pk_store = Arc::new(ProvingKeyStore::new(MAX_DOT_DIM, 5));
+
+    
 
     println!(
         "Loaded {} predicates, {} facts, {} proof nodes.",

@@ -56,6 +56,7 @@ fn main() -> anyhow::Result<()> {
     } else {
         println!("At least one proof failed verification!");
     }
+    println!("Total constraints: {}", 5 * dot_proofs.len() + 2 * cons_proofs.len());
 
     Ok(())
 }

@@ -375,5 +375,3 @@ pub fn verify_consistency(pks: &ProvingKeyStore, proof: &[u8]) -> anyhow::Result
 
     Ok(ok)
 }
-
-
