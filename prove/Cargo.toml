@@ -4,22 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-common = { workspace = true }
-ark-relations = { workspace = true }
-ark-r1cs-std = { workspace = true }
-ark-groth16 = { workspace = true }
-ark-bn254 = { workspace = true }
-ark-snark = { workspace = true }
-rand = { workspace = true, features = ["std"] }
-serde_json = { workspace = true }
+serde = { workspace = true , features = ["derive", "std"] }
+serde_json = { workspace = true, features = ["std"]}
 anyhow = { workspace = true } 
-serde = { workspace = true }
+common = { workspace = true }
+halo2_proofs = { workspace = true }
+rayon = { workspace = true }
+base64 = { workspace = true }
 
 
-light-poseidon = "0.4"
-ark-ff = "0.5.0"
+blake2 = { workspace = true }
 
-indexmap = "2.11.4"
-num-bigint = "0.4.6"
-num-traits = "0.2.19"
-ark-std = "0.5.0"
+
+
+
+
+

@@ -3,7 +3,7 @@ ancestor(X,Y) :- parent(X,Y).
 ancestor(X,Y) :- parent(X,Z), ancestor(Z,Y).
 
 % --- Testvérek, unokatestvérek, nagynéni/nagybácsi ---
-sibling(X,Y) :- parent(P,X), parent(P,Y).       % (X \= Y feltételt most nem használjuk)
+sibling(X,Y) :- parent(P,X), parent(P,Y).      
 cousin(X,Y) :- parent(A,X), parent(B,Y), sibling(A,B).
 aunt_or_uncle(X,Y) :- sibling(X,P), parent(P,Y).
 

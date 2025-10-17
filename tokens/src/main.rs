@@ -36,7 +36,7 @@ struct FactTemplate {
 }
 
 fn main() -> Result<()> {
-    let text = fs::read_to_string("rules.pl")?;
+    let text = fs::read_to_string("prolog/rules.pl")?;
 
     let re_rule = Regex::new(r"(?m)^(\w+)\(([^)]*)\)\s*:-\s*(.*)\.")?;
     let re_fact = Regex::new(r"(?m)^(\w+)\(([^)]*)\)\s*\.")?;
@@ -48,7 +48,7 @@ fn main() -> Result<()> {
     let mut seen_heads: HashSet<(String, usize)> = HashSet::new();
     let mut seen_body: HashSet<(String, usize)> = HashSet::new();
 
-    // --- szabályok feldolgozása ---
+    // processing rules
     for cap in re_rule.captures_iter(&text) {
         let head_name = &cap[1];
         let head_args: Vec<_> = cap[2].split(',').map(|s| s.trim()).collect();
@@ -67,7 +67,7 @@ fn main() -> Result<()> {
             });
             seen_body.insert((child_name.clone(), child_args.len()));
 
-            // automatikus unifikáció generálása
+            // automatic unification generation
             for (j, carg) in child_args.iter().enumerate() {
                 if let Some(hpos) = head_args.iter().position(|x| x == carg) {
                     equalities.push(format!("HeadArg({})=ChildArg({}, {})", hpos, i, j));
@@ -90,13 +90,13 @@ fn main() -> Result<()> {
         }
     }
 
-    // --- tények feldolgozása ---
+    // processing facts
     for cap in re_fact.captures_iter(&text) {
         let name = cap[1].to_string();
         let args: Vec<_> = cap[2].split(',').map(|s| s.trim()).collect();
         let key = (name.clone(), args.len());
 
-        // ha nem head, akkor ez valódi fact
+        // if it's not head, then it is real fact
         if !seen_heads.contains(&key) {
             facts.push(FactTemplate {
                 name,
@@ -105,7 +105,7 @@ fn main() -> Result<()> {
         }
     }
 
-    // --- bodyban szereplő, de headként nem szereplő predikátumokat is factként tesszük ---
+    // Predicates that appear in the body but not in any head are also treated as facts
     for (name, arity) in seen_body {
         if !seen_heads.contains(&(name.clone(), arity)) {
             if !facts.iter().any(|f| f.name == name && f.arity == arity) {
@@ -116,8 +116,8 @@ fn main() -> Result<()> {
 
     let rules = RuleTemplateFile { predicates, facts };
     let json = serde_json::to_string_pretty(&rules)?;
-    fs::write("rules_template.json", json)?;
+    fs::write("input/rules_template.json", json)?;
 
-    println!("rules_template.json elkészült facts és predicates mezőkkel.");
+    println!("rules_template.json is created with the facts and predicates fields");
     Ok(())
 }

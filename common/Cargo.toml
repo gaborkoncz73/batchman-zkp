@@ -4,21 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ark-groth16 = { workspace = true }
-ark-bn254 = { workspace = true, features = ["curve"] }
-serde = { workspace = true }
-ark-snark = { workspace = true }
-ark-serialize = { workspace = true }
-base64 = { workspace = true, features = ["alloc"] }
-serde_json = { workspace = true, features = ["std"] }
 anyhow = { workspace = true } 
-
-ark-relations = { workspace = true }
-ark-r1cs-std = { workspace = true }
-ark-ff = "0.5.0"
-rand = { workspace = true, features = ["std"] }
-ark-std = "0.5.0"
-
-halo2_proofs = { version = "0.3" }
-halo2curves  = "0.6"
-rand_core    = "0.6"
+halo2_proofs = { workspace = true }
+rand_core    = { workspace = true, features = ["getrandom"] }

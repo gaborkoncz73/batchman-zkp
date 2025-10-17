@@ -26,5 +26,5 @@ export_proof(File) :-
 :- initialization(main).
 
 main :-
-    export_proof('proof_tree.json'),
+    export_proof('input/proof_tree.json'),
     halt.

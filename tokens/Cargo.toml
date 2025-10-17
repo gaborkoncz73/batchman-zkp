@@ -4,7 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = { workspace = true } 
-serde = { workspace = true , features = ["derive", "std"] }
-regex = "1.11.3"
+serde = { workspace = true , features = ["derive"] }
 serde_json = { workspace = true, features = ["std"] }
+anyhow = { workspace = true } 
+
+
+
+
+
+regex = { workspace = true, features = ["std", "unicode-perl"] }
