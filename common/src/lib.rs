@@ -28,7 +28,8 @@ pub struct DotConfig {
     fixed_last: Column<Fixed>, // last-row flag
     fixed_first: Column<Fixed>,// first-row flag
     #[allow(dead_code)]
-    instance: Column<Instance> // c[i] public inputs
+    instance_c: Column<Instance>, // c[i] public inputs
+    instance_flag: Column<Instance>,
 }
 
 // Circuit enforcing dot(c, w) = 0 with boolean w constraints
@@ -57,17 +58,19 @@ impl Circuit<Fp> for DotCircuit {
         let fixed_q    = meta.fixed_column();
         let fixed_last = meta.fixed_column();
         let fixed_first= meta.fixed_column();
-        let instance   = meta.instance_column();
+        let instance_c   = meta.instance_column();
+        let instance_flag = meta.instance_column();
 
         meta.enable_equality(adv_w);
         meta.enable_equality(adv_acc);
-        meta.enable_equality(instance);
+        meta.enable_equality(instance_c);
+        meta.enable_equality(instance_flag);
 
         // First row: acc_0 = w_0 * c_0
         meta.create_gate("first row acc0 = w0*c0", |meta| {
             let q_first = meta.query_fixed(fixed_first);
             let w0   = meta.query_advice(adv_w,   Rotation::cur());
-            let c0   = meta.query_instance(instance, Rotation::cur());
+            let c0   = meta.query_instance(instance_c, Rotation::cur());
             let acc0 = meta.query_advice(adv_acc, Rotation::cur());
             Constraints::with_selector(q_first, [ acc0 - w0 * c0 ])
         });
@@ -80,7 +83,7 @@ impl Circuit<Fp> for DotCircuit {
             let sel      = q * (Expression::Constant(Fp::one()) - is_first);
 
             let wi   = meta.query_advice(adv_w,   Rotation::cur());
-            let ci   = meta.query_instance(instance, Rotation::cur());
+            let ci   = meta.query_instance(instance_c, Rotation::cur());
             let acci = meta.query_advice(adv_acc, Rotation::cur());
             let accp = meta.query_advice(adv_acc, Rotation::prev()); // no next!
 
@@ -88,13 +91,14 @@ impl Circuit<Fp> for DotCircuit {
         });
 
         // Boolean for non-last rows: w*(w-1)=0
-        meta.create_gate("boolean non-last", |meta| {
+        meta.create_gate("boolean non-last (optional)", |meta| {
             let q        = meta.query_fixed(fixed_q);
             let is_last  = meta.query_fixed(fixed_last);
             let sel      = q * (Expression::Constant(Fp::one()) - is_last);
 
             let w = meta.query_advice(adv_w, Rotation::cur());
-            Constraints::with_selector(sel, [ w.clone() * (w - Expression::Constant(Fp::one())) ])
+            let enforce  = meta.query_instance(instance_flag, Rotation::cur());
+            Constraints::with_selector(sel, [ enforce * w.clone() * (w - Expression::Constant(Fp::one())) ])
         });
 
         // Last row: w_last = 1  AND  acc_last = 0
@@ -112,7 +116,7 @@ impl Circuit<Fp> for DotCircuit {
             ])
         });
 
-        DotConfig { adv_w, adv_acc, fixed_q, fixed_last, fixed_first, instance }
+        DotConfig { adv_w, adv_acc, fixed_q, fixed_last, fixed_first, instance_c, instance_flag }
     }
 
     // Assigns witness and fixed values for each circuit row
@@ -298,29 +302,43 @@ impl ProvingKeyStore {
 // Helper: prove/verify
 
 // Generates a proof for the Dot circuit: sum(c[i]*w[i]) = 0
-pub fn prove_dot(pks: &ProvingKeyStore, c_vec: &[Fp], w_vec: &[Fp]) -> anyhow::Result<Vec<u8>> {
+pub fn prove_dot(
+    pks: &ProvingKeyStore,
+    c_vec: &[Fp],
+    w_vec: &[Fp],
+    enforce_flag: Fp,
+) -> anyhow::Result<(Vec<u8>, Vec<Vec<Fp>>)> {
     anyhow::ensure!(c_vec.len() == w_vec.len(), "c_vec/w_vec mismatch");
     anyhow::ensure!(c_vec.len() <= pks.max_dim, "padding needed!");
 
-    // build circuit and create proof
-    let circuit = DotCircuit { c_vec: c_vec.to_vec().clone(), w_vec: w_vec.to_vec() };
-    let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
-    let public_inputs: Vec<&[Fp]> = vec![&c_vec];
+    let n = c_vec.len();
+    let flag_vec: Vec<Fp> = std::iter::repeat(enforce_flag).take(n).collect();
 
-    create_proof(
-        &pks.params,
-        &pks.dot_pk,
-        &[circuit],
-        &[&public_inputs],
-        OsRng,
-        &mut transcript
-    )?;
-    Ok(transcript.finalize())
+    let circuit = DotCircuit { c_vec: c_vec.to_vec(), w_vec: w_vec.to_vec() };
+    let instances: Vec<Vec<Fp>> = vec![c_vec.to_vec(), flag_vec];
+    let inst_refs: Vec<&[Fp]> = instances.iter().map(|v| v.as_slice()).collect();
+    let inst_cols: Vec<&[&[Fp]]> = vec![&inst_refs];
+
+    let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
+    create_proof(&pks.params, &pks.dot_pk, &[circuit], &inst_cols, OsRng, &mut transcript)?;
+
+    Ok((transcript.finalize(), instances))
 }
 
 // Verifies a Dot circuit proof against public inputs
-pub fn verify_dot(pks: &ProvingKeyStore, proof: &[u8], c_vec: &[Fp]) -> anyhow::Result<bool> {
+pub fn verify_dot(
+    pks: &ProvingKeyStore,
+    proof: &[u8],
+    c_vec: &[Fp],
+    enforce_flag: Fp,   // ⬅️ verifier also decides the mode!
+) -> anyhow::Result<bool> {
     anyhow::ensure!(c_vec.len() <= pks.max_dim, "padding needed!");
+    let n = c_vec.len();
+    let flag_vec: Vec<Fp> = std::iter::repeat(enforce_flag).take(n).collect();
+
+    let instances: Vec<Vec<Fp>> = vec![ c_vec.to_vec(), flag_vec ];
+    let inst_refs: Vec<&[Fp]> = instances.iter().map(|v| v.as_slice()).collect();
+    let inst_cols: Vec<&[&[Fp]]> = vec![ &inst_refs ];
 
     let strategy = SingleVerifier::new(&pks.params);
     let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(proof);
@@ -328,12 +346,13 @@ pub fn verify_dot(pks: &ProvingKeyStore, proof: &[u8], c_vec: &[Fp]) -> anyhow::
         &pks.params,
         &pks.dot_vk,
         strategy,
-        &[ &[ &c_vec ] ], // nested slices for public input structure
+        &inst_cols,
         &mut transcript,
     ).is_ok();
 
     Ok(ok)
 }
+
 
 // Generates a proof for the Consistency circuit
 // Ensures (pub_name, pub_arity) == (wit_name, wit_arity)

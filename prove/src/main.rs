@@ -58,7 +58,7 @@ fn main() -> Result<()> {
 
     // DOT proofs
     for (inputs, proof_bytes) in dot_proofs.iter() {
-        write_proof("dot", proof_bytes, Some(inputs))?;
+        write_proof("dot", proof_bytes, Some(inputs.as_slice()))?;
     }
 
     // CONSISTENCY proofs (no public inputs)

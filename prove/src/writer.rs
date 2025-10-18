@@ -12,7 +12,7 @@ use base64::{engine::general_purpose, Engine as _};
 #[derive(Serialize, Deserialize)]
 struct ProofEntry {
     proof_b64: String,
-    inputs_b64: Vec<String>,
+    inputs_b64: Vec<Vec<String>>, // 2 instance columns (c_vec + flag_vec)
 }
 
 /// Removes and recreates out/ each run
@@ -26,21 +26,31 @@ pub fn init_output_dir() -> anyhow::Result<()> {
 }
 
 /// Appends a _proof entry to a JSON array file: out/dot_proofs.json
-pub fn write_proof(name: &str, proof_bytes: &[u8], inputs: Option<&[Fp]>) -> anyhow::Result<()> {
+///
+/// `inputs` must match the proof structure, i.e. &[c_vec, flag_vec]
+pub fn write_proof(
+    name: &str,
+    proof_bytes: &[u8],
+    inputs: Option<&[Vec<Fp>]>
+) -> anyhow::Result<()> {
     let out_dir = Path::new("out");
     fs::create_dir_all(out_dir)?;
     let file_path = out_dir.join(format!("{}_proofs.json", name));
 
     // Encode proof and inputs in Base64
     let proof_b64 = general_purpose::STANDARD.encode(proof_bytes);
-    let inputs_b64: Vec<String> = inputs
-        .map(|vals| {
-            vals.iter()
-                .map(|x| {
-                    let repr = x.to_repr(); // canonical 32-byte form
-                    general_purpose::STANDARD.encode(repr.as_ref())
+    let inputs_b64: Vec<Vec<String>> = inputs
+        .map(|cols| {
+            cols.iter()
+                .map(|col| {
+                    col.iter()
+                        .map(|x| {
+                            let repr = x.to_repr(); // canonical 32-byte form
+                            general_purpose::STANDARD.encode(repr.as_ref())
+                        })
+                        .collect::<Vec<_>>()
                 })
-                .collect()
+                .collect::<Vec<_>>()
         })
         .unwrap_or_default();
 

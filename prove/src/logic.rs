@@ -282,8 +282,8 @@ fn prove_dot_clause_match(
             let (main_ok, vars_ok) = join(
                 // main structural dot proof
                 || {
-                    if let Ok(proof) = common::prove_dot(&pk_store_2, &c_pad, &w_pad) {
-                        proofs2.dot_proofs.lock().unwrap().push((c_pad.clone(), proof));
+                    if let Ok((proof, instances)) = common::prove_dot(&pk_store_2, &c_pad, &w_pad, Fp::one()) {
+                        proofs2.dot_proofs.lock().unwrap().push((instances.clone(), proof));
                         println!("{}dot(c,w) = 0 (proof generated and stored)", indent);
                         true
                     } else {
@@ -322,8 +322,8 @@ fn prove_dot_clause_match(
                                 println!("{}dot(rule{}, w)!=0", indent, i);
                                 return false;
                             }
-                            if let Ok(proof) = common::prove_dot(&pk_store_1, &var_pad, &w_pad2) {
-                                proofs1.dot_proofs.lock().unwrap().push((var_pad.clone(), proof));
+                            if let Ok((proof, instances)) = common::prove_dot(&pk_store_1, &var_pad, &w_pad2, Fp::zero()) {
+                                 proofs1.dot_proofs.lock().unwrap().push((instances.clone(), proof));
                                 println!("{}dot(rule{}, w)=0 proof stored", indent, i);
                                 true
                             } else {

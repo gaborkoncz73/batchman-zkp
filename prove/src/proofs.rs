@@ -4,15 +4,12 @@ use anyhow::Result;
 use common::*;
 use crate::utils::*;
 
-pub type StoredDot = (Vec<Fp>, Vec<u8>);
-pub type StoredCons = Vec<u8>;
 
 #[derive(Clone)]
 pub struct ProofStore {
-    pub dot_proofs: Arc<Mutex<Vec<StoredDot>>>,
-    pub cons_proofs: Arc<Mutex<Vec<StoredCons>>>,
+    pub dot_proofs: Arc<Mutex<Vec<(Vec<Vec<Fp>>, Vec<u8>)>>>, // [ [c_vec], [flag_vec] ], proof
+    pub cons_proofs: Arc<Mutex<Vec<Vec<u8>>>>,
 }
-
 pub fn prove_consistency(
     name_a: &str,
     arity_a: usize,
