@@ -169,7 +169,6 @@ fn find_predicate_matches<'a>(
         .iter()
         .filter(|p| predicate_id(&p.name, p.arity, id_map) == goal_id)
         .collect();
-
     if matches.is_empty() {
         return Err(anyhow!("Predicate not found in rules: {}", goal.goal_term.name));
     }
@@ -255,6 +254,7 @@ fn prove_dot_clause_match(
             }
 
             let variable_rules: Vec<Vec<Fp>> = rows_equality_global(clause);
+            println!("var rules: {:?}", variable_rules);
             /*println!("Clause rows:");
             for r in &variable_rules {
                 println!(

@@ -1,19 +1,21 @@
 [package]
-name = "common"
+name = "generator"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = { workspace = true } 
-halo2_proofs = { workspace = true }
-rand_core    = { workspace = true, features = ["getrandom"] }
 serde = { workspace = true , features = ["derive", "std"] }
 serde_json = { workspace = true, features = ["std"]}
-
-
+anyhow = { workspace = true } 
+common = { workspace = true }
+halo2_proofs = { workspace = true }
 rayon = { workspace = true }
+base64 = { workspace = true }
+
 
 blake2 = { workspace = true }
+rand_core    = { workspace = true, features = ["getrandom"] }
 
 
-halo2_gadgets = "0.3.1"
+
+bincode = "2.0.1"

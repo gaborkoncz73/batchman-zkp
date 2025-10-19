@@ -1,5 +1,5 @@
 [package]
-name = "common"
+name = "gen"
 version = "0.1.0"
 edition = "2024"
 
@@ -9,6 +9,7 @@ halo2_proofs = { workspace = true }
 rand_core    = { workspace = true, features = ["getrandom"] }
 serde = { workspace = true , features = ["derive", "std"] }
 serde_json = { workspace = true, features = ["std"]}
+common = { workspace = true }
 
 
 rayon = { workspace = true }

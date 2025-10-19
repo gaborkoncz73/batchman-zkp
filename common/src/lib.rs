@@ -1,5 +1,8 @@
 pub mod data;
-
+pub mod unif;
+mod utils;
+mod chips;
+use crate::chips::{ConsistencyChip, DotChip};
 
 use std::sync::Arc;
 
@@ -178,7 +181,7 @@ pub struct ConsistencyConfig {
     fixed_q: Column<Fixed>, // gate selector
 }
 
-/// Circuit enforcing pub_name==wit_name and pub_arity==wit_arity
+// Circuit enforcing pub_name==wit_name and pub_arity==wit_arity
 #[derive(Clone, Debug)]
 pub struct ConsistencyCircuit {
     pub_name:  Fp,

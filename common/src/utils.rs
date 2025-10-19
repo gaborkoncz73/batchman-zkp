@@ -120,4 +120,3 @@ pub fn str_to_fp(s: &str) -> Fp {
     let v = h.finish();
     Fp::from(v)
 }
-
