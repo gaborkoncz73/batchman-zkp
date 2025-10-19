@@ -1,18 +1,18 @@
 use halo2_proofs::{
-    circuit::{Chip, Layouter, Region, Value}, pasta::Fp, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Instance}, poly::Rotation
+    circuit::{Chip, Layouter, Region, Value}, pasta::Fp, plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed}, poly::Rotation
 };
 
+// SUBCIRCUIT for dot production
+// Total constraints: 2n + 1 (n is the length of the vectors)
 #[derive(Clone, Debug)]
 pub struct DotConfig {
-    pub adv_w: Column<Advice>,      // w[i] witnesses
-    pub adv_c: Column<Advice>,      // w[i] witnesses
-    pub adv_acc: Column<Advice>,    // accumulation
-    pub adv_flag: Column<Advice>,    // accumulation
+    pub adv_w: Column<Advice>,      // w[i] witnesses, vector for the actual values
+    pub adv_c: Column<Advice>,      // w[i] witnesses, vector for the rules
+    pub adv_acc: Column<Advice>,    // accumulation for the dot product computation
+    pub adv_flag: Column<Advice>,    // flag to differ if the witness vector elements should be only 0 and 1 or anything else
     pub fixed_q: Column<Fixed>,     // selector
     pub fixed_last: Column<Fixed>,  // last-row flag
     pub fixed_first: Column<Fixed>, // first-row flag
-    //pub instance_c: Column<Instance>,   // public inputs
-    //pub instance_flag: Column<Instance>,// public flags
 }
 
 pub struct DotChip {
@@ -40,51 +40,45 @@ impl DotChip {
         let fixed_q = meta.fixed_column();
         let fixed_last = meta.fixed_column();
         let fixed_first = meta.fixed_column();
-        //let instance_c = meta.instance_column();
-        //let instance_flag = meta.instance_column();
 
         meta.enable_equality(adv_w);
         meta.enable_equality(adv_acc);
-        //meta.enable_equality(instance_c);
-        //meta.enable_equality(instance_flag);
 
-        // First row: acc_0 = w_0 * c_0
-        meta.create_gate("first row acc0 = w0*c0", |meta| {
-            let q_first = meta.query_fixed(fixed_first);
-            let w0 = meta.query_advice(adv_w, Rotation::cur());
-            //let c0 = meta.query_instance(instance_c, Rotation::cur());
-            let c0 = meta.query_advice(adv_c, Rotation::cur());
-            //let c0 = Expression::Constant(Fp::one());
-            let acc0 = meta.query_advice(adv_acc, Rotation::cur());
-            vec![q_first * (acc0 - w0 * c0)]
-        });
-
-        // Running sum acc_i = acc_{i-1} + w_i*c_i for non-first rows
-        meta.create_gate("running sum", |meta| {
+        // Unified accumulation rule:
+        // For first row (is_first=1):    acc = w * c
+        // For later rows (is_first=0):   acc = acc_prev + w * c
+        // Builds the running dot product sum across all rows
+        // Constraints: n
+        meta.create_gate("unified accumulation", |meta| {
             let q = meta.query_fixed(fixed_q);
             let is_first = meta.query_fixed(fixed_first);
-            let sel = q * (Expression::Constant(Fp::one()) - is_first);
-            let wi = meta.query_advice(adv_w, Rotation::cur());
-            let ci = meta.query_advice(adv_c, Rotation::cur());
-            //let ci = meta.query_instance(instance_c, Rotation::cur());
-            //let ci = Expression::Constant(Fp::one()); 
-            let acci = meta.query_advice(adv_acc, Rotation::cur());
-            let accp = meta.query_advice(adv_acc, Rotation::prev());
-            vec![sel * (acci - accp - wi * ci)]
+            let w = meta.query_advice(adv_w, Rotation::cur());
+            let c = meta.query_advice(adv_c, Rotation::cur());
+            let acc = meta.query_advice(adv_acc, Rotation::cur());
+            let acc_prev = meta.query_advice(adv_acc, Rotation::prev());
+
+            vec![
+                q * (acc - acc_prev * (Expression::Constant(Fp::one()) - is_first) - w * c)
+            ]
         });
 
-        // Boolean constraint: w*(w-1)=0 for non-last rows if flag=1
+        // Boolean constraint for non-last rows:
+        // Enforces w ∈ {0,1} (w*(w-1)=0) when flag=1 and not the last row
+        // This ensures that intermediate witness values are boolean selectors if required
+        // Constraints: n - 1
         meta.create_gate("boolean non-last (optional)", |meta| {
             let q = meta.query_fixed(fixed_q);
             let is_last = meta.query_fixed(fixed_last);
             let sel = q * (Expression::Constant(Fp::one()) - is_last);
             let w = meta.query_advice(adv_w, Rotation::cur());
-            //let enforce = meta.query_instance(instance_flag, Rotation::cur());
             let enforce = meta.query_advice(adv_flag, Rotation::cur());
             vec![sel * enforce* w.clone() * (w - Expression::Constant(Fp::one()))]
         });
 
-        // Last row: w_last = 1, acc_last = 0
+        // Final row constraints:
+        // Applies only on the last row (is_last=1)
+        // Enforces that w_last = 1 (normalization constant) and acc_last = 0 (dot product result is zero)
+        // Constraints: 2
         meta.create_gate("last row constraints", |meta| {
             let q = meta.query_fixed(fixed_q);
             let is_last = meta.query_fixed(fixed_last);
@@ -147,10 +141,8 @@ impl DotChip {
                     region.assign_advice(|| "w", cfg.adv_w, i, || Value::known(wi))?;
                     region.assign_advice(|| "c", cfg.adv_c, i, || Value::known(ci))?;
                     region.assign_advice(|| "acc", cfg.adv_acc, i, || Value::known(acc))?;
-                    // same flag each row
                     region.assign_advice(|| "flag", cfg.adv_flag, i, || Value::known(flag_value))?;
                 }
-
                 Ok(())
             },
         )

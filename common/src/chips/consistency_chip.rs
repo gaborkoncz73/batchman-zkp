@@ -5,19 +5,18 @@ use halo2_proofs::{
     pasta::Fp,
 };
 
-// --------------------------
-// Config: két soros private equality gate
-// --------------------------
+// SUBCIRCUIT for consistency check
+// Total constraints: 1 (independent from everything)
 #[derive(Clone, Debug)]
 pub struct ConsistencyConfig {
-    pub adv_pub: Column<Advice>, // row0 = pub_name, row1 = pub_arity
-    pub adv_wit: Column<Advice>, // row0 = wit_name, row1 = wit_arity
+    pub adv_wit_1: Column<Advice>, // First witness
+    pub adv_wit_2: Column<Advice>, // Second witness
+    pub adv_wit_3: Column<Advice>, // Third witness (optinal)
+    pub adv_flag: Column<Advice>,  // flag to decide whether its 2 or 3 pairs check
     pub fixed_q: Column<Fixed>,  // gate selector
 }
 
-// --------------------------
 // Chip definition
-// --------------------------
 pub struct ConsistencyChip {
     config: ConsistencyConfig,
 }
@@ -41,57 +40,77 @@ impl ConsistencyChip {
     }
 
     pub fn configure(meta: &mut ConstraintSystem<Fp>) -> ConsistencyConfig {
-        let adv_pub = meta.advice_column();
-        let adv_wit = meta.advice_column();
+        let adv_wit_1 = meta.advice_column();
+        let adv_wit_2 = meta.advice_column();
+        let adv_wit_3 = meta.advice_column();
         let fixed_q = meta.fixed_column();
+        let adv_flag = meta.advice_column();
 
-        meta.enable_equality(adv_pub);
-        meta.enable_equality(adv_wit);
+        meta.enable_equality(adv_wit_1);
+        meta.enable_equality(adv_wit_2);
+        meta.enable_equality(adv_wit_3);
+        meta.enable_equality(adv_flag);
 
-        meta.create_gate("2-row private equality", |meta| {
+        // Constraint: Ensures equality between 2 or 3 elements
+        // Always enforces wit1 == wit2 (the first term).
+        // If flag = 1, also enforces wit2 == wit3 (the second term).
+        //  When flag = 0, the 3rd equality check is skipped (inactive).
+        // This allows the same gate to verify either a 2-element or 3-element equality
+        // depending on the flag value, saving constraints and keeping flexibility.
+        meta.create_gate("2-or-3-element equality check", |meta| {
             let q = meta.query_fixed(fixed_q);
+            let flag = meta.query_advice(adv_flag, Rotation::cur());
 
-            let pub_name  = meta.query_advice(adv_pub, Rotation::cur());
-            let wit_name  = meta.query_advice(adv_wit, Rotation::cur());
-            let pub_arity = meta.query_advice(adv_pub, Rotation::next());
-            let wit_arity = meta.query_advice(adv_wit, Rotation::next());
+            let wit1  = meta.query_advice(adv_wit_1, Rotation::cur());
+            let wit2  = meta.query_advice(adv_wit_2, Rotation::cur());
+            let wit3 = meta.query_advice(adv_wit_3, Rotation::cur());
 
             vec![
-                q.clone() * (wit_name - pub_name),
-                q * (wit_arity - pub_arity),
+                q * ((wit1.clone() - wit2.clone())*(wit1 - wit2.clone()) + flag * (wit2.clone() - wit3.clone())*(wit2 - wit3))
             ]
         });
 
-        ConsistencyConfig { adv_pub, adv_wit, fixed_q }
+        ConsistencyConfig { adv_wit_1, adv_wit_2, adv_wit_3, adv_flag, fixed_q }
     }
 
-    // Assign a single pair (goal vs unification) into 2 rows
-    pub fn assign_pairs( &self, mut layouter: impl Layouter<Fp>, pairs: Vec<(Fp, Fp, Fp, Fp)>, ) -> Result<(), Error> {
-        let cfg = self.config();
-        layouter.assign_region( || "consistency region (multi-pair)", |mut region| {
-            for (i, (goal_name, goal_arity, unif_name, unif_arity)) in pairs.iter().enumerate() { // each pair uses 2 rows
-                let row_name = i * 2; let row_arity = row_name + 1; // enable gate selectorfor both rows
-                region.assign_fixed( || format!("q_name_{}", i), cfg.fixed_q, row_name, || Value::known(Fp::one()), )?;
-                region.assign_fixed( || format!("q_arity_{}", i), cfg.fixed_q, row_arity, || Value::known(Fp::one()), )?;// row 0 = names
-                region.assign_advice( || format!("goal_name_{}", i), cfg.adv_pub, row_name, || Value::known(*goal_name), )?;
-                region.assign_advice( || format!("unif_name_{}", i), cfg.adv_wit, row_name, || Value::known(*unif_name), )?; // row 1 = arities
-                region.assign_advice( || format!("goal_arity_{}", i), cfg.adv_pub, row_arity, || Value::known(*goal_arity), )?;
-                region.assign_advice( || format!("unif_arity_{}", i), cfg.adv_wit, row_arity, || Value::known(*unif_arity), )?; 
-            }
-    
-            Ok(()) }, ) }
-    pub fn assign_pair2(
+    // Assigns on a list of tuples (a_x, b_x) checks a_x == b_x
+    pub fn assign_pairs2(
         &self,
         mut layouter: impl Layouter<Fp>,
-        values: (Fp, Fp),
+        values_list: &[(Fp, Fp)],
     ) -> Result<(), Error> {
         let cfg = self.config();
         layouter.assign_region(
-            || "simple equality",
-            |mut region| {
+                ||"pair-2 equality region",
+                |mut region: Region<'_, Fp>| {
+                    for (i, &(a, b)) in values_list.iter().enumerate() {
+                        region.assign_fixed(|| "q", cfg.fixed_q, i, || Value::known(Fp::one()))?;
+                        region.assign_advice(|| "wit1", cfg.adv_wit_1, i, || Value::known(a))?;
+                        region.assign_advice(|| "wit2", cfg.adv_wit_2, i, || Value::known(b))?;
+                        region.assign_advice(|| "wit3", cfg.adv_wit_3, i, || Value::known(Fp::zero()))?;
+                        region.assign_advice(|| "flag", cfg.adv_flag, i, || Value::known(Fp::zero()))?;
+                    }
+                
+                Ok(())
+            },
+        )
+    }   
+    
+    // Assigns one triple (a, b, c) checks a == b == c
+    pub fn assign_pairs3(
+        &self,
+        mut layouter: impl Layouter<Fp>,
+        values: (Fp, Fp, Fp),
+    ) -> Result<(), Error> {
+        let cfg = self.config();
+        layouter.assign_region(
+            || "pair3 equality region",
+            |mut region: Region<'_, Fp>| {
                 region.assign_fixed(|| "q", cfg.fixed_q, 0, || Value::known(Fp::one()))?;
-                region.assign_advice(|| "pub", cfg.adv_pub, 0, || Value::known(values.0))?;
-                region.assign_advice(|| "wit", cfg.adv_wit, 0, || Value::known(values.1))?;
+                region.assign_advice(|| "wit1", cfg.adv_wit_1, 0, || Value::known(values.0))?;
+                region.assign_advice(|| "wit2", cfg.adv_wit_2, 0, || Value::known(values.1))?;
+                region.assign_advice(|| "wit3", cfg.adv_wit_3, 0, || Value::known(values.2))?;
+                region.assign_advice(|| "flag", cfg.adv_flag, 0, || Value::known(Fp::one()))?;
                 Ok(())
             },
         )

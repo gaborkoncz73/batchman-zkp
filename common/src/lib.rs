@@ -1,7 +1,8 @@
 pub mod data;
-pub mod unif;
+pub mod unification_checker_circuit;
 mod utils;
 mod chips;
+mod utils_2;
 use crate::chips::{ConsistencyChip, DotChip};
 
 use std::sync::Arc;

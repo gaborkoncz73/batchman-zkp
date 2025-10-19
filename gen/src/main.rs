@@ -3,7 +3,7 @@ use anyhow::Result;
 use rayon::prelude::*;
 use halo2_proofs::{dev::MockProver, pasta::Fp};
 
-use common::{unif::{UnificationCircuit, UnificationInput}, *};
+use common::{unification_checker_circuit::{UnificationCircuit, UnificationInput}, *};
 
 
 fn main() -> Result<()> {
@@ -23,51 +23,47 @@ fn main() -> Result<()> {
 
     // Iterate over all goal nodes and prove unification
     tree.par_iter()
-        .filter_map(|n| {
-            if let data::ProofNode::GoalNode(g) = n {
-                Some(g)
-            } else {
-                None
-            }
-        })
-        .try_for_each(|goal_entry| -> Result<()> {
-            // Convert the GoalEntry into a flat UnificationInput for circuit
-            let unif_input = UnificationInput {
-                goal_name: goal_entry.goal.clone(),
-                goal_term_args: goal_entry.goal_term.args.clone(),
-                goal_term_name: goal_entry.goal_term.name.clone(),
-                unif_body: goal_entry
-                    .goal_unification
-                    .body
-                    .iter()
-                    .filter_map(|x| x.as_str().map(|s| s.to_string()))
-                    .collect(),
-                unif_goal: goal_entry.goal_unification.goal.clone(),
-                substitution: goal_entry.substitution.clone(),
-                subtree_goals: goal_entry
-                    .subtree
-                    .iter()
-                    .filter_map(|n| match n {
-                        data::ProofNode::GoalNode(g) => Some(g.goal.clone()),
-                        _ => None,
-                    })
-                    .collect(),
-            };
+        .try_for_each(|node| prove_tree(&rules, node))?;
 
-            // Construct the circuit
-            let circuit = UnificationCircuit {
-                rules: rules.clone(),
-                unif: unif_input,
-            };
-
-            // Run a mock prover for debugging
-            let prover = MockProver::run(10, &circuit, vec![])?;
-            prover.assert_satisfied();
-            println!("UnificationCircuit verified for goal: {}", goal_entry.goal);
-
-            Ok(())
-        })?;
 
     println!("All unification goals verified successfully!");
+    Ok(())
+}
+
+
+fn prove_tree(rules: &data::RuleTemplateFile, node: &data::ProofNode) -> Result<()> {
+    if let data::ProofNode::GoalNode(g) = node {
+        // -- 1️⃣ Circuit input előállítása --
+        let unif_input = UnificationInput {
+            goal_name: g.goal.clone(),
+            goal_term_args: g.goal_term.args.clone(),
+            goal_term_name: g.goal_term.name.clone(),
+            unif_body: g.goal_unification.body.iter()
+                .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                .collect(),
+            unif_goal: g.goal_unification.goal.clone(),
+            substitution: g.substitution.clone(),
+            subtree_goals: g.subtree.iter()
+                .filter_map(|n| match n {
+                    data::ProofNode::GoalNode(child) => Some(child.goal.clone()),
+                    _ => None,
+                })
+                .collect(),
+        };
+
+        // -- 2️⃣ Circuit futtatás --
+        let circuit = UnificationCircuit {
+            rules: rules.clone(),
+            unif: unif_input,
+        };
+
+        let prover = MockProver::run(5, &circuit, vec![])?;
+        prover.assert_satisfied();
+        println!("✅ Verified goal: {}", g.goal);
+
+        // -- 3️⃣ Rekurzív bejárás a subtree-kre --
+        g.subtree.par_iter()
+            .try_for_each(|sub| prove_tree(rules, sub))?;
+            }
     Ok(())
 }

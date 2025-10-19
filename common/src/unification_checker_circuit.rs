@@ -1,4 +1,4 @@
-use std::fmt::format;
+use std::{fmt::format, ptr::with_exposed_provenance, sync::Mutex};
 
 use blake2::{Blake2s256, Digest};
 use halo2_proofs::{
@@ -9,7 +9,24 @@ use serde::{Deserialize, Serialize};
 
 use crate::{chips::{ConsistencyChip, DotChip}, data::{self, ClauseTemplate}, utils::*};
 use crate::data::RuleTemplateFile;
+use once_cell::sync::Lazy;
+
+
 pub const MAX_DOT_DIM: usize = 7;
+// Global constraint counter
+pub static TOTAL_CONSTRAINTS: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+
+/// Adds `n` to the global constraint count
+pub fn add_constraints(n: u64) {
+    let mut counter = TOTAL_CONSTRAINTS.lock().unwrap();
+    *counter += n;
+}
+
+/// Reads the current total constraint count
+pub fn get_constraints() -> u64 {
+    let counter = TOTAL_CONSTRAINTS.lock().unwrap();
+    *counter
+}
 // ------------------------------------------------------
 // 🔹 Flat input struktúra (nem tartalmaz rekurzív subtree-t)
 // ------------------------------------------------------
@@ -75,7 +92,17 @@ impl Circuit<Fp> for UnificationCircuit {
         // ------------------------------------------------------
         // (Consistency check)
         // ------------------------------------------------------
-        let (unif_goal_name, unif_goal_arity) =
+        let combined_term = &combine_predicate(&self.unif.goal_term_name, &self.unif.goal_term_args);
+        /*println!("goal_name: {:?}", self.unif.goal_name);
+        println!("goal_goal_term_combined: {:?}", combined_term);
+        println!("goal_goal_unification_name: {:?}", self.unif.unif_goal);*/
+        add_constraints(1);
+        cons_chip.assign_pairs3(
+            layouter.namespace(|| "goal_vs_unif_goal_vs_combined_term_goal"),
+            (str_to_fp(&self.unif.goal_name),str_to_fp(combined_term),str_to_fp(&self.unif.unif_goal)),
+
+        )?;
+        /*let (unif_goal_name, unif_goal_arity) =
             parse_predicate_call(&self.unif.unif_goal).unwrap_or((String::new(), 0));
 
         let (goal_name, goal_arity) =
@@ -98,17 +125,8 @@ impl Circuit<Fp> for UnificationCircuit {
             vec![(goal_name_fp, goal_arity_fp, unif_goal_name_fp, unif_goal_arity_fp),
             (goal_name_fp, goal_arity_fp, goal_term_name_fp, goal_term_arity_fp)],
 
-        )?;
-        for (i, (a,b)) in extract_args(&self.unif.goal_name)
-            .into_iter()
-            .zip(extract_args(&self.unif.unif_goal))
-            .enumerate()
-        {
-            cons_chip.assign_pair2(layouter.namespace(||format!("name_args_vs_body_args:{}",i)),
-            (str_to_fp(&a),str_to_fp(&b)))?;
-        }
-
-        for (i, (a,b)) in extract_args(&self.unif.goal_name)
+        )?;*/
+        /*for (i, (a,b)) in extract_args(&self.unif.goal_name)
             .into_iter()
             .zip(&self.unif.goal_term_args)
             .enumerate()
@@ -133,9 +151,41 @@ impl Circuit<Fp> for UnificationCircuit {
                 layouter.namespace(|| format!("body_vs_subtree_{}", i)),
                 (body_fp, subtree_fp),
             )?;
-        }
-        // Predicate check 
+        }*/
 
+
+        let mut all_pairs: Vec<(Fp, Fp)> = Vec::new();
+
+        // goal_name vs goal_term_args
+        let goal_term_pairs: Vec<(Fp, Fp)> = extract_args(&self.unif.goal_name)
+            .into_iter() // itt fontos a sorrend, ne legyen unordered
+            .zip(self.unif.goal_term_args.iter())
+            .map(|(a, b)| (str_to_fp(&a), str_to_fp(b)))
+            .collect();
+
+        // unif_body vs subtree_goals
+        let body_subtree_pairs: Vec<(Fp, Fp)> = self
+            .unif
+            .unif_body
+            .iter()
+            .zip(self.unif.subtree_goals.iter())
+            .map(|(body_str, subtree_str)| (str_to_fp(body_str), str_to_fp(subtree_str)))
+            .collect();
+
+        // Összefűzés egy listába
+        all_pairs.extend(goal_term_pairs);
+        all_pairs.extend(body_subtree_pairs);
+
+        // Egyetlen consistency regionban ellenőrzés
+        add_constraints(all_pairs.len() as u64);
+        cons_chip.assign_pairs2(
+            layouter.namespace(|| "goal_term_and_body_subtree_consistency"),
+            &all_pairs,
+        )?;
+        // Predicate check 
+        if self.unif.subtree_goals.is_empty(){
+            return Ok(());
+        }
 
         let universe = local_universe(&self.rules, &self.unif.goal_term_name);
         let w_vec = witness_subtree_presence_goal(&self.unif, &universe);
@@ -166,18 +216,19 @@ impl Circuit<Fp> for UnificationCircuit {
                 }
                 let c_pad = pad(c_vec.clone());
                 let w_pad = pad(w_vec.clone());
-
+                
                 let dot_debug: Fp = c_pad.iter().zip(&w_pad).map(|(a, b)| *a * *b).sum();
                 if !dot_debug.is_zero_vartime() {
                     continue;
                 }
 
                 // Perform Halo2 proof of dot(c, w) = 0
+                add_constraints((MAX_DOT_DIM*2+1) as u64);
                 dot_chip.assign_dot_check(
                     layouter.namespace(|| format!("pred{}_clause{}_dotcheck", p_i, c_i)),
                     &w_pad,
                     &c_pad,
-                Fp::one(),
+                    Fp::one(),
                 )?;
                 variable_rules = rows_equality_global(clause);
             }
@@ -185,11 +236,17 @@ impl Circuit<Fp> for UnificationCircuit {
         let w_vec = flatten_goal_variables_fp(&self.unif.goal_term_args, &self.unif.unif_body);
         let r = fs_coeffs("seed", 7);
         let compressed_rows = compress_rows(&variable_rules, &r);
+
+        let padded_w_vec = pad(w_vec);
+        let padded_compressed_rows = pad(compressed_rows);
+        
+        add_constraints((MAX_DOT_DIM*2+1) as u64);
         dot_chip.assign_dot_check(
             layouter.namespace(|| format!("variable_dot_check:")),
-            &w_vec,
-     &compressed_rows,
-Fp::zero(),)?;
+            &padded_w_vec, 
+            &padded_compressed_rows,
+            Fp::zero(),)?;
+        println!("Total constraints so far: {}", get_constraints());
         Ok(())
     }
 }
@@ -372,6 +429,10 @@ pub fn fs_coeffs(seed: &str, m: usize) -> Vec<Fp> {
 }
 
 pub fn compress_rows(rows: &[Vec<Fp>], r: &[Fp]) -> Vec<Fp> {
+    if rows.is_empty() {
+        // Return empty vector if there are no rows
+        return Vec::new();
+    }
     let m = rows[0].len();
     let mut c = vec![Fp::zero(); m];
     for (ri, row) in r.iter().zip(rows.iter()) {
@@ -393,4 +454,12 @@ fn extract_args(goal_str: &str) -> Vec<String> {
         }
     }
     vec![] // ha nem található zárójel
+}
+
+fn combine_predicate(name: &str, args: &[String]) -> String {
+    if args.is_empty() {
+        format!("{}()", name)
+    } else {
+        format!("{}({})", name, args.join(","))
+    }
 }

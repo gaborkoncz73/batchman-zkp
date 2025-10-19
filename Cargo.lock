@@ -122,6 +122,7 @@ dependencies = [
  "blake2",
  "halo2_gadgets",
  "halo2_proofs",
+ "once_cell",
  "rand_core",
  "rayon",
  "serde",
