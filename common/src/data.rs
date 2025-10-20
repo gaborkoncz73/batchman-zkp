@@ -19,6 +19,15 @@ pub struct ClauseTemplate {
     pub equalities: Vec<Equality>,
 }
 
+impl ClauseTemplate {
+    pub fn new() -> Self {
+        Self {
+            children: Vec::new(),
+            equalities: Vec::new(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Equality {
     pub left: TermRef,
@@ -69,4 +78,17 @@ pub struct Term {
 pub struct Unification {
     pub goal: String,
     pub body: Vec<serde_json::Value>,
+}
+// ------------------------------------------------------
+// 🔹 Flat input struktúra (nem tartalmaz rekurzív subtree-t)
+// ------------------------------------------------------
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnificationInput {
+    pub goal_name: String,
+    pub goal_term_args: Vec<String>,
+    pub goal_term_name: String,
+    pub unif_body: Vec<String>,          // pl. ["parent(alice,bob)", "ancestor(bob,john)"]
+    pub unif_goal: String,
+    pub substitution: Vec<String>,       // pl. ["X=bob", "Y=john"]
+    pub subtree_goals: Vec<String>,      // pl. ["parent(alice,bob)", "ancestor(bob,john)"]
 }

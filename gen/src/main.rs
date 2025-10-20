@@ -1,9 +1,10 @@
-use std::{fs, sync::{Arc, Mutex}};
+use std::fs;
 use anyhow::Result;
 use rayon::prelude::*;
-use halo2_proofs::{dev::MockProver, pasta::Fp};
+use halo2_proofs::dev::MockProver;
+use common::{data::UnificationInput, *};
 
-use common::{unification_checker_circuit::{UnificationCircuit, UnificationInput}, *};
+use common::{unification_checker_circuit::{UnificationCircuit}};
 
 
 fn main() -> Result<()> {

@@ -16,7 +16,7 @@ base64 = { workspace = true }
 blake2 = { workspace = true }
 
 
+halo2curves = "0.9.0"
 
-
-
+rand_core    = { workspace = true, features = ["getrandom"] }
 

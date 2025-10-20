@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["common", "gen", "generator",
+members = ["common", "gen",
            "prove",
            "tokens",
            "verify",
@@ -13,7 +13,7 @@ serde_json = { version = "1.0", default-features = false }
 anyhow = { version = "1.0", default-features = false }
 common = { path = "./common", default-features = false }
 prove = { path = "./prove", default-features = false }
-halo2_proofs = { version = "0.3", default-features = false }
+halo2_proofs = { version = "0.3", default-features = false}
 rayon = { version = "1.11", default-features = false }
 base64 = { version = "0.22", default-features = false, features = ["std"] }
 rand_core = { version = "0.6", default-features = false }
