@@ -98,6 +98,7 @@ impl Circuit<Fp> for UnificationCircuit {
 
         // FACT CHECK COMES HERE
         if self.unif.subtree_goals.is_empty(){
+            println!("Total constraints so far: {} (fact)", get_constraints());
             return Ok(());
         }
 
@@ -130,7 +131,7 @@ impl Circuit<Fp> for UnificationCircuit {
             Fp::zero(),
         )?;
 
-        println!("Total constraints so far: {}", get_constraints());
+        println!("Total constraints so far: {} (predicate)", get_constraints());
         Ok(())
     }
 }

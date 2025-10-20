@@ -92,3 +92,18 @@ pub struct UnificationInput {
     pub substitution: Vec<String>,       // pl. ["X=bob", "Y=john"]
     pub subtree_goals: Vec<String>,      // pl. ["parent(alice,bob)", "ancestor(bob,john)"]
 }
+
+impl Default for UnificationInput {
+    fn default() -> Self {
+        Self {
+            goal_name: String::new(),
+            goal_term_args: Vec::new(),
+            goal_term_name: String::new(),
+            unif_body: Vec::new(),
+            unif_goal: String::new(),
+            substitution: Vec::new(),
+            subtree_goals: Vec::new(),
+        }
+    }
+}
+

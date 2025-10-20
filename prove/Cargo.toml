@@ -20,3 +20,4 @@ halo2curves = "0.9.0"
 
 rand_core    = { workspace = true, features = ["getrandom"] }
 
+once_cell = "1.21.3"

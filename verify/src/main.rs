@@ -1,76 +1,51 @@
 mod reader;
 
-use rayon::prelude::*;
-use reader::read_proofs;
+use std::fs;
 use std::sync::Arc;
+use rayon::prelude::*;
 use common::*;
 use halo2_proofs::{
     pasta::{EqAffine, Fp},
-    plonk::{verify_proof, SingleVerifier},
+    plonk::{keygen_vk, verify_proof, SingleVerifier, VerifyingKey},
+    poly::commitment::Params,
     transcript::{Blake2bRead, Challenge255},
 };
 
-pub const MAX_DOT_DIM: usize = 7;
+use common::unification_checker_circuit::UnificationCircuit;
+use common::data::UnificationInput;
+use reader::read_proofs;
 
 fn main() -> anyhow::Result<()> {
-    let pk_store = Arc::new(ProvingKeyStore::new(MAX_DOT_DIM, 5));
+    // load proofs
+    let proofs = read_proofs("unif")?;
+    println!("Verifying {} unification proofs", proofs.len());
 
-    // Load all proofs from files
-    let dot_proofs = read_proofs("dot")?;
-    let cons_proofs = read_proofs("cons")?;
+    let rules_text = fs::read_to_string("input/rules_template2.json")?;
+    let rules: data::RuleTemplateFile = serde_json::from_str(&rules_text)?;
 
-    println!(
-        "Verifying {} dot proofs, {} consistency proofs",
-        dot_proofs.len(),
-        cons_proofs.len()
-    );
+    // same parameters as proving side
+    let params: Params<EqAffine> = Params::new(5);
+    let shape = UnificationCircuit {
+        rules: rules.clone(),
+        unif: UnificationInput::default(),
+    };
+    let vk: VerifyingKey<EqAffine> = keygen_vk(&params, &shape)?;
+    let params = Arc::new(params);
+    let vk = Arc::new(vk);
 
-    // Batch verify
-    let (dot_ok, cons_ok) = rayon::join(
-        || {
-            dot_proofs.par_iter().all(|(inputs, proof)| {
-                // convert Vec<Vec<Fp>> -> &[&[Fp]] for halo2 API
-                let inst_refs: Vec<&[Fp]> = inputs.iter().map(|v| v.as_slice()).collect();
-                let inst_cols: Vec<&[&[Fp]]> = vec![&inst_refs];
+    // parallel verification
+    let ok = proofs.par_iter().all(|(_, proof)| {
+        let mut transcript = Blake2bRead::<_, EqAffine, Challenge255<_>>::init(&proof[..]);
+        let strategy = SingleVerifier::new(params.as_ref());
+        let instances: Vec<&[&[Fp]]> = vec![&[]];
+        verify_proof(params.as_ref(), vk.as_ref(), strategy, &instances, &mut transcript).is_ok()
+    });
 
-                let mut transcript = Blake2bRead::<_, EqAffine, Challenge255<_>>::init(&proof[..]);
-                let strategy = SingleVerifier::new(&pk_store.params);
-
-                verify_proof(
-                    &pk_store.params,
-                    &pk_store.dot_vk,
-                    strategy,
-                    &inst_cols,
-                    &mut transcript,
-                ).is_ok()
-            })
-        },
-        || {
-            cons_proofs.par_iter().all(|(_, proof)| {
-                let mut transcript = Blake2bRead::<_, EqAffine, Challenge255<_>>::init(&proof[..]);
-                let strategy = SingleVerifier::new(&pk_store.params);
-
-                verify_proof(
-                    &pk_store.params,
-                    &pk_store.cons_vk,
-                    strategy,
-                    &[&[]],
-                    &mut transcript,
-                ).is_ok()
-            })
-        },
-    );
-
-    if dot_ok && cons_ok {
-        println!("✅ All proofs verified successfully!");
+    if ok {
+        println!("All proofs verified successfully!");
     } else {
-        println!("❌ At least one proof failed verification!");
+        println!("Some proofs failed verification!");
     }
-
-    println!(
-        "Total constraints: {}",
-        5 * dot_proofs.len() + 2 * cons_proofs.len()
-    );
 
     Ok(())
 }

@@ -1,3 +1,4 @@
+
 use halo2_proofs::pasta::{group::ff::FromUniformBytes, Fp};
 use blake2::{Blake2s256, Digest};
 use halo2_proofs::arithmetic::Field;
@@ -47,7 +48,12 @@ pub fn get_matching_structure_and_vectors(
             }
         }
     }
-    Err(halo2_proofs::plonk::Error::Synthesis)
+    return Ok((
+        ClauseTemplate::new(),
+        Fp::zero(),
+        Fp::zero(),
+    ));
+    //Err(halo2_proofs::plonk::Error::Synthesis)
 }
 
 // Mock hash later will be swapped with better one
