@@ -1,4 +1,4 @@
-use halo2_proofs::{
+/*use halo2_proofs::{
     circuit::{Chip, Layouter, Region, Value},
     plonk::{Advice, Column, ConstraintSystem, Error, Fixed},
     poly::Rotation,
@@ -111,6 +111,88 @@ impl ConsistencyChip {
                 region.assign_advice(|| "wit2", cfg.adv_wit_2, 0, || Value::known(values.1))?;
                 region.assign_advice(|| "wit3", cfg.adv_wit_3, 0, || Value::known(values.2))?;
                 region.assign_advice(|| "flag", cfg.adv_flag, 0, || Value::known(Fp::one()))?;
+                Ok(())
+            },
+        )
+    }
+}*/
+
+use halo2_proofs::{
+    circuit::{Chip, Layouter, Region, Value, AssignedCell},
+    pasta::Fp,
+    plonk::{Advice, Column, ConstraintSystem, Error, Fixed},
+    poly::Rotation,
+};
+
+// ---------------------------
+// Consistency chip: triple ellenőrzés
+// ---------------------------
+#[derive(Clone, Debug)]
+pub struct ConsistencyConfig {
+    pub goal: Column<Advice>,
+    pub unif_goal: Column<Advice>,
+    pub triple_l: Column<Advice>, // RLC(goal,args)
+    pub triple_r: Column<Advice>, // RLC(unif_goal,body)
+    pub q: Column<Fixed>,
+}
+
+pub struct ConsistencyChip {
+    cfg: ConsistencyConfig,
+}
+
+impl Chip<Fp> for ConsistencyChip {
+    type Config = ConsistencyConfig;
+    type Loaded = ();
+    fn config(&self) -> &Self::Config { &self.cfg }
+    fn loaded(&self) -> &Self::Loaded { &() }
+}
+
+impl ConsistencyChip {
+    pub fn configure(meta: &mut ConstraintSystem<Fp>) -> ConsistencyConfig {
+        let goal       = meta.advice_column();
+        let unif_goal  = meta.advice_column();
+        let triple_l   = meta.advice_column();
+        let triple_r   = meta.advice_column();
+        let q          = meta.fixed_column();
+
+        meta.enable_equality(goal);
+        meta.enable_equality(unif_goal);
+        meta.enable_equality(triple_l);
+        meta.enable_equality(triple_r);
+
+        // Gate: enforce triple_l == triple_r, when q = 1
+        meta.create_gate("Consistency triple equality", |meta| {
+            let q    = meta.query_fixed(q);
+            let lhs  = meta.query_advice(triple_l, Rotation::cur());
+            let rhs  = meta.query_advice(triple_r, Rotation::cur());
+            vec![ q * (lhs - rhs) ]
+        });
+
+        ConsistencyConfig { goal, unif_goal, triple_l, triple_r, q }
+    }
+
+    pub fn construct(cfg: ConsistencyConfig) -> Self { Self { cfg } }
+
+    /// Assign goal, unif_goal, triple_l (RLC(goal,args)), triple_r (RLC(unif_goal,body))
+    pub fn assign(
+        &self,
+        mut layouter: impl Layouter<Fp>,
+        goal: Fp,
+        unif_goal: Fp,
+        triple_l: Fp,
+        triple_r: Fp,
+    ) -> Result<(), Error> {
+        let cfg = self.config();
+
+        layouter.assign_region(
+            || "Consistency triple",
+            |mut region: Region<'_, Fp>| {
+                region.assign_fixed(|| "q", cfg.q, 0, || Value::known(Fp::one()))?;
+
+                region.assign_advice(|| "goal", cfg.goal, 0, || Value::known(goal))?;
+                region.assign_advice(|| "unif_goal", cfg.unif_goal, 0, || Value::known(unif_goal))?;
+                region.assign_advice(|| "triple_l", cfg.triple_l, 0, || Value::known(triple_l))?;
+                region.assign_advice(|| "triple_r", cfg.triple_r, 0, || Value::known(triple_r))?;
                 Ok(())
             },
         )

@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use halo2_proofs::pasta::Fp;
+use crate::utils_2::common_helpers::{to_fp_value, MAX_ARITY};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RuleTemplateFile {
@@ -82,7 +84,7 @@ pub struct Unification {
 // ------------------------------------------------------
 // 🔹 Flat input struktúra (nem tartalmaz rekurzív subtree-t)
 // ------------------------------------------------------
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/*#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnificationInput {
     pub goal_name: String,
     pub goal_term_args: Vec<String>,
@@ -91,19 +93,106 @@ pub struct UnificationInput {
     pub unif_goal: String,
     pub substitution: Vec<String>,       // pl. ["X=bob", "Y=john"]
     pub subtree_goals: Vec<String>,      // pl. ["parent(alice,bob)", "ancestor(bob,john)"]
+}*/
+
+#[derive(Clone, Debug)]
+pub struct UnificationInputFp {
+    pub goal_name: Fp,
+    pub goal_term_args: Vec<Fp>,
+    pub goal_term_name: Fp,
+    pub unif_body: Vec<Fp>,
+    pub unif_goal: Fp,
+    pub substitution: Vec<Fp>,
+    pub subtree_goals: Vec<Fp>,
 }
 
-impl Default for UnificationInput {
+impl Default for UnificationInputFp {
     fn default() -> Self {
         Self {
-            goal_name: String::new(),
-            goal_term_args: Vec::new(),
-            goal_term_name: String::new(),
+            goal_name: Fp::zero(),
+            goal_term_args: vec![Fp::zero(); MAX_ARITY],
+            goal_term_name: Fp::zero(),
             unif_body: Vec::new(),
-            unif_goal: String::new(),
+            unif_goal: Fp::zero(),
             substitution: Vec::new(),
             subtree_goals: Vec::new(),
         }
     }
+}
+
+
+#[derive(Clone, Debug)]
+pub struct RuleTemplateFileFp {
+    pub predicates: Vec<PredicateTemplateFp>,
+    pub facts: Vec<FactTemplateFp>,
+}
+
+impl From<&RuleTemplateFile> for RuleTemplateFileFp {
+    fn from(r: &RuleTemplateFile) -> Self {
+        RuleTemplateFileFp {
+            predicates: r.predicates.iter().map(|p| PredicateTemplateFp {
+                name: to_fp_value(&p.name),
+                arity: Fp::from(p.arity as u64),
+                clauses: p.clauses.iter().map(|c| ClauseTemplateFp {
+                    children: c.children.iter().map(|ch| ChildSigFp {
+                        name: to_fp_value(&ch.name),
+                        arity: Fp::from(ch.arity as u64),
+                    }).collect(),
+                    equalities: c.equalities.iter().map(|eq| EqualityFp {
+                        left: TermRefFp {
+                            node: Fp::from(eq.left.node as u64),
+                            arg: Fp::from(eq.left.arg as u64),
+                        },
+                        right: TermRefFp {
+                            node: Fp::from(eq.right.node as u64),
+                            arg: Fp::from(eq.right.arg as u64),
+                        },
+                    }).collect(),
+                }).collect(),
+            }).collect(),
+            facts: r.facts.iter().map(|f| FactTemplateFp {
+                name: to_fp_value(&f.name),
+                arity: Fp::from(f.arity as u64),
+            }).collect(),
+        }
+    }
+}
+
+
+#[derive(Clone, Debug)]
+pub struct PredicateTemplateFp {
+    pub name: Fp,
+    pub arity: Fp,
+    pub clauses: Vec<ClauseTemplateFp>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ClauseTemplateFp {
+    pub children: Vec<ChildSigFp>,
+    pub equalities: Vec<EqualityFp>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ChildSigFp {
+    pub name: Fp,
+    pub arity: Fp,
+}
+
+#[derive(Clone, Debug)]
+pub struct EqualityFp {
+    pub left: TermRefFp,
+    pub right: TermRefFp,
+}
+
+#[derive(Clone, Debug)]
+pub struct TermRefFp {
+    pub node: Fp,
+    pub arg: Fp,
+}
+
+#[derive(Clone, Debug)]
+pub struct FactTemplateFp {
+    pub name: Fp,
+    pub arity: Fp,
 }
 

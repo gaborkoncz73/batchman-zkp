@@ -1,6 +1,8 @@
-use std::fs;
+use std::{fs, result};
 use std::sync::Arc;
 use anyhow::Result;
+use base64::alphabet;
+use common::data::{GoalEntry, ProofNode, RuleTemplateFileFp};
 use rand_core::OsRng;
 
 use halo2_proofs::{
@@ -11,19 +13,33 @@ use halo2_proofs::{
 };
 use rayon::prelude::*;
 
-use common::{data, data::UnificationInput};
+use common::{data, data::UnificationInputFp};
 use common::unification_checker_circuit::UnificationCircuit;
+use common::utils_2::common_helpers::{cpu_rulehash_first_2, flatten_rule_template_to_fp, hash_rule_template_poseidon, pad_to_const, poseidon_hash_cpu_const, to_fp_value, MAX_ARITY};
 
 mod writer;
 use writer::{init_output_dir, write_proof};
 
+    const L_MAX: usize = 62;
 fn main() -> Result<()> {
     // --- inputok ---
     let rules_text = fs::read_to_string("input/rules_template.json")?;
+    let rules_text2 = fs::read_to_string("input/rules_template.json")?;
     let rules: data::RuleTemplateFile = serde_json::from_str(&rules_text)?;
+    let rules2: data::RuleTemplateFile = serde_json::from_str(&rules_text2)?;
+
+
+
+    let expected = cpu_rulehash_first_2(&rules);
+
 
     let proof_text = fs::read_to_string("input/proof_tree.json")?;
     let tree: Vec<data::ProofNode> = serde_json::from_str(&proof_text)?;
+
+    let result2 = hash_rule_template_poseidon(&rules);
+    let result3 = hash_rule_template_poseidon(&rules2);
+    println!("Poseidon hash (identical to circuit) = {:?}", result2);
+    println!("Poseidon hash (identical to circuit) = {:?}", result3);
 
     println!(
         "Loaded {} predicates, {} facts, {} proof nodes.",
@@ -31,12 +47,12 @@ fn main() -> Result<()> {
         rules.facts.len(),
         tree.len()
     );
-
+    let rules_fp = RuleTemplateFileFp::from(&rules);
     // --- Params + keygen ---
-    let params: Params<EqAffine> = Params::new(5);
+    let params: Params<EqAffine> = Params::new(6);
     let shape = UnificationCircuit {
-        rules: rules.clone(),
-        unif: UnificationInput::default(),
+        rules: rules_fp,
+        unif: UnificationInputFp::default(),
     };
     let vk: VerifyingKey<EqAffine> = keygen_vk(&params, &shape)?;
     let pk: ProvingKey<EqAffine> = keygen_pk(&params, vk.clone(), &shape)?;
@@ -49,14 +65,14 @@ fn main() -> Result<()> {
     // --- minden node-ra proof készítés ---
     tree.par_iter()
     .try_for_each(|node| {
-        if let Err(e) = prove_tree(&rules, node, &params,  &pk) {
-            eprintln!("❌ Error on node: {e:?}");
+        if let Err(e) = prove_tree(&rules2, node, &params,  &pk, &expected) {
+            eprintln!("Error on node: {e:?}");
             return Err(e);
         }
         Ok(())
     })?;
 
-    println!("All unification goals proved successfully and saved!");
+    println!("All unification goals proof saved!");
     Ok(())
 }
 
@@ -65,9 +81,10 @@ fn prove_tree(
     node: &data::ProofNode,
     params: &Arc<Params<EqAffine>>,
     pk: &Arc<ProvingKey<EqAffine>>,
+    res: &Fp,
 ) -> Result<()> {
     if let data::ProofNode::GoalNode(g) = node {
-        let unif_input = UnificationInput {
+        /*let unif_input = UnificationInput {
             goal_name: g.goal.clone(),
             goal_term_args: g.goal_term.args.clone(),
             goal_term_name: g.goal_term.name.clone(),
@@ -84,11 +101,22 @@ fn prove_tree(
                 .collect(),
         };
 
-        let circuit = UnificationCircuit { rules: rules.clone(), unif: unif_input };
+        let circuit = UnificationCircuit { rules: rules.clone(), unif: unif_input };*/
+        // 🔹 Közvetlen konverzió a ProofNode → Fp inputra
+        let rules_fp = RuleTemplateFileFp::from(rules);
 
+        let unif_input_fp = unification_input_from_goal(g);
+
+        // 🔹 Circuit Fp bemenettel
+        let circuit = UnificationCircuit {
+            rules: rules_fp,
+            unif: unif_input_fp,
+        };
+        let instances: Vec<&[&[Fp]]> = vec![&[]];
         // --- proof készítés ---
         let mut transcript = Blake2bWrite::<Vec<u8>, _, Challenge255<_>>::init(vec![]);
-        let instances: Vec<&[&[Fp]]> = vec![&[]];
+        //let instance = vec![]; // 1 publikus input mező
+        //let instances = vec![instance.as_slice()]; // &[&[Fp]] szintű lista
         halo2_proofs::plonk::create_proof(
             params.as_ref(),
             pk.as_ref(),
@@ -103,7 +131,96 @@ fn prove_tree(
 
         // rekurzió
         g.subtree.par_iter()
-            .try_for_each(|sub| prove_tree(rules, sub, params, pk))?;
+            .try_for_each(|sub| prove_tree(rules, sub, params, pk, res))?;
     }
     Ok(())
+}
+
+
+
+pub fn rlc_encode_cpu(tokens: &[Fp], alpha: Fp) -> Fp {
+    let mut acc = Fp::zero();
+    for &t in tokens {
+        acc = acc * alpha + t;
+    }
+    acc
+}
+
+fn unification_input_from_goal(g: &GoalEntry) -> UnificationInputFp {
+    let alpha = to_fp_value("rlc_alpha_v1");
+
+    //Creating the goal_term parts
+    let goal_term_name_fp = to_fp_value(&g.goal_term.name);
+    let mut goal_term_args_fp: Vec<Fp> = g.goal_term.args.iter().map(|s| to_fp_value(s)).collect();
+    goal_term_args_fp.resize(MAX_ARITY, Fp::zero());
+
+
+    //Creating the goal_name
+    let goal_name_fp = encode_predicate_to_fp_vec(&g.goal);
+    let goal_name_coded = rlc_encode_cpu(&goal_name_fp, alpha);
+
+    //Creating the goal_unify_name
+
+    let goal_unif_name_fp = encode_predicate_to_fp_vec(&g.goal_unification.goal);
+    let goal_unif_name_coded = rlc_encode_cpu(&goal_unif_name_fp, alpha);
+
+    
+    println!("name: {:?}", g.goal);
+
+
+    // body/subtree maradhat
+    let unif_body_fp: Vec<Fp> = g.goal_unification.body.iter()
+        .filter_map(|x| x.as_str().map(|s| to_fp_value(s)))
+        .collect();
+
+    let subtree_goals_fp: Vec<Fp> = g.subtree.iter()
+        .filter_map(|n| match n {
+            ProofNode::GoalNode(child) => Some(to_fp_value(&child.goal)),
+            _ => None,
+        })
+        .collect();
+
+    UnificationInputFp {
+        goal_name: goal_name_coded,       // ⬅ már PADDELT RLC(name,args)
+        goal_term_name: goal_term_name_fp,
+        goal_term_args: goal_term_args_fp,      // ⬅ PADDELT args, hogy a chip ugyanígy lássa
+        unif_body: unif_body_fp,
+        unif_goal: goal_unif_name_coded,       // ⬅ ugyanaz az érték
+        substitution: g.substitution.iter().map(|s| to_fp_value(s)).collect(),
+        subtree_goals: subtree_goals_fp,
+    }
+}
+
+
+pub fn encode_predicate_to_fp_vec(input: &str) -> Vec<Fp> {
+    // 1️⃣ Szétszedjük a bemenetet: pl. "ancestor(a,b,c)" -> "ancestor", ["a", "b", "c"]
+    let open = input.find('(').unwrap_or(input.len());
+    let close = input.find(')').unwrap_or(input.len());
+    let name = &input[..open].trim();
+
+    let args_str = if open < close {
+        &input[open + 1..close]
+    } else {
+        ""
+    };
+
+    let args: Vec<&str> = args_str
+        .split(',')
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| s.trim())
+        .collect();
+
+    // 2️⃣ Token lista: [predicate_name] + args
+    let mut tokens: Vec<Fp> = Vec::with_capacity(MAX_ARITY);
+    tokens.push(to_fp_value(name));
+    for arg in &args {
+        tokens.push(to_fp_value(arg));
+    }
+
+    // 3️⃣ Padding nullákkal MAX_ARITY-ig
+    while tokens.len() < MAX_ARITY + 1 {
+        tokens.push(Fp::zero());
+    }
+
+    tokens
 }

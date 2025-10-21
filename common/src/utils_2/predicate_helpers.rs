@@ -3,7 +3,7 @@ use halo2_proofs::pasta::{group::ff::FromUniformBytes, Fp};
 use blake2::{Blake2s256, Digest};
 use halo2_proofs::arithmetic::Field;
 
-use crate::{data::{ClauseTemplate, PredicateTemplate, RuleTemplateFile, UnificationInput}, utils_2::common_helpers::parse_predicate_call};
+use crate::{data::{ClauseTemplate, PredicateTemplate, RuleTemplateFile}, utils_2::common_helpers::parse_predicate_call};
 
 pub fn get_matching_predicates(
     predicates: &[PredicateTemplate],
@@ -24,7 +24,7 @@ pub fn get_matching_predicates(
     return Ok(matchers);
 }
 
-pub fn get_matching_structure_and_vectors(
+/*pub fn get_matching_structure_and_vectors(
     unification: &UnificationInput,
     rules: &RuleTemplateFile,
 )-> Result<(ClauseTemplate,Fp,Fp), halo2_proofs::plonk::Error> 
@@ -54,7 +54,7 @@ pub fn get_matching_structure_and_vectors(
         Fp::zero(),
     ));
     //Err(halo2_proofs::plonk::Error::Synthesis)
-}
+}*/
 
 // Mock hash later will be swapped with better one
 pub fn blake_hash_predicate(
