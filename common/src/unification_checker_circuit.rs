@@ -6,10 +6,10 @@ use halo2_proofs::{
 };
 use crate::{
     chips::{
-         poseidon_hash::{HashEqChip, HashEqConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, ConsistencyChip, DotChip
+         poseidon_hash::{HashEqChip, HashEqConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, sig_check_chip::{SigCheckChip, SigCheckConfig}, ConsistencyChip, DotChip
     },
-    data::{RuleTemplateFileFp, TermFp, UnificationInputFp},
-    utils_2::common_helpers::{to_fp_value, MAX_ARITY, MAX_PAIRS},
+    data::{ClauseTemplateFp, FactTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, UnificationInputFp},
+    utils_2::common_helpers::{to_fp_value, MAX_ARITY, MAX_CANDIDATES, MAX_CHILDREN, MAX_CLAUSES, MAX_PAIRS, MAX_PREDICATES, MAX_SIGS},
 };
 use once_cell::sync::Lazy;
 
@@ -64,6 +64,7 @@ pub struct UnifConfig {
     pub rlc_cfg: <RlcFixedChip as Chip<Fp>>::Config,
     pub goal_check_cfg: RlcGoalCheckConfig,
     pub unif_cmp_cfg: UnifCompareConfig,
+    pub sig_check_cfg: SigCheckConfig,
 }
 
 impl Circuit<Fp> for UnificationCircuit {
@@ -72,9 +73,9 @@ impl Circuit<Fp> for UnificationCircuit {
 
     fn without_witnesses(&self) -> Self {
         Self {
-            rules: RuleTemplateFileFp {
-                predicates: vec![],
-                facts: vec![],
+                rules: RuleTemplateFileFp {
+                predicates: std::array::from_fn(|_| PredicateTemplateFp::default()),
+                facts: std::array::from_fn(|_| FactTemplateFp::default()),
             },
             unif: UnificationInputFp {
                 goal_name: TermFp::default(),
@@ -100,11 +101,12 @@ impl Circuit<Fp> for UnificationCircuit {
         
         let rlc_cfg = RlcFixedChip::configure(meta, alpha);
         let unif_cmp_cfg = UnifCompareConfig::configure(meta);
+        let sig_check_cfg = SigCheckChip::configure(meta,alpha);
         //let instance = meta.instance_column();
         //meta.enable_equality(instance);
 
 
-        UnifConfig { cons_cfg, dot_cfg, hash_cfg, rlc_cfg, goal_check_cfg,unif_cmp_cfg,/*, instance*/ }
+        UnifConfig { cons_cfg, dot_cfg, hash_cfg, rlc_cfg, goal_check_cfg,unif_cmp_cfg, sig_check_cfg/*, instance*/ }
     }
 
     fn synthesize(
@@ -114,8 +116,8 @@ impl Circuit<Fp> for UnificationCircuit {
     ) -> Result<(), Error> {
         use halo2_proofs::circuit::Value;
 
-        /*// ✅ Flatten the rules into Fp values
-        let flat = crate::utils_2::common_helpers::flatten_rule_template_to_fp(&self.rules);
+        // ✅ Flatten the rules into Fp values
+        /*let flat = crate::utils_2::common_helpers::flatten_rule_template_to_fp(&self.rules);
         let leaves: Vec<Value<Fp>> = flat.iter().map(|&x| Value::known(x)).collect();
 
         // ✅ Expected hash from public instance
@@ -262,6 +264,36 @@ let (body_pairs, subtree_pairs) = bind_body_and_subtree_as_cells_padded(
         &body_pairs,
         &subtree_pairs,
     )?;
+let (proof_pairs, candidate_pairs_all) = bind_proof_and_candidates_sig_pairs(
+    "Bind proof + candidates (name,arity)",
+    &mut layouter,
+    &cfg.unif_cmp_cfg,
+    &self.unif.goal_name,    // ✅ goal term (head)
+    &self.unif.unif_body,    // ✅ body termek
+    &self.rules.predicates,  // ✅ összes szabály
+)?;
+println!("proofs:{:?}",proof_pairs.len() );
+let sig_chip = SigCheckChip::construct(cfg.sig_check_cfg.clone());
+let body_is_empty = self.unif.unif_body.iter().all(|t| t.name == Fp::zero());
+if body_is_empty {
+    /*sig_chip.check_fact(
+        layouter.namespace(|| "Sig fact check"),
+        &proof_pairs[0], // csak a goal
+        &candidate_pairs_all,
+    )?;*/
+} else {
+    sig_chip.check_membership_or(
+        layouter.namespace(|| "Sig OR-check"),
+        &proof_pairs,
+        &candidate_pairs_all,
+    )?;
+}
+
+
+
+// 4) OR tagság-ellenőrzés: proof_sigs ∈ {candidate_sigs}
+
+
 
 
         /*if self.unif.subtree_goals.is_empty() {
@@ -386,6 +418,188 @@ fn bind_body_and_subtree_as_cells_padded(
             }
 
             Ok((body_pairs, subtree_pairs))
+        },
+    )
+}
+
+fn bind_proof_and_candidates_sig_pairs(
+    region_name: &str,
+    layouter: &mut impl Layouter<Fp>,
+    cfg: &UnifCompareConfig,
+    goal_term: &TermFp,                    // ⬅️ a fő célterm pl. ancestor(alice,john)
+    proof_terms: &[TermFp],                // ⬅️ unification body termek (pl. parent, ancestor)
+    rules: &[PredicateTemplateFp],         // ⬅️ az összes rules predikátum
+) -> Result<
+    (
+        Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>,              // proof_pairs: (name, arity)
+        Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>>,         // candidate_pairs_all: vec![(name, arity)]
+    ),
+    Error,
+> {
+    use halo2_proofs::circuit::Value;
+
+    // kis helper: aritás számolása padelt args-ból (első 0-ig)
+    let measure_arity = |args: &Vec<Fp>| -> u64 {
+        args.iter().take_while(|&&a| a != Fp::zero()).count() as u64
+    };
+
+    layouter.assign_region(
+        || region_name,
+        |mut region| {
+            let mut proof_pairs: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
+            let mut row_offset = 0usize;
+
+            // =========================
+            // 1️⃣ GOAL TERM (head)
+            // =========================
+            let goal_name_cell = region.assign_advice(
+                || "proof.goal.name",
+                cfg.term_name,
+                row_offset,
+                || Value::known(goal_term.name),
+            )?;
+            let goal_arity = Fp::from(measure_arity(&goal_term.args));
+            let goal_arity_cell = region.assign_advice(
+                || "proof.goal.arity",
+                cfg.term_args[0],
+                row_offset + 1,
+                || Value::known(goal_arity),
+            )?;
+            proof_pairs.push((goal_name_cell, goal_arity_cell));
+            row_offset += 2;
+
+            // =========================
+            // 2️⃣ BODY TERMS (unif_body)
+            // =========================
+            for (i, term) in proof_terms.iter().enumerate() {
+                let name_cell = region.assign_advice(
+                    || format!("proof.body[{i}].name"),
+                    cfg.term_name,
+                    row_offset,
+                    || Value::known(term.name),
+                )?;
+                let arity_fp = Fp::from(measure_arity(&term.args));
+                let arity_cell = region.assign_advice(
+                    || format!("proof.body[{i}].arity"),
+                    cfg.term_args[0],
+                    row_offset + 1,
+                    || Value::known(arity_fp),
+                )?;
+                proof_pairs.push((name_cell, arity_cell));
+                row_offset += 2;
+            }
+
+            // padding proof oldal MAX_SIGS-ig
+            while proof_pairs.len() < MAX_SIGS {
+                let n = region.assign_advice(
+                    || format!("proof.pad.name{}", proof_pairs.len()),
+                    cfg.term_name,
+                    row_offset,
+                    || Value::known(Fp::zero()),
+                )?;
+                let a = region.assign_advice(
+                    || format!("proof.pad.arity{}", proof_pairs.len()),
+                    cfg.term_args[0],
+                    row_offset + 1,
+                    || Value::known(Fp::zero()),
+                )?;
+                proof_pairs.push((n, a));
+                row_offset += 2;
+            }
+
+            // =========================
+            // 3️⃣ RULE CANDIDATES (összes predikátum a rules-ból)
+            // =========================
+            let mut candidate_pairs_all: Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>> = Vec::new();
+            let mut base_row = row_offset + 8;
+            let mut added = 0usize;
+
+            'outer: for (p_i, pred) in rules.iter().enumerate() {
+                for (c_i, cl) in pred.clauses.iter().enumerate() {
+                    if added == MAX_CANDIDATES { break 'outer; }
+
+                    let mut v: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
+
+                    // HEAD (pred.name, pred.arity)
+                    let head_name = region.assign_advice(
+                        || format!("cand[{added}].head.name (p{p_i} c{c_i})"),
+                        cfg.term_name,
+                        base_row,
+                        || Value::known(pred.name),
+                    )?;
+                    let head_arity = region.assign_advice(
+                        || format!("cand[{added}].head.arity (p{p_i} c{c_i})"),
+                        cfg.term_args[0],
+                        base_row + 1,
+                        || Value::known(pred.arity),
+                    )?;
+                    v.push((head_name, head_arity));
+                    base_row += 2;
+
+                    // CHILDREN (child.name, child.arity)
+                    for (j, ch) in cl.children.iter().enumerate().take(MAX_CHILDREN) {
+                        let n = region.assign_advice(
+                            || format!("cand[{added}].child[{j}].name"),
+                            cfg.term_name,
+                            base_row,
+                            || Value::known(ch.name),
+                        )?;
+                        let a = region.assign_advice(
+                            || format!("cand[{added}].child[{j}].arity"),
+                            cfg.term_args[0],
+                            base_row + 1,
+                            || Value::known(ch.arity),
+                        )?;
+                        v.push((n, a));
+                        base_row += 2;
+                    }
+
+                    // padding MAX_SIGS-ig
+                    while v.len() < MAX_SIGS {
+                        let n = region.assign_advice(
+                            || format!("cand[{added}].pad.name"),
+                            cfg.term_name,
+                            base_row,
+                            || Value::known(Fp::zero()),
+                        )?;
+                        let a = region.assign_advice(
+                            || format!("cand[{added}].pad.arity"),
+                            cfg.term_args[0],
+                            base_row + 1,
+                            || Value::known(Fp::zero()),
+                        )?;
+                        v.push((n, a));
+                        base_row += 2;
+                    }
+
+                    candidate_pairs_all.push(v);
+                    added += 1;
+                }
+            }
+
+            // padding MAX_CANDIDATES-ig
+            while candidate_pairs_all.len() < MAX_CANDIDATES {
+                let mut v: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
+                for _ in 0..MAX_SIGS {
+                    let n = region.assign_advice(
+                        || "cand.pad.name",
+                        cfg.term_name,
+                        base_row,
+                        || Value::known(Fp::zero()),
+                    )?;
+                    let a = region.assign_advice(
+                        || "cand.pad.arity",
+                        cfg.term_args[0],
+                        base_row + 1,
+                        || Value::known(Fp::zero()),
+                    )?;
+                    v.push((n, a));
+                    base_row += 2;
+                }
+                candidate_pairs_all.push(v);
+            }
+
+            Ok((proof_pairs, candidate_pairs_all))
         },
     )
 }

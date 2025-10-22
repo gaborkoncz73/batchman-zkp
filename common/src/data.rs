@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use halo2_proofs::pasta::Fp;
-use crate::utils_2::common_helpers::{to_fp_value, MAX_ARITY};
+use crate::utils_2::common_helpers::{to_fp_value, MAX_ARITY, MAX_CHILDREN, MAX_CLAUSES, MAX_EQUALITIES, MAX_FACTS, MAX_PREDICATES};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RuleTemplateFile {
@@ -133,53 +133,98 @@ impl Default for TermFp{
 
 #[derive(Clone, Debug)]
 pub struct RuleTemplateFileFp {
-    pub predicates: Vec<PredicateTemplateFp>,
-    pub facts: Vec<FactTemplateFp>,
+    pub predicates: [PredicateTemplateFp; MAX_PREDICATES],
+    pub facts: [FactTemplateFp; MAX_FACTS],
 }
 
 impl From<&RuleTemplateFile> for RuleTemplateFileFp {
     fn from(r: &RuleTemplateFile) -> Self {
-        RuleTemplateFileFp {
-            predicates: r.predicates.iter().map(|p| PredicateTemplateFp {
+        let mut preds_fixed = std::array::from_fn(|_| PredicateTemplateFp::default());
+        for (i, p) in r.predicates.iter().enumerate().take(MAX_PREDICATES) {
+            let mut clauses_fixed = std::array::from_fn(|_| ClauseTemplateFp::default());
+            for (j, c) in p.clauses.iter().enumerate().take(MAX_CLAUSES) {
+                clauses_fixed[j] = ClauseTemplateFp::from(c);
+            }
+            preds_fixed[i] = PredicateTemplateFp {
                 name: to_fp_value(&p.name),
                 arity: Fp::from(p.arity as u64),
-                clauses: p.clauses.iter().map(|c| ClauseTemplateFp {
-                    children: c.children.iter().map(|ch| ChildSigFp {
-                        name: to_fp_value(&ch.name),
-                        arity: Fp::from(ch.arity as u64),
-                    }).collect(),
-                    equalities: c.equalities.iter().map(|eq| EqualityFp {
-                        left: TermRefFp {
-                            node: Fp::from(eq.left.node as u64),
-                            arg: Fp::from(eq.left.arg as u64),
-                        },
-                        right: TermRefFp {
-                            node: Fp::from(eq.right.node as u64),
-                            arg: Fp::from(eq.right.arg as u64),
-                        },
-                    }).collect(),
-                }).collect(),
-            }).collect(),
-            facts: r.facts.iter().map(|f| FactTemplateFp {
+                clauses: clauses_fixed,
+            };
+        }
+
+        let mut facts_fixed = std::array::from_fn(|_| FactTemplateFp::default());
+        for (i, f) in r.facts.iter().enumerate().take(MAX_FACTS) {
+            facts_fixed[i] = FactTemplateFp {
                 name: to_fp_value(&f.name),
                 arity: Fp::from(f.arity as u64),
-            }).collect(),
+            };
+        }
+
+        Self {
+            predicates: preds_fixed,
+            facts: facts_fixed,
         }
     }
 }
 
+impl From<&ClauseTemplate> for ClauseTemplateFp {
+    fn from(c: &ClauseTemplate) -> Self {
+        let mut children_fixed = std::array::from_fn(|_| ChildSigFp::default());
+        for (i, ch) in c.children.iter().enumerate().take(MAX_CHILDREN) {
+            children_fixed[i] = ChildSigFp {
+                name: to_fp_value(&ch.name),
+                arity: Fp::from(ch.arity as u64),
+            };
+        }
+
+        let mut eq_fixed = std::array::from_fn(|_| EqualityFp::default());
+        for (i, eq) in c.equalities.iter().enumerate().take(MAX_EQUALITIES) {
+            eq_fixed[i] = EqualityFp {
+                left: TermRefFp {
+                    node: Fp::from(eq.left.node as u64),
+                    arg: Fp::from(eq.left.arg as u64),
+                },
+                right: TermRefFp {
+                    node: Fp::from(eq.right.node as u64),
+                    arg: Fp::from(eq.right.arg as u64),
+                },
+            };
+        }
+
+        ClauseTemplateFp { children: children_fixed, equalities: eq_fixed }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct PredicateTemplateFp {
     pub name: Fp,
     pub arity: Fp,
-    pub clauses: Vec<ClauseTemplateFp>,
+    pub clauses: [ClauseTemplateFp; MAX_CLAUSES],
+}
+
+impl Default for PredicateTemplateFp {
+    fn default() -> Self {
+        Self {
+            name: Fp::zero(),
+            arity: Fp::zero(),
+            clauses: std::array::from_fn(|_| ClauseTemplateFp::default()),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct ClauseTemplateFp {
-    pub children: Vec<ChildSigFp>,
-    pub equalities: Vec<EqualityFp>,
+    pub children: [ChildSigFp; MAX_CHILDREN],
+    pub equalities: [EqualityFp; MAX_EQUALITIES],
+}
+
+impl Default for ClauseTemplateFp {
+    fn default() -> Self {
+        Self {
+            children: std::array::from_fn(|_| ChildSigFp::default()),
+            equalities: std::array::from_fn(|_| EqualityFp::default()),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -187,11 +232,24 @@ pub struct ChildSigFp {
     pub name: Fp,
     pub arity: Fp,
 }
+impl Default for ChildSigFp {
+    fn default() -> Self {
+        Self { name: Fp::zero(), arity: Fp::zero() }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct EqualityFp {
     pub left: TermRefFp,
     pub right: TermRefFp,
+}
+impl Default for EqualityFp {
+    fn default() -> Self {
+        Self { 
+            left: TermRefFp::default(),
+            right: TermRefFp::default(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -199,10 +257,20 @@ pub struct TermRefFp {
     pub node: Fp,
     pub arg: Fp,
 }
+impl Default for TermRefFp {
+    fn default() -> Self {
+        Self { node: Fp::zero(), arg: Fp::zero() }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct FactTemplateFp {
     pub name: Fp,
     pub arity: Fp,
+}
+impl Default for FactTemplateFp {
+    fn default() -> Self {
+        Self { name: Fp::zero(), arity: Fp::zero() }
+    }
 }
 

@@ -47,7 +47,7 @@ fn main() -> Result<()> {
     );
     let rules_fp = RuleTemplateFileFp::from(&rules);
     // --- Params + keygen ---
-    let params: Params<EqAffine> = Params::new(8);
+    let params: Params<EqAffine> = Params::new(9);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),
