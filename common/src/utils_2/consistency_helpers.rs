@@ -1,31 +1,7 @@
 use halo2_proofs::pasta::Fp;
 use crate::utils_2::common_helpers::str_to_fp;
 
-// Creates the triple from the inputs that consistency shall be checked
-pub fn creating_the_triple(
-    goal_name: &str,
-    goal_term_name: &str,
-    goal_term_args: &[String],
-    unif_goal: &str
-) -> Result<(Fp, Fp, Fp), halo2_proofs::plonk::Error>
-{
-    let combined_term = &combine_predicate(&goal_term_name, &goal_term_args);
-    let combined_term_fp = str_to_fp(&combined_term);
 
-    let goal_name_fp = str_to_fp(&goal_name);
-    let goal_unif_goal_fp = str_to_fp(&unif_goal);
-
-    return Ok((goal_name_fp,combined_term_fp,goal_unif_goal_fp));
-}
-
-// From the name and the args it recreates the String such as ancestor(Anna,Bob)
-fn combine_predicate(name: &str, args: &[String]) -> String {
-    if args.is_empty() {
-        format!("{}()", name)
-    } else {
-        format!("{}({})", name, args.join(","))
-    }
-}
 
 // Constructs the tuples
 // Used to check that the arguments in the goal name and in the term args list are the same

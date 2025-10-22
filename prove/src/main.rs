@@ -2,7 +2,7 @@ use std::{fs, result};
 use std::sync::Arc;
 use anyhow::Result;
 use base64::alphabet;
-use common::data::{GoalEntry, ProofNode, RuleTemplateFileFp};
+use common::data::{GoalEntry, ProofNode, RuleTemplateFileFp, TermFp};
 use rand_core::OsRng;
 
 use halo2_proofs::{
@@ -20,7 +20,6 @@ use common::utils_2::common_helpers::{cpu_rulehash_first_2, flatten_rule_templat
 mod writer;
 use writer::{init_output_dir, write_proof};
 
-    const L_MAX: usize = 62;
 fn main() -> Result<()> {
     // --- inputok ---
     let rules_text = fs::read_to_string("input/rules_template.json")?;
@@ -149,43 +148,37 @@ pub fn rlc_encode_cpu(tokens: &[Fp], alpha: Fp) -> Fp {
 fn unification_input_from_goal(g: &GoalEntry) -> UnificationInputFp {
     let alpha = to_fp_value("rlc_alpha_v1");
 
+    //Creating the goal_name
+    let goal_name_termfp = encode_str_to_termfp(&g.goal);
+    
     //Creating the goal_term parts
     let goal_term_name_fp = to_fp_value(&g.goal_term.name);
+
     let mut goal_term_args_fp: Vec<Fp> = g.goal_term.args.iter().map(|s| to_fp_value(s)).collect();
     goal_term_args_fp.resize(MAX_ARITY, Fp::zero());
 
-
-    //Creating the goal_name
-    let goal_name_fp = encode_predicate_to_fp_vec(&g.goal);
-    let goal_name_coded = rlc_encode_cpu(&goal_name_fp, alpha);
-
     //Creating the goal_unify_name
-
-    let goal_unif_name_fp = encode_predicate_to_fp_vec(&g.goal_unification.goal);
-    let goal_unif_name_coded = rlc_encode_cpu(&goal_unif_name_fp, alpha);
-
-    
-    println!("name: {:?}", g.goal);
+    let goal_unif_name_termfp = encode_str_to_termfp(&g.goal_unification.goal);
 
 
     // body/subtree maradhat
-    let unif_body_fp: Vec<Fp> = g.goal_unification.body.iter()
-        .filter_map(|x| x.as_str().map(|s| to_fp_value(s)))
+    let unif_body_fp: Vec<TermFp> = g.goal_unification
+        .body
+        .iter()
+        .map(encode_json_val_to_termfp) // NINCS filter_map!
         .collect();
 
-    let subtree_goals_fp: Vec<Fp> = g.subtree.iter()
-        .filter_map(|n| match n {
-            ProofNode::GoalNode(child) => Some(to_fp_value(&child.goal)),
-            _ => None,
-        })
+    let subtree_goals_fp: Vec<TermFp> = g.subtree
+        .iter()
+        .map(encode_proofnode_to_termfp) // NINCS filter_map!
         .collect();
 
     UnificationInputFp {
-        goal_name: goal_name_coded,       // ⬅ már PADDELT RLC(name,args)
+        goal_name: goal_name_termfp,       // ⬅ már PADDELT RLC(name,args)
         goal_term_name: goal_term_name_fp,
         goal_term_args: goal_term_args_fp,      // ⬅ PADDELT args, hogy a chip ugyanígy lássa
         unif_body: unif_body_fp,
-        unif_goal: goal_unif_name_coded,       // ⬅ ugyanaz az érték
+        unif_goal: goal_unif_name_termfp,       // ⬅ ugyanaz az érték
         substitution: g.substitution.iter().map(|s| to_fp_value(s)).collect(),
         subtree_goals: subtree_goals_fp,
     }
@@ -218,9 +211,64 @@ pub fn encode_predicate_to_fp_vec(input: &str) -> Vec<Fp> {
     }
 
     // 3️⃣ Padding nullákkal MAX_ARITY-ig
-    while tokens.len() < MAX_ARITY + 1 {
+    while tokens.len() < MAX_ARITY + 1{
         tokens.push(Fp::zero());
     }
 
     tokens
+}
+
+
+
+/// ✅ Stringből (pl. "ancestor(a,b,c)") készít egy TermFp struktúrát.
+/// Ha kevesebb argumentum van, 0-val feltölti MAX_ARITY-ig.
+pub fn encode_str_to_termfp(input: &str) -> TermFp {
+    // 1️⃣ Szétválasztjuk a név és az argumentumokat
+    let open = input.find('(').unwrap_or(input.len());
+    let close = input.find(')').unwrap_or(input.len());
+
+    let name_str = input[..open].trim();
+    let args_str = if open < close {
+        &input[open + 1..close]
+    } else {
+        ""
+    };
+
+    // 2️⃣ Argumentumok listája
+    let mut args: Vec<Fp> = args_str
+        .split(',')
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| to_fp_value(s.trim()))
+        .collect();
+
+    // 3️⃣ Padding nullákkal MAX_ARITY-ig
+    while args.len() < MAX_ARITY {
+        args.push(Fp::zero());
+    }
+
+    // 4️⃣ TermFp létrehozása
+    TermFp {
+        name: to_fp_value(name_str),
+        args,
+    }
+}
+
+fn encode_json_val_to_termfp(v: &serde_json::Value) -> TermFp {
+    if let Some(s) = v.as_str() {
+        encode_str_to_termfp(s) // a meglévő, string → TermFp
+    } else if v == &serde_json::Value::Bool(true) {
+        TermFp { name: to_fp_value("__TRUE__"), args: vec![Fp::zero(); MAX_ARITY] }
+    } else {
+        TermFp { name: to_fp_value("__INVALID__"), args: vec![Fp::zero(); MAX_ARITY] }
+    }
+}
+
+fn encode_proofnode_to_termfp(n: &ProofNode) -> TermFp {
+    match n {
+        ProofNode::GoalNode(child) => encode_str_to_termfp(&child.goal),
+        // ha van külön bool/leaf variánsod, azt kezeld itt:
+        // ProofNode::Bool(true) | ProofNode::LeafTrue => ...
+        // A példád alapján a JSON-ban "true" szerepel, ezért:
+        _ => TermFp { name: to_fp_value("__TRUE__"), args: vec![Fp::zero(); MAX_ARITY] },
+    }
 }

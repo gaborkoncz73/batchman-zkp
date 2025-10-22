@@ -17,7 +17,7 @@ use reader::read_proofs;
 const L_MAX: usize = 62;
 fn main() -> anyhow::Result<()> {
     // load proofs
-    let proofs = read_proofs("unif")?;
+    let proofs: Vec<(Vec<Vec<Fp>>, Vec<u8>)> = read_proofs("unif")?;
     println!("Verifying {} unification proofs", proofs.len());
 
     let rules_text = fs::read_to_string("input/rules_template.json")?;

@@ -6,7 +6,9 @@ use halo2curves::ff::PrimeField;
 use std::fs;
 use crate::{data::RuleTemplateFile, unification_checker_circuit::MAX_DOT_DIM};
 
-pub const MAX_ARITY: usize = 10;
+pub const MAX_ARITY: usize = 4;
+pub const MAX_SUBTREE_LEN: usize = 3;
+pub const MAX_PAIRS: usize = 3;
 
 
 pub fn str_to_fp(

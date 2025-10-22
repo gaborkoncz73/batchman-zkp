@@ -2,21 +2,18 @@ use std::sync::Mutex;
 use halo2_proofs::{
     circuit::{Chip, Layouter, SimpleFloorPlanner},
     pasta::Fp,
-    plonk::{Circuit, ConstraintSystem, Error, Instance, Column},
+    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance},
 };
 use crate::{
     chips::{
-        consistency_chip::ConsistencyConfig, poseidon_hash::{HashEqChip, HashEqConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, ConsistencyChip, DotChip
+         poseidon_hash::{HashEqChip, HashEqConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, ConsistencyChip, DotChip
     },
-    data::{RuleTemplateFile, RuleTemplateFileFp, UnificationInputFp},
-    utils_2::{
-        common_helpers::to_fp_value, consistency_helpers::{build_consistency_pairs, creating_the_triple}, value_helpers::get_w_and_v_vec
-    },
+    data::{RuleTemplateFileFp, TermFp, UnificationInputFp},
+    utils_2::common_helpers::{to_fp_value, MAX_ARITY},
 };
 use once_cell::sync::Lazy;
 
 pub const MAX_DOT_DIM: usize = 10;
-
 // Global constraint counter
 pub static TOTAL_CONSTRAINTS: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 
@@ -32,11 +29,31 @@ pub fn get_constraints() -> u64 {
     *counter
 }
 
+#[derive(Debug, Clone)]
+pub struct UnifCompareConfig {
+    pub term_name: Column<Advice>,
+    pub term_args: [Column<Advice>; MAX_ARITY],
+}
+
+impl UnifCompareConfig {
+    pub fn configure(meta: &mut ConstraintSystem<Fp>) -> Self {
+        let term_name = meta.advice_column();
+        let term_args = array_init::array_init(|_| meta.advice_column());
+        meta.enable_equality(term_name);
+        for c in term_args.iter() {
+            meta.enable_equality(*c);
+        }
+        Self { term_name, term_args }
+    }
+}
+
+
 // Circuit definition
 #[derive(Debug, Clone)]
 pub struct UnificationCircuit {
     pub rules: RuleTemplateFileFp,
     pub unif: UnificationInputFp,
+
 }
 
 #[derive(Clone, Debug)]
@@ -46,7 +63,7 @@ pub struct UnifConfig {
     pub hash_cfg: HashEqConfig,
     pub rlc_cfg: <RlcFixedChip as Chip<Fp>>::Config,
     pub goal_check_cfg: RlcGoalCheckConfig,
-    //pub instance: Column<Instance>,
+    pub unif_cmp_cfg: UnifCompareConfig,
 }
 
 impl Circuit<Fp> for UnificationCircuit {
@@ -60,11 +77,11 @@ impl Circuit<Fp> for UnificationCircuit {
                 facts: vec![],
             },
             unif: UnificationInputFp {
-                goal_name: Fp::zero(),
+                goal_name: TermFp::default(),
                 goal_term_args: vec![],
                 goal_term_name: Fp::zero(),
                 unif_body: vec![],
-                unif_goal: Fp::zero(),
+                unif_goal: TermFp::default(),
                 substitution: vec![],
                 subtree_goals: vec![],
             },
@@ -80,14 +97,14 @@ impl Circuit<Fp> for UnificationCircuit {
         let dot_cfg = DotChip::configure(meta);
         let hash_cfg = HashEqChip::configure(meta);
         let goal_check_cfg = RlcGoalCheckChip::configure(meta, alpha);
-
         
         let rlc_cfg = RlcFixedChip::configure(meta, alpha);
-
+        let unif_cmp_cfg = UnifCompareConfig::configure(meta);
         //let instance = meta.instance_column();
         //meta.enable_equality(instance);
 
-        UnifConfig { cons_cfg, dot_cfg, hash_cfg, rlc_cfg, goal_check_cfg/*, instance*/ }
+
+        UnifConfig { cons_cfg, dot_cfg, hash_cfg, rlc_cfg, goal_check_cfg,unif_cmp_cfg,/*, instance*/ }
     }
 
     fn synthesize(
@@ -134,27 +151,62 @@ impl Circuit<Fp> for UnificationCircuit {
         // ✅ Continue with other checks
     let rlc_chip  = RlcFixedChip::construct(cfg.rlc_cfg.clone());
 
-    let (goal_cell, unif_goal_cell, term_name_cell, term_arg_cells) = layouter.assign_region(
+        let (
+        goal_name_cell,
+        goal_name_arg_cells,
+        unif_goal_name_cell,
+        unif_goal_arg_cells,
+        term_name_cell,
+        term_arg_cells,
+    ) = layouter.assign_region(
         || "Bind parent inputs",
         |mut region| {
-            let goal_cell = region.assign_advice(
+            // --- 1️⃣ Goal name + args ---
+            let goal_name_cell = region.assign_advice(
                 || "goal_name_from_parent",
                 cfg.goal_check_cfg.goal_name,
                 0,
-                || Value::known(self.unif.goal_name),
+                || Value::known(self.unif.goal_name.name),
             )?;
 
-            let unif_goal_cell = region.assign_advice(
-                || "unif_goal_from_parent",
+            let mut goal_name_arg_cells = Vec::new();
+            for (i, arg) in self.unif.goal_name.args.iter().enumerate() {
+                let cell = region.assign_advice(
+                    || format!("goal_name_arg_{}", i),
+                    cfg.goal_check_cfg.goal_name, // akár külön column is lehet
+                    1 + i,
+                    || Value::known(*arg),
+                )?;
+                goal_name_arg_cells.push(cell);
+            }
+
+            // --- 2️⃣ Unification goal name + args ---
+            // az unif_goal is TermFp, tehát ugyanúgy kezeljük
+            let base_row = 1 + self.unif.goal_name.args.len() + 1; // eltoljuk a sorindexet
+            let unif_goal_name_cell = region.assign_advice(
+                || "unif_goal_name_from_parent",
                 cfg.goal_check_cfg.unif_goal,
-                1,
-                || Value::known(self.unif.unif_goal),
+                base_row,
+                || Value::known(self.unif.unif_goal.name),
             )?;
 
+            let mut unif_goal_arg_cells: Vec<halo2_proofs::circuit::AssignedCell<Fp, Fp>> = Vec::new();
+            for (i, arg) in self.unif.unif_goal.args.iter().enumerate() {
+                let cell = region.assign_advice(
+                    || format!("unif_goal_arg_{}", i),
+                    cfg.goal_check_cfg.unif_goal,
+                    base_row + 1 + i,
+                    || Value::known(*arg),
+                )?;
+                unif_goal_arg_cells.push(cell);
+            }
+
+            // --- 3️⃣ Goal term name + args (ahogy eddig volt) ---
+            let next_row = base_row + 1 + self.unif.unif_goal.args.len() + 1;
             let term_name_cell = region.assign_advice(
                 || "goal_term_name",
                 cfg.goal_check_cfg.goal_name,
-                2,
+                next_row,
                 || Value::known(self.unif.goal_term_name),
             )?;
 
@@ -163,56 +215,46 @@ impl Circuit<Fp> for UnificationCircuit {
                 let cell = region.assign_advice(
                     || format!("goal_term_arg_{}", i),
                     cfg.goal_check_cfg.goal_name, // akár külön column is lehet
-                    3 + i,
+                    next_row + 1 + i,
                     || Value::known(*arg),
                 )?;
                 term_arg_cells.push(cell);
             }
 
-            Ok((goal_cell, unif_goal_cell, term_name_cell, term_arg_cells))
+            Ok((
+                goal_name_cell,
+                goal_name_arg_cells,
+                unif_goal_name_cell,
+                unif_goal_arg_cells,
+                term_name_cell,
+                term_arg_cells,
+            ))
         },
     )?;
 
 
+
     let goal_check = RlcGoalCheckChip::construct(cfg.goal_check_cfg.clone());
-    let combined_cell = goal_check.assign(
-    layouter.namespace(|| "GoalCheck"),
-    &goal_cell,
-    &unif_goal_cell,
-    &term_name_cell,
-    &term_arg_cells,
-)?;
-    
+    let _combined_cell = goal_check.assign(
+        layouter.namespace(|| "GoalCheck"),
+        &goal_name_cell,
+        &goal_name_arg_cells,
+        &term_name_cell,
+        &term_arg_cells,
+        &unif_goal_name_cell,
+        &unif_goal_arg_cells,
+    )?;
+// synthesize(...) belül, miután van rlc_chip-ed:
+let rlc_chip = RlcFixedChip::construct(cfg.rlc_cfg.clone());
 
-
-        // (Consistency check)
-        /*let triple = creating_the_triple(
-            &self.unif.goal_name,
-            &self.unif.goal_term_name,
-            &self.unif.goal_term_args,
-            &self.unif.unif_goal,
-        )?;
-
-        add_constraints(1);
-        cons_chip.assign_pairs3(
-            layouter.namespace(|| "goal_vs_unif_goal_vs_combined_term_goal"),
-            triple,
-        )?;
-
-        let all_pairs: Vec<(Fp, Fp)> = build_consistency_pairs(
-            &self.unif.goal_name,
-            &self.unif.goal_term_args,
-            &self.unif.unif_body,
-            &self.unif.subtree_goals,
-        )?;
-
-        add_constraints(all_pairs.len() as u64);
-        cons_chip.assign_pairs2(
-            layouter.namespace(|| "goal_term_and_body_subtree_consistency"),
-            &all_pairs,
-        )?;
-
-        if self.unif.subtree_goals.is_empty() {
+// unif_body (Vec<TermFp>)  vs  subtree_goals (Vec<TermFp>)
+RlcFixedChip::cmp_term_lists_pairwise_with_rlc(
+        layouter.namespace(|| "Compare unif_body vs subtree_goals"),
+        &rlc_chip,
+        &self.unif.unif_body,
+        &self.unif.subtree_goals,
+    )?;
+        /*if self.unif.subtree_goals.is_empty() {
             println!("Total constraints so far: {} (fact)", get_constraints());
             return Ok(());
         }

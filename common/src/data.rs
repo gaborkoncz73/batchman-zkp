@@ -97,29 +97,39 @@ pub struct UnificationInput {
 
 #[derive(Clone, Debug)]
 pub struct UnificationInputFp {
-    pub goal_name: Fp,
+    pub goal_name: TermFp,
     pub goal_term_args: Vec<Fp>,
     pub goal_term_name: Fp,
-    pub unif_body: Vec<Fp>,
-    pub unif_goal: Fp,
+    pub unif_body: Vec<TermFp>,
+    pub unif_goal: TermFp,
     pub substitution: Vec<Fp>,
-    pub subtree_goals: Vec<Fp>,
+    pub subtree_goals: Vec<TermFp>,
 }
-
 impl Default for UnificationInputFp {
     fn default() -> Self {
         Self {
-            goal_name: Fp::zero(),
+            goal_name: TermFp::default(),
             goal_term_args: vec![Fp::zero(); MAX_ARITY],
             goal_term_name: Fp::zero(),
             unif_body: Vec::new(),
-            unif_goal: Fp::zero(),
+            unif_goal: TermFp::default(),
             substitution: Vec::new(),
             subtree_goals: Vec::new(),
         }
     }
 }
-
+#[derive(Clone, Debug)]
+pub struct TermFp {
+    pub name: Fp,
+    pub args: Vec<Fp>,
+}
+impl Default for TermFp{
+    fn default() -> Self {
+        Self {
+            name: Fp::zero(),
+            args: vec![Fp::zero(); MAX_ARITY], }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct RuleTemplateFileFp {
