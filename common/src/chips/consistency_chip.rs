@@ -118,7 +118,7 @@ impl ConsistencyChip {
 }*/
 
 use halo2_proofs::{
-    circuit::{Chip, Layouter, Region, Value, AssignedCell},
+    circuit::{Chip, Layouter, Region, Value},
     pasta::Fp,
     plonk::{Advice, Column, ConstraintSystem, Error, Fixed},
     poly::Rotation,

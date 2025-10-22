@@ -1,15 +1,15 @@
 use std::sync::Mutex;
 use halo2_proofs::{
-    circuit::{Chip, Layouter, SimpleFloorPlanner},
+    circuit::{AssignedCell, Chip, Layouter, SimpleFloorPlanner},
     pasta::Fp,
-    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance},
+    plonk::{Advice, Circuit, Column, ConstraintSystem, Error},
 };
 use crate::{
     chips::{
          poseidon_hash::{HashEqChip, HashEqConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, ConsistencyChip, DotChip
     },
     data::{RuleTemplateFileFp, TermFp, UnificationInputFp},
-    utils_2::common_helpers::{to_fp_value, MAX_ARITY},
+    utils_2::common_helpers::{to_fp_value, MAX_ARITY, MAX_PAIRS},
 };
 use once_cell::sync::Lazy;
 
@@ -149,7 +149,6 @@ impl Circuit<Fp> for UnificationCircuit {
         )?;*/
 
         // ✅ Continue with other checks
-    let rlc_chip  = RlcFixedChip::construct(cfg.rlc_cfg.clone());
 
         let (
         goal_name_cell,
@@ -244,16 +243,27 @@ impl Circuit<Fp> for UnificationCircuit {
         &unif_goal_name_cell,
         &unif_goal_arg_cells,
     )?;
-// synthesize(...) belül, miután van rlc_chip-ed:
-let rlc_chip = RlcFixedChip::construct(cfg.rlc_cfg.clone());
 
-// unif_body (Vec<TermFp>)  vs  subtree_goals (Vec<TermFp>)
-RlcFixedChip::cmp_term_lists_pairwise_with_rlc(
-        layouter.namespace(|| "Compare unif_body vs subtree_goals"),
-        &rlc_chip,
-        &self.unif.unif_body,
-        &self.unif.subtree_goals,
+
+
+let (body_pairs, subtree_pairs) = bind_body_and_subtree_as_cells_padded(
+        "Bind body & subtree (padded)",
+        &mut layouter,
+        &cfg.unif_cmp_cfg,                 // term_name + term_args oszlopok
+        &self.unif.unif_body,              // Vec<TermFp>
+        &self.unif.subtree_goals,          // Vec<TermFp>
+    )?;  // -> Vec<(name_cell, Vec<arg_cells>)> mindkét oldalra, hossza MAX_PAIRS
+
+    // === 3) RLC-vel páronkénti equality (teljes huzalozás!) ===
+    let rlc_chip = RlcFixedChip::construct(cfg.rlc_cfg.clone());
+
+    rlc_chip.cmp_term_lists_pairwise_with_rlc_cells(
+        layouter.namespace(|| "Compare body vs subtree (wired RLC)"),
+        &body_pairs,
+        &subtree_pairs,
     )?;
+
+
         /*if self.unif.subtree_goals.is_empty() {
             println!("Total constraints so far: {} (fact)", get_constraints());
             return Ok(());
@@ -287,4 +297,95 @@ RlcFixedChip::cmp_term_lists_pairwise_with_rlc(
         println!("Total constraints so far: {} (predicate)", get_constraints());*/
         Ok(())
     }
+}
+
+
+fn bind_body_and_subtree_as_cells_padded(
+    region_name: &str,
+    layouter: &mut impl Layouter<Fp>,
+    cfg: &UnifCompareConfig,           // term_name + term_args oszlopok
+    body: &[TermFp],
+    subtree: &[TermFp],
+) -> Result<
+    (
+        Vec<(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>)>, // body_pairs
+        Vec<(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>)>, // subtree_pairs
+    ),
+    Error,
+> {
+    use halo2_proofs::circuit::Value;
+
+    let stride = 1 + MAX_ARITY; // soronként: 1 név + MAX_ARITY arg
+    layouter.assign_region(
+        || region_name,
+        |mut region| {
+            let mut body_pairs   = Vec::with_capacity(MAX_PAIRS);
+            let mut subtree_pairs= Vec::with_capacity(MAX_PAIRS);
+
+            // body blokkok 0..MAX_PAIRS
+            for i in 0..MAX_PAIRS {
+                let row0 = i * stride;
+                let term = body.get(i);
+
+                // name
+                let name_val = Value::known(term.map(|t| t.name).unwrap_or(Fp::zero()));
+                let name_cell = region.assign_advice(
+                    || format!("body[{i}].name"),
+                    cfg.term_name,
+                    row0,
+                    || name_val,
+                )?;
+
+                // args
+                let mut args_cells = Vec::with_capacity(MAX_ARITY);
+                for j in 0..MAX_ARITY {
+                    let aval = Value::known(
+                        term.and_then(|t| t.args.get(j).copied()).unwrap_or(Fp::zero())
+                    );
+                    let c = region.assign_advice(
+                        || format!("body[{i}].arg{j}"),
+                        cfg.term_args[j],
+                        row0 + 1 + j,
+                        || aval,
+                    )?;
+                    args_cells.push(c);
+                }
+                body_pairs.push((name_cell, args_cells));
+            }
+
+            // subtree blokkok: eltolással, hogy ne fedjék egymást
+            let base = MAX_PAIRS * stride + 8; // kis puffer
+            for i in 0..MAX_PAIRS {
+                let row0 = base + i * stride;
+                let term = subtree.get(i);
+
+                // name
+                let name_val = Value::known(term.map(|t| t.name).unwrap_or(Fp::zero()));
+                let name_cell = region.assign_advice(
+                    || format!("subtree[{i}].name"),
+                    cfg.term_name,
+                    row0,
+                    || name_val,
+                )?;
+
+                // args
+                let mut args_cells = Vec::with_capacity(MAX_ARITY);
+                for j in 0..MAX_ARITY {
+                    let aval = Value::known(
+                        term.and_then(|t| t.args.get(j).copied()).unwrap_or(Fp::zero())
+                    );
+                    let c = region.assign_advice(
+                        || format!("subtree[{i}].arg{j}"),
+                        cfg.term_args[j],
+                        row0 + 1 + j,
+                        || aval,
+                    )?;
+                    args_cells.push(c);
+                }
+                subtree_pairs.push((name_cell, args_cells));
+            }
+
+            Ok((body_pairs, subtree_pairs))
+        },
+    )
 }

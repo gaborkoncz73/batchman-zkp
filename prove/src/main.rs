@@ -1,7 +1,6 @@
-use std::{fs, result};
+use std::fs;
 use std::sync::Arc;
 use anyhow::Result;
-use base64::alphabet;
 use common::data::{GoalEntry, ProofNode, RuleTemplateFileFp, TermFp};
 use rand_core::OsRng;
 
@@ -15,7 +14,7 @@ use rayon::prelude::*;
 
 use common::{data, data::UnificationInputFp};
 use common::unification_checker_circuit::UnificationCircuit;
-use common::utils_2::common_helpers::{cpu_rulehash_first_2, flatten_rule_template_to_fp, hash_rule_template_poseidon, pad_to_const, poseidon_hash_cpu_const, to_fp_value, MAX_ARITY};
+use common::utils_2::common_helpers::{cpu_rulehash_first_2, hash_rule_template_poseidon, to_fp_value, MAX_ARITY};
 
 mod writer;
 use writer::{init_output_dir, write_proof};
@@ -48,7 +47,7 @@ fn main() -> Result<()> {
     );
     let rules_fp = RuleTemplateFileFp::from(&rules);
     // --- Params + keygen ---
-    let params: Params<EqAffine> = Params::new(6);
+    let params: Params<EqAffine> = Params::new(8);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),
@@ -146,8 +145,6 @@ pub fn rlc_encode_cpu(tokens: &[Fp], alpha: Fp) -> Fp {
 }
 
 fn unification_input_from_goal(g: &GoalEntry) -> UnificationInputFp {
-    let alpha = to_fp_value("rlc_alpha_v1");
-
     //Creating the goal_name
     let goal_name_termfp = encode_str_to_termfp(&g.goal);
     

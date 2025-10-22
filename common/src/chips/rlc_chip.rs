@@ -5,7 +5,7 @@ use halo2_proofs::{
     poly::Rotation,
 };
 
-use crate::{chips::rlc_chip, data::TermFp, utils_2::common_helpers::{MAX_ARITY, MAX_PAIRS, MAX_SUBTREE_LEN}};
+use crate::{ utils_2::common_helpers::{MAX_ARITY}};
 
 #[derive(Clone, Debug)]
 pub struct RlcFixedConfig {
@@ -90,163 +90,115 @@ impl RlcFixedChip {
 
         Ok((last, token_cells))
     }
-    /// RLC fold közvetlenül létező AssignedCell-ekből.
-/// A token oszlopba tett értékeket _constrain_equal_-lal visszakötjük az input cellákhoz.
-pub fn assign_from_cells(
-    &self,
-    mut layouter: impl Layouter<Fp>,
-    inputs: &[AssignedCell<Fp, Fp>],
-) -> Result<(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>), Error> {
-    use halo2_proofs::circuit::Value;
-    let cfg = self.config();
-    let n = inputs.len();
 
-    layouter.assign_region(
-        || "RLC(from cells)",
-        |mut region| {
-            // q selector
-            for r in 0..=n {
-                let qv = if r < n { Fp::one() } else { Fp::zero() };
-                region.assign_fixed(|| "q", cfg.q, r, || Value::known(qv))?;
-            }
+    pub fn fold_one_term_as_rlc_from_cells(
+        &self,
+        mut layouter: impl Layouter<Fp>,
+        name_cell: &AssignedCell<Fp, Fp>,
+        arg_cells: &[AssignedCell<Fp, Fp>],
+    ) -> Result<AssignedCell<Fp, Fp>, Error> {
+        // összefűzzük a name + args cellákat egy vektorba
+        let mut all_inputs = Vec::with_capacity(1 + arg_cells.len());
+        all_inputs.push(name_cell.clone());
+        all_inputs.extend_from_slice(arg_cells);
 
-            // acc_0 = 0
-            let mut acc = Value::known(Fp::zero());
-            region.assign_advice(|| "acc_0", cfg.acc, 0, || acc)?;
+        // reuse-oljuk az assign_from_cells() függvényt,
+        // ami a token oszlopba visszaköti az inputokat és végigfoldolja őket
+        let (combined, _token_cells) = self.assign_from_cells(
+            layouter.namespace(|| "RLC(term from cells)"),
+            &all_inputs,
+        )?;
 
-            // token-ek + fold, ÉS a token visszakötése az input cellához
-            let mut token_cells = Vec::with_capacity(n);
-            for i in 0..n {
-                let t = region.assign_advice(
-                    || "token",
-                    cfg.token,
-                    i,
-                    || inputs[i].value().copied(),
-                )?;
-                // ← fontos: összekötjük a token cellát az eredeti inputtal
-                region.constrain_equal(t.cell(), inputs[i].cell())?;
+        Ok(combined)
+    }
+   pub fn assign_from_cells(
+        &self,
+        mut layouter: impl Layouter<Fp>,
+        inputs: &[AssignedCell<Fp, Fp>],
+    ) -> Result<(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>), Error> {
+        use halo2_proofs::circuit::Value;
 
-                token_cells.push(t);
-                acc = acc.zip(inputs[i].value()).map(|(a, v)| a * cfg.alpha + v);
-                region.assign_advice(|| "acc", cfg.acc, i + 1, || acc)?;
-            }
-
-            let last = region.assign_advice(|| "acc_last", cfg.acc, n, || acc)?;
-            Ok((last, token_cells))
-        }
-    )
-}
-/// Páronkénti összehasonlítás ugyanazzal az RLC-vel: [name, args...] ⇢ fold, majd equality.
-pub fn cmp_term_lists_pairwise_with_rlc_cells(
-    &self,
-    mut layouter: impl Layouter<Fp>,
-    left: &[(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>)],
-    right: &[(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>)],
-) -> Result<(), Error> {
-    assert_eq!(left.len(), right.len());
-    for (i, ((lname, largs), (rname, rargs))) in left.iter().zip(right.iter()).enumerate() {
         let cfg = self.config();
-        let alpha = cfg.alpha;
+        let n = inputs.len();
 
         layouter.assign_region(
-            || format!("cmp pair {}", i),
+            || "RLC(from cells)",
             |mut region| {
-                // fold LHS
-                let mut acc_l = Value::known(Fp::zero());
-                for (row, inp) in std::iter::once(lname).chain(largs.iter()).enumerate() {
-                    region.assign_fixed(|| "q", cfg.q, row, || Value::known(Fp::one()))?;
-                    region.assign_advice(|| "token_L", cfg.token, row, || inp.value().copied())?;
-                    region.assign_advice(|| "acc_L", cfg.acc, row, || acc_l)?;
-                    acc_l = acc_l.zip(inp.value()).map(|(a, t)| a * alpha + t);
+                // q
+                for r in 0..=n {
+                    let qv = if r < n { Fp::one() } else { Fp::zero() };
+                    region.assign_fixed(|| "q", cfg.q, r, || Value::known(qv))?;
                 }
-                let l_combined = region.assign_advice(|| "L_final", cfg.acc, largs.len() + 1, || acc_l)?;
 
-                // fold RHS
-                let mut acc_r = Value::known(Fp::zero());
-                for (row, inp) in std::iter::once(rname).chain(rargs.iter()).enumerate() {
-                    region.assign_fixed(|| "q", cfg.q, row + 20, || Value::known(Fp::one()))?;
-                    region.assign_advice(|| "token_R", cfg.token, row + 20, || inp.value().copied())?;
-                    region.assign_advice(|| "acc_R", cfg.acc, row + 20, || acc_r)?;
-                    acc_r = acc_r.zip(inp.value()).map(|(a, t)| a * alpha + t);
+                // acc_0
+                let mut acc = Value::known(Fp::zero());
+                region.assign_advice(|| "acc_0", cfg.acc, 0, || acc)?;
+
+                // token-ek + fold, és visszakötés
+                let mut token_cells = Vec::with_capacity(n);
+                for i in 0..n {
+                    let t = region.assign_advice(
+                        || "token",
+                        cfg.token,
+                        i,
+                        || inputs[i].value().copied(),
+                    )?;
+                    // wiring: token == eredeti input cell
+                    region.constrain_equal(t.cell(), inputs[i].cell())?;
+
+                    token_cells.push(t);
+
+                    acc = acc.zip(inputs[i].value()).map(|(a, v)| a * cfg.alpha + v);
+                    region.assign_advice(|| "acc", cfg.acc, i + 1, || acc)?;
                 }
-                let r_combined = region.assign_advice(|| "R_final", cfg.acc, rargs.len() + 21, || acc_r)?;
 
-                // equality constraint (ugyanabban a régióban!)
-                region.constrain_equal(l_combined.cell(), r_combined.cell())
+                let out = region.assign_advice(|| "acc_last", cfg.acc, n, || acc)?;
+                Ok((out, token_cells))
             },
-        )?;
-    }
-    Ok(())
-}
-
-
-
-
-
-
-
-
-
-fn fold_one_term_as_rlc(
-    layouter: &mut impl Layouter<Fp>,
-    rlc_chip: &RlcFixedChip,
-    term: &TermFp,
-) -> Result<AssignedCell<Fp, Fp>, Error> {
-    // 1) tokenek: name + args (MAX_ARITY-re padelt args a TermFp-ben)
-    let mut tokens: Vec<Value<Fp>> = Vec::with_capacity(1 + MAX_ARITY);
-    tokens.push(Value::known(term.name));
-    for i in 0..MAX_ARITY {
-        tokens.push(Value::known(term.args.get(i).copied().unwrap_or(Fp::zero())));
-    }
-    // 2) RLC assign → combined
-    let (combined, _token_cells) = rlc_chip.assign(
-        layouter.namespace(|| "RLC(term)"),
-        &tokens,
-    )?;
-    Ok(combined)
-}
-
-
-pub fn cmp_term_lists_pairwise_with_rlc(
-    mut layouter: impl Layouter<Fp>,
-    rlc_chip: &RlcFixedChip,
-    left: &[TermFp],
-    right: &[TermFp],
-) -> Result<(), Error> {
-    // 1) padelés MAX_PAIRS-re
-    let empty = TermFp { name: Fp::zero(), args: vec![Fp::zero(); MAX_ARITY] };
-
-    let mut lpad: Vec<TermFp> = left.to_vec();
-    let mut rpad: Vec<TermFp> = right.to_vec();
-    lpad.resize(MAX_PAIRS, empty.clone());
-    rpad.resize(MAX_PAIRS, empty);
-
-    // 2) mindkét oldalt felgörgetjük
-    let mut l_combined = Vec::with_capacity(MAX_PAIRS);
-    let mut r_combined = Vec::with_capacity(MAX_PAIRS);
-
-    for i in 0..MAX_PAIRS {
-        let lc = Self::fold_one_term_as_rlc(&mut layouter, rlc_chip, &lpad[i])?;
-        let rc = Self::fold_one_term_as_rlc(&mut layouter, rlc_chip, &rpad[i])?;
-        l_combined.push(lc);
-        r_combined.push(rc);
+        )
     }
 
-    // 3) páronként equality
-    layouter.assign_region(
-        || "pairwise body==subtree",
-        |mut region| {
-            for i in 0..MAX_PAIRS {
-                region.constrain_equal(l_combined[i].cell(), r_combined[i].cell())?;
-            }
-            Ok(())
-        },
-    )?;
+    /// Páronkénti összehasonlítás ugyanazzal az RLC-vel (name + MAX_ARITY args)
+    pub fn cmp_term_lists_pairwise_with_rlc_cells(
+        &self,
+        mut layouter: impl Layouter<Fp>,
+        left: &[(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>)],
+        right: &[(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>)],
+    ) -> Result<(), Error> {
+        assert_eq!(left.len(), right.len(), "pair count mismatch");
 
-    Ok(())
-}
+        for i in 0..left.len() {
+            let (lname, largs) = &left[i];
+            let (rname, rargs) = &right[i];
 
+            // állítsuk össze a bemenet listákat: [name, args...]
+            let mut l_inputs = Vec::with_capacity(1 + MAX_ARITY);
+            l_inputs.push(lname.clone());
+            for j in 0..MAX_ARITY { l_inputs.push(largs[j].clone()); }
 
+            let mut r_inputs = Vec::with_capacity(1 + MAX_ARITY);
+            r_inputs.push(rname.clone());
+            for j in 0..MAX_ARITY { r_inputs.push(rargs[j].clone()); }
+
+            // fold mindkét oldal (from_cells → teljes wiring)
+            let (l_combined, _) = self.assign_from_cells(
+                layouter.namespace(|| format!("RLC L[{}]", i)),
+                &l_inputs,
+            )?;
+            let (r_combined, _) = self.assign_from_cells(
+                layouter.namespace(|| format!("RLC R[{}]", i)),
+                &r_inputs,
+            )?;
+
+            // equality ugyanabban a turn-ben
+            layouter.assign_region(
+                || format!("pair {} eq", i),
+                |mut region| region.constrain_equal(l_combined.cell(), r_combined.cell()),
+            )?;
+        }
+
+        Ok(())
+    }
 }
 
 
