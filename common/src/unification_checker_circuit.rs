@@ -9,7 +9,7 @@ use crate::{
          poseidon_hash::{HashEqChip, HashEqConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, sig_check_chip::{SigCheckChip, SigCheckConfig}, ConsistencyChip, DotChip
     },
     data::{ClauseTemplateFp, FactTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, UnificationInputFp},
-    utils_2::common_helpers::{to_fp_value, MAX_ARITY, MAX_CANDIDATES, MAX_CHILDREN, MAX_CLAUSES, MAX_PAIRS, MAX_PREDICATES, MAX_SIGS},
+    utils_2::{common_helpers::{str_to_fp, to_fp_value, MAX_ARITY, MAX_CANDIDATES, MAX_CHILDREN, MAX_CLAUSES, MAX_PAIRS, MAX_PREDICATES, MAX_SIGS}, consistency_helpers::bind_goal_name_args_inputs},
 };
 use once_cell::sync::Lazy;
 
@@ -150,93 +150,23 @@ impl Circuit<Fp> for UnificationCircuit {
             },
         )?;*/
 
-        // ✅ Continue with other checks
-
-        let (
+    // Consistency check for Goal name + args == Term name + args == Unif goal name + args
+    let (
         goal_name_cell,
         goal_name_arg_cells,
-        unif_goal_name_cell,
-        unif_goal_arg_cells,
         term_name_cell,
         term_arg_cells,
-    ) = layouter.assign_region(
-        || "Bind parent inputs",
-        |mut region| {
-            // --- 1️⃣ Goal name + args ---
-            let goal_name_cell = region.assign_advice(
-                || "goal_name_from_parent",
-                cfg.goal_check_cfg.goal_name,
-                0,
-                || Value::known(self.unif.goal_name.name),
-            )?;
-
-            let mut goal_name_arg_cells = Vec::new();
-            for (i, arg) in self.unif.goal_name.args.iter().enumerate() {
-                let cell = region.assign_advice(
-                    || format!("goal_name_arg_{}", i),
-                    cfg.goal_check_cfg.goal_name, // akár külön column is lehet
-                    1 + i,
-                    || Value::known(*arg),
-                )?;
-                goal_name_arg_cells.push(cell);
-            }
-
-            // --- 2️⃣ Unification goal name + args ---
-            // az unif_goal is TermFp, tehát ugyanúgy kezeljük
-            let base_row = 1 + self.unif.goal_name.args.len() + 1; // eltoljuk a sorindexet
-            let unif_goal_name_cell = region.assign_advice(
-                || "unif_goal_name_from_parent",
-                cfg.goal_check_cfg.unif_goal,
-                base_row,
-                || Value::known(self.unif.unif_goal.name),
-            )?;
-
-            let mut unif_goal_arg_cells: Vec<halo2_proofs::circuit::AssignedCell<Fp, Fp>> = Vec::new();
-            for (i, arg) in self.unif.unif_goal.args.iter().enumerate() {
-                let cell = region.assign_advice(
-                    || format!("unif_goal_arg_{}", i),
-                    cfg.goal_check_cfg.unif_goal,
-                    base_row + 1 + i,
-                    || Value::known(*arg),
-                )?;
-                unif_goal_arg_cells.push(cell);
-            }
-
-            // --- 3️⃣ Goal term name + args (ahogy eddig volt) ---
-            let next_row = base_row + 1 + self.unif.unif_goal.args.len() + 1;
-            let term_name_cell = region.assign_advice(
-                || "goal_term_name",
-                cfg.goal_check_cfg.goal_name,
-                next_row,
-                || Value::known(self.unif.goal_term_name),
-            )?;
-
-            let mut term_arg_cells = Vec::new();
-            for (i, arg) in self.unif.goal_term_args.iter().enumerate() {
-                let cell = region.assign_advice(
-                    || format!("goal_term_arg_{}", i),
-                    cfg.goal_check_cfg.goal_name, // akár külön column is lehet
-                    next_row + 1 + i,
-                    || Value::known(*arg),
-                )?;
-                term_arg_cells.push(cell);
-            }
-
-            Ok((
-                goal_name_cell,
-                goal_name_arg_cells,
-                unif_goal_name_cell,
-                unif_goal_arg_cells,
-                term_name_cell,
-                term_arg_cells,
-            ))
-        },
+        unif_goal_name_cell,
+        unif_goal_arg_cells,
+    ) = bind_goal_name_args_inputs(
+        "Bind parent inputs",
+        &mut layouter,
+        &cfg.goal_check_cfg,
+        &self.unif,
     )?;
 
-
-
     let goal_check = RlcGoalCheckChip::construct(cfg.goal_check_cfg.clone());
-    let _combined_cell = goal_check.assign(
+    goal_check.assign(
         layouter.namespace(|| "GoalCheck"),
         &goal_name_cell,
         &goal_name_arg_cells,
@@ -268,27 +198,43 @@ let (proof_pairs, candidate_pairs_all) = bind_proof_and_candidates_sig_pairs(
     "Bind proof + candidates (name,arity)",
     &mut layouter,
     &cfg.unif_cmp_cfg,
-    &self.unif.goal_name,    // ✅ goal term (head)
-    &self.unif.unif_body,    // ✅ body termek
-    &self.rules.predicates,  // ✅ összes szabály
+    &self.unif.goal_name,   // goal TermFp
+    &self.unif.unif_body,   // body TermFp-k
+    &self.rules.predicates, // predikátumok
 )?;
-println!("proofs:{:?}",proof_pairs.len() );
-let sig_chip = SigCheckChip::construct(cfg.sig_check_cfg.clone());
-let body_is_empty = self.unif.unif_body.iter().all(|t| t.name == Fp::zero());
-if body_is_empty {
-    /*sig_chip.check_fact(
-        layouter.namespace(|| "Sig fact check"),
-        &proof_pairs[0], // csak a goal
-        &candidate_pairs_all,
-    )?;*/
-} else {
-    sig_chip.check_membership_or(
-        layouter.namespace(|| "Sig OR-check"),
-        &proof_pairs,
-        &candidate_pairs_all,
-    )?;
-}
 
+// is_fact = (body üres?) — itt egyszerűen tanúként bevisszük:
+
+// Rules-only check (fact ág kommentelve)
+/*let sig_chip = SigCheckChip::construct(cfg.sig_check_cfg.clone());
+let is_fact_cell = layouter.assign_region(
+    || "is_fact",
+    |mut region| {
+        // a 3. proof-pár második komponense (arity)
+        let fact_val = proof_pairs.get(2)
+            .map(|(_name, arity)| {
+                arity.value().map(|v| if *v == Fp::zero() { Fp::one() } else { Fp::zero() })
+            })
+            .unwrap_or(Value::known(Fp::zero())); // ha nincs 3. elem, akkor false (0)
+
+        region.assign_advice(
+            || "is_fact",
+            cfg.sig_check_cfg.sig_arity,
+            0,
+            || fact_val,
+        )
+    },
+)?;
+
+// candidate_pairs_all: rules flattened to (name, arity) SIG sequences.
+// If there are no suitable candidates for facts, just pass an empty vec: &[].
+println!("fact: {:?}", is_fact_cell.value());
+sig_chip.check_membership_rules_or_fact_placeholder(
+    layouter.namespace(|| "Sig membership (rules or fact placeholder)"),
+    &proof_pairs,
+    &candidate_pairs_all, // this can be &[] for fact
+    &is_fact_cell,
+)?;
 
 
 // 4) OR tagság-ellenőrzés: proof_sigs ∈ {candidate_sigs}
@@ -326,101 +272,13 @@ if body_is_empty {
             Fp::zero(),
         )?;
 
-        println!("Total constraints so far: {} (predicate)", get_constraints());*/
+        println!("Total constraints so far: {} (predicate)", get_constraints());*/ */
         Ok(())
     }
 }
 
 
-fn bind_body_and_subtree_as_cells_padded(
-    region_name: &str,
-    layouter: &mut impl Layouter<Fp>,
-    cfg: &UnifCompareConfig,           // term_name + term_args oszlopok
-    body: &[TermFp],
-    subtree: &[TermFp],
-) -> Result<
-    (
-        Vec<(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>)>, // body_pairs
-        Vec<(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>)>, // subtree_pairs
-    ),
-    Error,
-> {
-    use halo2_proofs::circuit::Value;
 
-    let stride = 1 + MAX_ARITY; // soronként: 1 név + MAX_ARITY arg
-    layouter.assign_region(
-        || region_name,
-        |mut region| {
-            let mut body_pairs   = Vec::with_capacity(MAX_PAIRS);
-            let mut subtree_pairs= Vec::with_capacity(MAX_PAIRS);
-
-            // body blokkok 0..MAX_PAIRS
-            for i in 0..MAX_PAIRS {
-                let row0 = i * stride;
-                let term = body.get(i);
-
-                // name
-                let name_val = Value::known(term.map(|t| t.name).unwrap_or(Fp::zero()));
-                let name_cell = region.assign_advice(
-                    || format!("body[{i}].name"),
-                    cfg.term_name,
-                    row0,
-                    || name_val,
-                )?;
-
-                // args
-                let mut args_cells = Vec::with_capacity(MAX_ARITY);
-                for j in 0..MAX_ARITY {
-                    let aval = Value::known(
-                        term.and_then(|t| t.args.get(j).copied()).unwrap_or(Fp::zero())
-                    );
-                    let c = region.assign_advice(
-                        || format!("body[{i}].arg{j}"),
-                        cfg.term_args[j],
-                        row0 + 1 + j,
-                        || aval,
-                    )?;
-                    args_cells.push(c);
-                }
-                body_pairs.push((name_cell, args_cells));
-            }
-
-            // subtree blokkok: eltolással, hogy ne fedjék egymást
-            let base = MAX_PAIRS * stride + 8; // kis puffer
-            for i in 0..MAX_PAIRS {
-                let row0 = base + i * stride;
-                let term = subtree.get(i);
-
-                // name
-                let name_val = Value::known(term.map(|t| t.name).unwrap_or(Fp::zero()));
-                let name_cell = region.assign_advice(
-                    || format!("subtree[{i}].name"),
-                    cfg.term_name,
-                    row0,
-                    || name_val,
-                )?;
-
-                // args
-                let mut args_cells = Vec::with_capacity(MAX_ARITY);
-                for j in 0..MAX_ARITY {
-                    let aval = Value::known(
-                        term.and_then(|t| t.args.get(j).copied()).unwrap_or(Fp::zero())
-                    );
-                    let c = region.assign_advice(
-                        || format!("subtree[{i}].arg{j}"),
-                        cfg.term_args[j],
-                        row0 + 1 + j,
-                        || aval,
-                    )?;
-                    args_cells.push(c);
-                }
-                subtree_pairs.push((name_cell, args_cells));
-            }
-
-            Ok((body_pairs, subtree_pairs))
-        },
-    )
-}
 
 fn bind_proof_and_candidates_sig_pairs(
     region_name: &str,

@@ -1,51 +1,101 @@
-use halo2_proofs::pasta::Fp;
-use crate::utils_2::common_helpers::str_to_fp;
+use halo2_proofs::{
+    circuit::{Layouter, AssignedCell, Value},
+    pasta::Fp,
+    plonk::Error,
+};
 
+use crate::chips::rlc_goal_check_chip::RlcGoalCheckConfig;
+use crate::data::UnificationInputFp;
 
+/// Segédfüggvény a goal, unif_goal és term mezők bekötéséhez.
+/// Ez lesz hívva a fő circuit synthesize-ban.
+pub fn bind_goal_name_args_inputs(
+    region_name: &str,
+    layouter: &mut impl Layouter<Fp>,
+    cfg: &RlcGoalCheckConfig,
+    unif: &UnificationInputFp,
+) -> Result<
+    (
+        AssignedCell<Fp, Fp>,                     // goal_name_cell
+        Vec<AssignedCell<Fp, Fp>>,                // goal_name_arg_cells
+        AssignedCell<Fp, Fp>,                     // unif_goal_name_cell
+        Vec<AssignedCell<Fp, Fp>>,                // unif_goal_arg_cells
+        AssignedCell<Fp, Fp>,                     // term_name_cell
+        Vec<AssignedCell<Fp, Fp>>,                // term_arg_cells
+    ),
+    Error,
+> {
+    layouter.assign_region(
+        || region_name,
+        |mut region| {
+            // Goal name
+            let goal_name_cell = region.assign_advice(
+                || "goal_name",
+                cfg.goal_name,
+                0,
+                || Value::known(unif.goal_name.name),
+            )?;
+            //println!("goal: {:?} term: {:?} unif: {:?}", unif.goal_name.args.len(), unif.goal_term_args.len(), unif.unif_goal.args.len());
+            // Goal args
+            let mut goal_name_arg_cells = Vec::new();
+            for (i, arg) in unif.goal_name.args.iter().enumerate() {
+                let c = region.assign_advice(
+                    || format!("goal_name_arg_{i}"),
+                    cfg.goal_name,
+                    1 + i,
+                    || Value::known(*arg),
+                )?;
+                goal_name_arg_cells.push(c);
+            }
 
-// Constructs the tuples
-// Used to check that the arguments in the goal name and in the term args list are the same
-// Also checks that the unification body elements are identical to the subtree elements
-pub fn build_consistency_pairs(
-    goal_name: &str,
-    goal_term_args: &[String],
-    unif_body: &[String],
-    subtree_goals: &[String]
-) -> Result<Vec<(Fp, Fp)>, halo2_proofs::plonk::Error>
-{
-    let mut all_pairs: Vec<(Fp, Fp)> = Vec::new();
-    
-    // goal_name vs goal_term_args
-    let goal_term_pairs: Vec<(Fp, Fp)> = extract_args(&goal_name)
-        .into_iter() // itt fontos a sorrend, ne legyen unordered
-        .zip(goal_term_args.iter())
-        .map(|(a, b)| (str_to_fp(&a), str_to_fp(b)))
-        .collect();
+            // Goal term name
+            let term_name_cell = region.assign_advice(
+                || "term_name",
+                cfg.term_goal,
+                0,
+                || Value::known(unif.goal_term_name)
+            )?;
 
-    // unif_body vs subtree_goals
-    let body_subtree_pairs: Vec<(Fp, Fp)> = unif_body
-        .iter()
-        .zip(subtree_goals.iter())
-        .map(|(body_str, subtree_str)| (str_to_fp(body_str), str_to_fp(subtree_str)))
-        .collect();
+            // Goal term args 
+            let mut term_arg_cells=Vec::new();
+            for(i,arg) in unif.goal_term_args.iter().enumerate() {
+                let t = region.assign_advice(
+                    || format!("goal_term_arg_{i}"),
+                    cfg.term_goal,
+                    1 + i,
+                    || Value::known(*arg)
+                )?;
+                term_arg_cells.push(t);
+            }
 
-    // chain into a list
-    all_pairs.extend(goal_term_pairs);
-    all_pairs.extend(body_subtree_pairs);
+            // Unif goal name
+            let unif_goal_name_cell = region.assign_advice(
+                || "unif_goal_name",
+                cfg.unif_goal,
+                0,
+                || Value::known(unif.unif_goal.name),
+            )?;
 
-    return Ok(all_pairs);
-}
+            // Unif goal args
+            let mut unif_goal_arg_cells = Vec::new();
+            for (i, arg) in unif.unif_goal.args.iter().enumerate() {
+                let c = region.assign_advice(
+                    || format!("unif_goal_arg_{i}"),
+                    cfg.unif_goal,
+                    1 + i,
+                    || Value::known(*arg),
+                )?;
+                unif_goal_arg_cells.push(c);
+            }
 
-// From the complete string it returns the arguments taken out from the ()s
-fn extract_args(goal_str: &str) -> Vec<String> {
-    if let Some(start) = goal_str.find('(') {
-        if let Some(end) = goal_str.find(')') {
-            return goal_str[start + 1..end] 
-                .split(',')                  
-                .map(|s| s.trim().to_string()) 
-                .filter(|s| !s.is_empty())     
-                .collect();
-        }
-    }
-    vec![]
+            Ok((
+                goal_name_cell,
+                goal_name_arg_cells,
+                term_name_cell,
+                term_arg_cells,
+                unif_goal_name_cell,
+                unif_goal_arg_cells,
+            ))
+        },
+    )
 }

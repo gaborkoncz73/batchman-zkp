@@ -6,7 +6,10 @@ use halo2curves::ff::PrimeField;
 use std::fs;
 use crate::{data::RuleTemplateFile, unification_checker_circuit::MAX_DOT_DIM};
 
-pub const MAX_ARITY: usize = 4;
+// MAX Term args len
+pub const MAX_ARITY: usize = 3;
+
+
 pub const MAX_SUBTREE_LEN: usize = 3;
 pub const MAX_PAIRS: usize = 3;
 pub const MAX_CHILDREN: usize = 3;
