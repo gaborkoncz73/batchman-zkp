@@ -6,7 +6,7 @@ use halo2_proofs::{
 };
 use crate::{
     chips::{
-         poseidon_hash::{HashEqChip, HashEqConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, sig_check_chip::{SigCheckChip, SigCheckConfig}, ConsistencyChip, DotChip
+         body_subtree_chip::{BodySubtreeChip, UnifCompareConfig}, poseidon_hash::{HashEqChip, HashEqConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, rolc_compare_chip::RlcCompareChip, sig_check_chip::{SigCheckChip, SigCheckConfig}, ConsistencyChip, DotChip
     },
     data::{ClauseTemplateFp, FactTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, UnificationInputFp},
     utils_2::{common_helpers::{str_to_fp, to_fp_value, MAX_ARITY, MAX_CANDIDATES, MAX_CHILDREN, MAX_CLAUSES, MAX_PAIRS, MAX_PREDICATES, MAX_SIGS}, consistency_helpers::bind_goal_name_args_inputs},
@@ -29,23 +29,7 @@ pub fn get_constraints() -> u64 {
     *counter
 }
 
-#[derive(Debug, Clone)]
-pub struct UnifCompareConfig {
-    pub term_name: Column<Advice>,
-    pub term_args: [Column<Advice>; MAX_ARITY],
-}
 
-impl UnifCompareConfig {
-    pub fn configure(meta: &mut ConstraintSystem<Fp>) -> Self {
-        let term_name = meta.advice_column();
-        let term_args = array_init::array_init(|_| meta.advice_column());
-        meta.enable_equality(term_name);
-        for c in term_args.iter() {
-            meta.enable_equality(*c);
-        }
-        Self { term_name, term_args }
-    }
-}
 
 
 // Circuit definition
@@ -177,8 +161,22 @@ impl Circuit<Fp> for UnificationCircuit {
     )?;
 
 
+    let body_chip = BodySubtreeChip::construct(cfg.unif_cmp_cfg.clone());
+    let (body_pairs, subtree_pairs) = body_chip.assign(
+        layouter.namespace(|| "Body-Subtree"),
+        &self.unif.unif_body,
+        &self.unif.subtree_goals,
+    )?;
 
-let (body_pairs, subtree_pairs) = bind_body_and_subtree_as_cells_padded(
+    let rlc_cmp = RlcCompareChip::construct(cfg.rlc_cfg.clone());
+    rlc_cmp.assign_pairwise(
+        layouter.namespace(|| "RLC compare"),
+        &body_pairs,
+        &subtree_pairs,
+    )?;
+
+
+/*let (body_pairs, subtree_pairs) = bind_body_and_subtree_as_cells_padded(
         "Bind body & subtree (padded)",
         &mut layouter,
         &cfg.unif_cmp_cfg,                 // term_name + term_args oszlopok
@@ -201,7 +199,7 @@ let (proof_pairs, candidate_pairs_all) = bind_proof_and_candidates_sig_pairs(
     &self.unif.goal_name,   // goal TermFp
     &self.unif.unif_body,   // body TermFp-k
     &self.rules.predicates, // predikátumok
-)?;
+)?;*/
 
 // is_fact = (body üres?) — itt egyszerűen tanúként bevisszük:
 
@@ -280,7 +278,7 @@ sig_chip.check_membership_rules_or_fact_placeholder(
 
 
 
-fn bind_proof_and_candidates_sig_pairs(
+/*fn bind_proof_and_candidates_sig_pairs(
     region_name: &str,
     layouter: &mut impl Layouter<Fp>,
     cfg: &UnifCompareConfig,
@@ -460,4 +458,4 @@ fn bind_proof_and_candidates_sig_pairs(
             Ok((proof_pairs, candidate_pairs_all))
         },
     )
-}
+}*/

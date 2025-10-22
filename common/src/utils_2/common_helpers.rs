@@ -9,9 +9,11 @@ use crate::{data::RuleTemplateFile, unification_checker_circuit::MAX_DOT_DIM};
 // MAX Term args len
 pub const MAX_ARITY: usize = 3;
 
+// MAX predicates in a unification
+pub const MAX_PAIRS: usize = 3;
 
 pub const MAX_SUBTREE_LEN: usize = 3;
-pub const MAX_PAIRS: usize = 3;
+
 pub const MAX_CHILDREN: usize = 3;
 pub const MAX_CANDIDATES: usize = 8;
 pub const MAX_SIGS: usize = 1 + MAX_CHILDREN;
