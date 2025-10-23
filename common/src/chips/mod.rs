@@ -8,6 +8,8 @@ pub mod body_subtree_chip;
 pub mod rolc_compare_chip;
 pub mod sig_rlc_chip;
 pub mod sig_or_compare_chip;
+pub mod rows_compress_config;
+pub mod rule_rows_chip;
 
 pub use consistency_chip::ConsistencyChip;
 pub use dot_chip::DotChip;

@@ -1,5 +1,5 @@
 use halo2_proofs::{
-    circuit::{Layouter, AssignedCell},
+    circuit::{Layouter, AssignedCell, Value},
     pasta::Fp,
     plonk::Error,
 };
@@ -23,70 +23,80 @@ impl SigOrCompareChip {
         proof_pairs: &[(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)],
         candidate_pairs_all: &[Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>],
         is_fact: &AssignedCell<Fp, Fp>,
-    ) -> Result<(), Error> {
-        use halo2_proofs::circuit::Value;
+    ) -> Result<Vec<AssignedCell<Fp, Fp>>, Error> {
         let cfg = &self.cfg;
 
-        // --- 1️⃣ proof RLC
+        // proof RLC
         let proof_rlc = self.sig_rlc_chip.fold_sig_list(
             layouter.namespace(|| "sig RLC(proof)"),
             proof_pairs,
         )?;
 
-        // --- 2️⃣ candidate RLC-k
-        let cand_rlcs: Vec<AssignedCell<Fp, Fp>> = candidate_pairs_all
-            .iter()
-            .enumerate()
-            .map(|(i, cand)| {
-                self.sig_rlc_chip
-                    .fold_sig_list(layouter.namespace(|| format!("sig RLC(cand {i})")), cand)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        // candidate RLC-k és match flag-ek (b_i)
+        let mut b_flags: Vec<AssignedCell<Fp, Fp>> = Vec::new();
 
-        // --- 3️⃣ compute OR( matches )  —  legalább egy cand egyezik
-        let or_cell = layouter.assign_region(
-            || "any match OR",
-            |mut region| {
-                let mut acc = Value::known(Fp::zero());
-                for (i, cand_rlc) in cand_rlcs.iter().enumerate() {
-                    let match_val = proof_rlc
+        for (i, cand) in candidate_pairs_all.iter().enumerate() {
+            let cand_rlc = self.sig_rlc_chip.fold_sig_list(
+                layouter.namespace(|| format!("sig RLC(cand {i})")),
+                cand,
+            )?;
+
+            // Boolean match flag = 1 if proof_rlc == cand_rlc else 0
+            let b_i = layouter.assign_region(
+                || format!("match flag for candidate {i}"),
+                |mut region| {
+                    let val = proof_rlc
                         .value()
                         .zip(cand_rlc.value())
                         .map(|(p, c)| if *p == *c { Fp::one() } else { Fp::zero() });
-                    // OR accumulator: acc = 1 - (1-acc)*(1-match)
-                    acc = acc.zip(match_val).map(|(a, m)| {
-                        Fp::one() - (Fp::one() - a) * (Fp::one() - m)
-                    });
-                    region.assign_advice(|| format!("or_step_{}", i), cfg.sig_arity, i, || acc)?;
-                }
-                // végső OR érték:
-                region.assign_advice(|| "or_final", cfg.sig_arity, cand_rlcs.len(), || acc)
-            },
-        )?;
+                    region.assign_advice(|| "b_i", cfg.flag, 0, || val)
+                },
+            )?;
 
-        // --- 4️⃣ final_ok = OR(matches) + is_fact - OR*is_fact  (logikai OR)
+            b_flags.push(b_i);
+        }
+
+        // Enforce booleanity: b_i * (1 - b_i) == 0
+        for (i, b) in b_flags.iter().enumerate() {
+            layouter.assign_region(
+                || format!("b_{} booleanity", i),
+                |mut region| {
+                    let val = b.value().map(|v| *v * (Fp::one() - *v));
+                    let cell = region.assign_advice(|| "bool_check", cfg.flag, 0, || val)?;
+                    let zero =
+                        region.assign_advice(|| "zero", cfg.flag, 1, || Value::known(Fp::zero()))?;
+                    region.constrain_equal(cell.cell(), zero.cell())
+                },
+            )?;
+        }
+
+        // Enforce Σ b_i + is_fact - Σb_i*is_fact == 1
+        let sum_b_val = b_flags.iter().fold(Value::known(Fp::zero()), |acc, b| {
+            acc.zip(b.value()).map(|(a, bi)| a + *bi)
+        });
+
         let final_ok = layouter.assign_region(
-            || "final ok = match OR is_fact",
+            || "final ok = OR(matches) ∨ is_fact",
             |mut region| {
-                let val = or_cell
-                    .value()
+                let val = sum_b_val
                     .zip(is_fact.value())
-                    .map(|(m, f)| *m + *f - (*m) * (*f));
+                    .map(|(sum_b, f)| sum_b + *f - (sum_b) * (*f));
                 region.assign_advice(|| "final_ok", cfg.sig_arity, 0, || val)
             },
         )?;
 
-        // --- 5️⃣ Enforce final_ok == 1
+        // Enforce final_ok 
         layouter.assign_region(
             || "final_ok == 1",
             |mut region| {
                 let diff_val = final_ok.value().map(|v| *v - Fp::one());
                 let diff_cell = region.assign_advice(|| "diff", cfg.sig_arity, 0, || diff_val)?;
-                let zero = region.assign_advice(|| "zero", cfg.sig_arity, 1, || Value::known(Fp::zero()))?;
+                let zero =
+                    region.assign_advice(|| "zero", cfg.sig_arity, 1, || Value::known(Fp::zero()))?;
                 region.constrain_equal(diff_cell.cell(), zero.cell())
             },
         )?;
 
-        Ok(())
+        Ok(b_flags)
     }
 }

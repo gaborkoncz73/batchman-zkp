@@ -47,7 +47,7 @@ fn main() -> Result<()> {
     );
     let rules_fp = RuleTemplateFileFp::from(&rules);
     // --- Params + keygen ---
-    let params: Params<EqAffine> = Params::new(7);
+    let params: Params<EqAffine> = Params::new(8);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),
@@ -61,7 +61,7 @@ fn main() -> Result<()> {
     init_output_dir()?;
 
     // --- minden node-ra proof készítés ---
-    tree.par_iter()
+    tree.iter()
     .try_for_each(|node| {
         if let Err(e) = prove_tree(&rules2, node, &params,  &pk, &expected) {
             eprintln!("Error on node: {e:?}");
@@ -128,7 +128,7 @@ fn prove_tree(
         write_proof("unif", &proof, None)?;
 
         // rekurzió
-        g.subtree.par_iter()
+        g.subtree.iter()
             .try_for_each(|sub| prove_tree(rules, sub, params, pk, res))?;
     }
     Ok(())

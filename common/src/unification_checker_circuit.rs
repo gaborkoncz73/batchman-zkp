@@ -1,15 +1,15 @@
 use std::sync::Mutex;
 use halo2_proofs::{
-    circuit::{ Chip, Layouter, SimpleFloorPlanner},
+    circuit::{ AssignedCell, Chip, Layouter, SimpleFloorPlanner},
     pasta::Fp,
     plonk::{Circuit, ConstraintSystem, Error},
 };
 use crate::{
     chips::{
-         body_subtree_chip::{BodySubtreeChip, UnifCompareConfig}, poseidon_hash::{HashEqChip, HashEqConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, rolc_compare_chip::RlcCompareChip, sig_check_chip::{SigCheckChip, SigCheckConfig}, ConsistencyChip, DotChip
+         body_subtree_chip::{BodySubtreeChip, UnifCompareConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, rolc_compare_chip::RlcCompareChip, rows_compress_config::{RowsCompressChip, RowsCompressConfig}, rule_rows_chip::{RuleRowsChip, RuleRowsConfig}, sig_check_chip::{SigCheckChip, SigCheckConfig}, ConsistencyChip, DotChip
     },
-    data::{FactTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, UnificationInputFp},
-    utils_2::{common_helpers::{to_fp_value,}, consistency_helpers::bind_goal_name_args_inputs, predicate_helpers::bind_proof_and_candidates_sig_pairs},
+    data::{ClauseTemplateFp, FactTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, UnificationInputFp},
+    utils_2::{common_helpers::to_fp_value, consistency_helpers::bind_goal_name_args_inputs, predicate_helpers::bind_proof_and_candidates_sig_pairs},
 };
 use once_cell::sync::Lazy;
 
@@ -29,9 +29,6 @@ pub fn get_constraints() -> u64 {
     *counter
 }
 
-
-
-
 // Circuit definition
 #[derive(Debug, Clone)]
 pub struct UnificationCircuit {
@@ -44,11 +41,13 @@ pub struct UnificationCircuit {
 pub struct UnifConfig {
     pub cons_cfg: <ConsistencyChip as Chip<Fp>>::Config,
     pub dot_cfg: <DotChip as Chip<Fp>>::Config,
-    pub hash_cfg: HashEqConfig,
+    //pub hash_cfg: PoseidonHashConfig,
     pub rlc_cfg: <RlcFixedChip as Chip<Fp>>::Config,
     pub goal_check_cfg: RlcGoalCheckConfig,
     pub unif_cmp_cfg: UnifCompareConfig,
     pub sig_check_cfg: SigCheckConfig,
+    pub rows_compress_chip :RowsCompressConfig,
+    pub rule_rows_cfg: RuleRowsConfig,
 }
 
 impl Circuit<Fp> for UnificationCircuit {
@@ -80,17 +79,19 @@ impl Circuit<Fp> for UnificationCircuit {
         };
         let cons_cfg = ConsistencyChip::configure(meta);
         let dot_cfg = DotChip::configure(meta);
-        let hash_cfg = HashEqChip::configure(meta);
+        //let hash_cfg = PoseidonHashChip::configure(meta);
         let goal_check_cfg = RlcGoalCheckChip::configure(meta, alpha);
         
         let rlc_cfg = RlcFixedChip::configure(meta, alpha);
         let unif_cmp_cfg = UnifCompareConfig::configure(meta);
         let sig_check_cfg = SigCheckChip::configure(meta,alpha);
+        let rows_compress_chip = RowsCompressChip::configure(meta);
+        let rule_rows_cfg = RuleRowsChip::configure(meta);
         //let instance = meta.instance_column();
         //meta.enable_equality(instance);
 
 
-        UnifConfig { cons_cfg, dot_cfg, hash_cfg, rlc_cfg, goal_check_cfg,unif_cmp_cfg, sig_check_cfg/*, instance*/ }
+        UnifConfig { cons_cfg, dot_cfg, /*hash_cfg*/ rlc_cfg, goal_check_cfg,unif_cmp_cfg, sig_check_cfg, rows_compress_chip, rule_rows_cfg/*, instance*/ }
     }
 
     fn synthesize(
@@ -210,49 +211,142 @@ impl Circuit<Fp> for UnificationCircuit {
         },
     )?;
     
-    sig_chip.assign(
+    let b_flags = sig_chip.assign(
         layouter.namespace(|| "Sig membership (rules or fact placeholder)"),
         &proof_pairs,
         &candidate_pairs_all, // this can be &[] for fact
         &is_fact_cell,
     )?;
+    println!("goal: , {:?}:{:?}", self.unif.goal_name.name, self.unif.goal_name.args);
+    println!("b: {:?}\n\n", b_flags);
 
-        /*if self.unif.subtree_goals.is_empty() {
-            println!("Total constraints so far: {} (fact)", get_constraints());
-            return Ok(());
-        }
+    // Helper: determinisztikus flatten offsetek (head + children).
+    // Ezt a segítségeddel már tudod (pl. ClauseTemplate-ből):
+    let rows_chip = RuleRowsChip::construct(cfg.rule_rows_cfg.clone());
+    let target_len = b_flags.len();
+    let mut built = 0usize;
+    let mut all_clause_rows = Vec::with_capacity(target_len);
 
-        let (matching_clause, structure_vec, witness_vec) =
-            get_matching_structure_and_vectors(&self.unif, &self.rules)?;
+    'outer: for (p_i, pred) in self.rules.predicates.iter().enumerate() {
+    for (c_i, clause) in pred.clauses.iter().enumerate() {
+        if built == target_len { break 'outer; }
 
-        add_constraints(1);
-        cons_chip.assign_pairs2(
-            layouter.namespace(|| format!("pred_clause_dotcheck")),
-            &[(structure_vec, witness_vec)],
-        )?;
+        let eqs_fp     = clause_equalities_as_index_tuples_fp(clause);
+        let offsets_fp = offsets_for_clause_fp(pred, clause);
 
-        let (padded_w_vec, padded_compressed_rows) = get_w_and_v_vec(
-            &matching_clause,
-            &self.unif.goal_term_args,
-            &self.unif.unif_body,
-            "seed",
+        let rows_ij = rows_chip.assign_rule_rows_fp(
+            layouter.namespace(|| format!("rows for pred{}_clause{}", p_i, c_i)),
+            &eqs_fp,
+            &offsets_fp,
+            pred.arity,
             MAX_DOT_DIM,
         )?;
+        
 
-        add_constraints((MAX_DOT_DIM * 2 + 1) as u64);
-        dot_chip.assign_dot_check(
-            layouter.namespace(|| format!("variable_dot_check:")),
-            &padded_w_vec,
-            &padded_compressed_rows,
-            Fp::zero(),
+        all_clause_rows.push(rows_ij);
+        built += 1;
+        }
+    }
+
+        let compress_chip = RowsCompressChip::construct(cfg.rows_compress_chip.clone());
+        let compressed_vec: Vec<AssignedCell<Fp,Fp>> = compress_chip.assign_compressed_active_simple(
+            layouter.namespace(|| "compress active clause rows (no r)"),
+            &all_clause_rows,  // [clause][row][k]
+            &b_flags,          // one-hot flags a SigCheck-ből
         )?;
 
-        println!("Total constraints so far: {} (predicate)", get_constraints());*/ 
+        let w_cells: Vec<AssignedCell<Fp,Fp>> = {
+        let mut w_fp: Vec<Fp> = Vec::new();
+
+        // head goal args (Fp-k, mert UnificationInputFp)
+        w_fp.extend_from_slice(&self.unif.goal_term_args);
+
+        // body args (minden TermFp args)
+        for t in &self.unif.unif_body {
+            w_fp.extend_from_slice(&t.args);
+        }
+
+        // homogenitási 1
+        w_fp.push(Fp::one());
+
+        // pad MAX_DOT_DIM-re
+        if w_fp.len() < MAX_DOT_DIM {
+            w_fp.resize(MAX_DOT_DIM, Fp::zero());
+        } else if w_fp.len() > MAX_DOT_DIM {
+            // ha túlcsordulna, itt vágd/hibázd – tetszés szerint
+            w_fp.truncate(MAX_DOT_DIM);
+        }
+
+        layouter.assign_region(
+            || "bind w vec",
+            |mut region| {
+                let mut out = Vec::with_capacity(MAX_DOT_DIM);
+                for (i, val) in w_fp.iter().copied().enumerate() {
+                    let c = region.assign_advice(
+                        || format!("w[{i}]"),
+                        cfg.rows_compress_chip.val,
+                        i,
+                        || Value::known(val),
+                    )?;
+                    out.push(c);
+                }
+                Ok(out)
+            },
+        )?
+    };
+    let flag_cell = layouter.assign_region(
+        || "dot flag assign",
+        |mut region| {
+            region.assign_advice(
+                || "flag constant (numeric mode)",
+                cfg.dot_cfg.adv_flag,
+                0,
+                || Value::known(Fp::zero()),  // boolean enforcement kikapcsolva
+            )
+        },
+    )?;
+    // 4) Dot check: <w, compressed> == 0
+    let dot_chip = DotChip::construct(cfg.dot_cfg.clone());
+    dot_chip.assign_dot_check(
+        layouter.namespace(|| "dot(w, compressed) == 0"),
+        &w_cells,
+        &compressed_vec,
+        &flag_cell,
+        &is_fact_cell, // 👈 bekötve ide
+    )?;
         Ok(())
     }
 }
 
 
+pub fn clause_equalities_as_index_tuples_fp(
+    clause: &ClauseTemplateFp,
+) -> Vec<(Fp, Fp, Fp, Fp)> {
+    clause.equalities.iter().map(|eq| {
+        (
+            eq.left.node,  // Fp
+            eq.left.arg,   // Fp
+            eq.right.node, // Fp
+            eq.right.arg,  // Fp
+        )
+    }).collect()
+}
 
+pub fn offsets_for_clause_fp(pred: &PredicateTemplateFp, clause: &ClauseTemplateFp) -> Vec<Fp> {
+    let mut offsets = Vec::new();
+    let mut cur = Fp::zero();
 
+    // Head offset (0)
+    offsets.push(cur);
 
+    // head arity (a predikátumé)
+    cur += pred.arity;
+
+    // gyermek node-ok
+    for ch in &clause.children {
+        offsets.push(cur);
+        cur += ch.arity;
+    }
+
+    offsets
+}
