@@ -40,7 +40,7 @@ fn main() -> anyhow::Result<()> {
     let instances = vec![instance.as_slice()]; // &[&[Fp]] szintű lista
 
     // same parameters as proving side
-    let params: Params<EqAffine> = Params::new(9);
+    let params: Params<EqAffine> = Params::new(7);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),
