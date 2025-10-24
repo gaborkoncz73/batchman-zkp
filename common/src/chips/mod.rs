@@ -10,6 +10,7 @@ pub mod sig_rlc_chip;
 pub mod sig_or_compare_chip;
 pub mod rows_compress_config;
 pub mod rule_rows_chip;
+pub mod fact_hash_chip;
 
 pub use consistency_chip::ConsistencyChip;
 pub use dot_chip::DotChip;

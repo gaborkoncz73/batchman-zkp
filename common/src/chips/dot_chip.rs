@@ -154,10 +154,10 @@ impl DotChip {
                     region.constrain_equal(fact_local.cell(), fact_cell.cell())?;
 
                      //Optional debug:
-                     if i + 1 == n {
+                     /*if i + 1 == n {
                          println!("DOT last row: acc={:?}, w_last={:?}, is_fact={:?}",
                              acc_val, w_vec.last().unwrap().value(), fact_cell.value());
-                     }
+                     }*/
 
                     // silence unused locals in release builds
                     let _ = (w_local, c_local, a_local);

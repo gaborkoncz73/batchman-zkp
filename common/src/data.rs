@@ -122,12 +122,14 @@ impl Default for UnificationInputFp {
 pub struct TermFp {
     pub name: Fp,
     pub args: Vec<Fp>,
+    pub fact_hashes: Fp,
 }
 impl Default for TermFp{
     fn default() -> Self {
         Self {
             name: Fp::zero(),
-            args: vec![Fp::zero(); MAX_ARITY], }
+            args: vec![Fp::zero(); MAX_ARITY], 
+            fact_hashes: Fp::zero(), }
     }
 }
 

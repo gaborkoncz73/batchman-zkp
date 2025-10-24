@@ -24,26 +24,19 @@ fn main() -> anyhow::Result<()> {
     let rules: data::RuleTemplateFile = serde_json::from_str(&rules_text)?;
 
     let res = cpu_rulehash_first_2(&rules);
-    println!("Poseidon hash (identical to circuit) = {:?}", res);
+    println!("Poseidon hash (identical to circuit) = {:?}", res); 
 
-    let rules_text2 = fs::read_to_string("input/rules_template2.json")?;
-    let rules2: data::RuleTemplateFile = serde_json::from_str(&rules_text2)?;
-
-    let res2 = cpu_rulehash_first_2(&rules2);
-    println!("Poseidon hash (identical to circuit) = {:?}", res2);
 
     let rules_fp = RuleTemplateFileFp::from(&rules);
 
-    let expected = cpu_rulehash_first_2(&rules2);
 
-    let instance = vec![expected]; // 1 publikus input mező
-    let instances = vec![instance.as_slice()]; // &[&[Fp]] szintű lista
 
     // same parameters as proving side
     let params: Params<EqAffine> = Params::new(8);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),
+        num_public_hashes: 0,
     };
     let vk: VerifyingKey<EqAffine> = keygen_vk(&params, &shape)?;
     let params = Arc::new(params);
@@ -53,13 +46,19 @@ fn main() -> anyhow::Result<()> {
     //let instances = vec![instance.as_slice()]; // &[&[Fp]] szintű lista
 
     // parallel verification
-    let ok = proofs.par_iter().all(|(_, proof)| {
+    let proofs: Vec<(Vec<Vec<Fp>>, Vec<u8>)> = read_proofs("unif")?;
+
+    let ok = proofs.par_iter().all(|(inputs, proof)| {
+        //let instances: Vec<Vec<Fp>> = inputs.clone();
+        //let instance_refs: Vec<Vec<&[Fp]>> =
+        //    instances.iter().map(|v| vec![v.as_slice()]).collect();
+        let inner: [&[Fp]; 1] = [inputs[0].as_slice()];
+        let instance_refs: Vec<&[&[Fp]]> = vec![&inner];
+
         let mut transcript = Blake2bRead::<_, EqAffine, Challenge255<_>>::init(&proof[..]);
         let strategy = SingleVerifier::new(params.as_ref());
-        let instances: Vec<&[&[Fp]]> = vec![&[]];
-        verify_proof(params.as_ref(), vk.as_ref(), strategy, &instances, &mut transcript).is_ok()
+        verify_proof(params.as_ref(), vk.as_ref(), strategy, &instance_refs, &mut transcript).is_ok()
     });
-
     if ok {
         println!("All proofs verified successfully!");
     } else {

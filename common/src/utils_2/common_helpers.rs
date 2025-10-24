@@ -14,6 +14,8 @@ pub const MAX_PAIRS: usize = 2;
 
 pub const MAX_SUBTREE_LEN: usize = 2;
 
+pub const MAX_FACTS_HASHES: usize = 5;
+
 pub const MAX_CHILDREN: usize = 3;
 pub const MAX_CANDIDATES: usize = 3;
 pub const MAX_SIGS: usize = 1 + MAX_CHILDREN;
@@ -21,7 +23,7 @@ pub const MAX_SIG_TOKENS: usize = 1 + 2 * (1 + MAX_CHILDREN);
 pub const MAX_EQUALITIES: usize = 4;
 pub const MAX_CLAUSES: usize = 2;
 pub const MAX_PREDICATES: usize = 2;
-pub const MAX_FACTS: usize = 1;
+pub const MAX_FACTS: usize = 5;
 
 pub fn str_to_fp(
     s: &str

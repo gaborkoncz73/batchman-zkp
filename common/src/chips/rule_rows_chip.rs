@@ -91,10 +91,10 @@ impl RuleRowsChip {
                             let dbg: Vec<i8> = (0..max_dim).map(|k|
                                 if k == *l { 1 } else if k == *r { -1 } else { 0 }
                             ).collect();
-                            println!("row[{row_idx}] (+1@{l}, -1@{r}): {:?}", dbg);
+                            //println!("row[{row_idx}] (+1@{l}, -1@{r}): {:?}", dbg);
                         }
                         None => {
-                            println!("row[{row_idx}] (null-row)");
+                            //println!("row[{row_idx}] (null-row)");
                         }
                     }
 
