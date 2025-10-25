@@ -29,7 +29,6 @@ impl RuleRowsChip {
         mut layouter: impl Layouter<Fp>,
         clause_eqs_fp: &[(Fp, Fp, Fp, Fp)], // (ln, la, rn, ra)
         offsets_fp: &[Fp],                   // node -> kezdőindex
-        _head_arity_fp: Fp,                  // (nem kell külön)
         max_dim: usize,
     ) -> Result<Vec<Vec<AssignedCell<Fp, Fp>>>, Error> {
         let cfg = self.cfg.clone();
@@ -71,8 +70,8 @@ impl RuleRowsChip {
 
                     for k in 0..max_dim {
                         let val = match maybe_pair {
-                            Some((l_idx, r_idx)) if k == *l_idx => Value::known(Fp::one()),
-                            Some((l_idx, r_idx)) if k == *r_idx => Value::known(-Fp::one()),
+                            Some((l_idx, _)) if k == *l_idx => Value::known(Fp::one()),
+                            Some((_, r_idx)) if k == *r_idx => Value::known(-Fp::one()),
                             _ => Value::known(Fp::zero()),
                         };
                         let cell = region.assign_advice(
@@ -84,19 +83,20 @@ impl RuleRowsChip {
                         assigned_row.push(cell);
                         row_offset += 1;
                     }
-
-                    // Szép debug kiírás
+                    /*
+                    // Debug
                     match maybe_pair {
                         Some((l, r)) => {
                             let dbg: Vec<i8> = (0..max_dim).map(|k|
                                 if k == *l { 1 } else if k == *r { -1 } else { 0 }
                             ).collect();
-                            //println!("row[{row_idx}] (+1@{l}, -1@{r}): {:?}", dbg);
+                            println!("row[{row_idx}] (+1@{l}, -1@{r}): {:?}", dbg);
                         }
                         None => {
-                            //println!("row[{row_idx}] (null-row)");
+                            println!("row[{row_idx}] (null-row)");
                         }
                     }
+                    */
 
                     all_rows.push(assigned_row);
                 }

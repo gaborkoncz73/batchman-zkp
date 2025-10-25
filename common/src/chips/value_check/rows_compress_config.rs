@@ -123,7 +123,6 @@ impl RowsCompressChip {
         let dim         = rows[0][0].len();
         assert_eq!(flags.len(), num_clauses);
 
-        // compressed[k] = Σ_i b_i * (Σ_j row_{i,j}[k])
         let compressed: Vec<AssignedCell<Fp,Fp>> = layouter.assign_region(
             || "compressed (no r)",
             |mut region| {

@@ -1,6 +1,6 @@
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter, Value},
-    plonk::{Advice, Column, ConstraintSystem, Error, Instance},
+    plonk::{Advice, Column, ConstraintSystem, Error},
     pasta::Fp,
 };
 use halo2_gadgets::poseidon::{

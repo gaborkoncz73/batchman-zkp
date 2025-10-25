@@ -1,9 +1,7 @@
 use std::fs;
 use std::sync::Arc;
 use anyhow::Result;
-use common::{chips::fact_hash_chip::FactConfig, data::{FactTemplate, GoalEntry, ProofNode, RuleTemplateFileFp, TermFp}, utils_2::common_helpers::MAX_FACTS_HASHES};
-use halo2curves::bls12381::Fr;
-use num_bigint::BigUint;
+use common::{data::{ GoalEntry, ProofNode, RuleTemplateFileFp, TermFp}, utils_2::common_helpers::MAX_FACTS_HASHES};
 use rand_core::OsRng;
 
 use halo2_proofs::{
@@ -21,10 +19,10 @@ use rayon::prelude::*;
 
 use common::{data, data::UnificationInputFp};
 use common::unification_checker_circuit::UnificationCircuit;
-use common::utils_2::common_helpers::{cpu_rulehash_first_2, hash_rule_template_poseidon, to_fp_value, MAX_ARITY};
+use common::utils_2::common_helpers::{ to_fp_value, MAX_ARITY};
 
 mod writer;
-use serde::{ser::SerializeTuple, Deserialize};
+use serde::{ Deserialize};
 use writer::{init_output_dir, write_proof};
 
 //Config struct to read the yaml
@@ -46,7 +44,6 @@ fn main() -> Result<()> {
     let configs: Vec<Config> = serde_yaml::from_str(&file_content)
         .expect("Wring YAML format");
 
-    println!("{:?}", configs);
     let rules_text = fs::read_to_string("input/rules_template.json")?;
     let rules: data::RuleTemplateFile = serde_json::from_str(&rules_text)?;
 
@@ -62,7 +59,7 @@ fn main() -> Result<()> {
     let rules_fp = RuleTemplateFileFp::from(&rules);
     // --- Params + keygen ---
 
-    let params: Params<EqAffine> = Params::new(7);
+    let params: Params<EqAffine> = Params::new(8);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),
@@ -75,8 +72,6 @@ fn main() -> Result<()> {
 
     init_output_dir()?;
 
-    // --- minden node-ra proof készítés ---
-    println!("aa");
     tree.iter()
     .try_for_each(|node| {
         if let Err(e) = prove_tree(&rules, node, &params,  &pk, &configs) {
@@ -109,11 +104,10 @@ fn prove_tree(
                 let args_ref: Vec<&str> = f.args.iter().map(|s| s.as_str()).collect();
                 fact_hash_native_salted(&f.predicate, &args_ref, &f.salt)
             })
-            // kiegészítjük 0-kkal, ha kevesebb a fact, mint MAX_FACTS_HASHES
             .chain(std::iter::repeat(Fp::zero()))
             .take(MAX_FACTS_HASHES)
             .collect();
-        // 🔹 Circuit Fp bemenettel
+        // Circuit Fp bemenettel
         let circuit = UnificationCircuit {
             rules: rules_fp,
             unif: unif_input_fp,
@@ -121,25 +115,8 @@ fn prove_tree(
         // --- proof készítés ---
         let mut transcript = Blake2bWrite::<Vec<u8>, _, Challenge255<_>>::init(vec![]);
 
-        /*let col0: &[Fp] = &public_hashes;
-        let instance_cols: [&[Fp]; 1] = [col0];
-        let instances: [&[&[Fp]]; 1] = [&instance_cols];
-
-        let instance: Vec<Fp> = vec![]; // 1 publikus input mező
-        let instances: Vec<&[Fp]> = vec![instance.as_slice()]; // &[&[Fp]] szintű lista
-        let instances: Vec<&[&[Fp]]> = vec![&[]];
-        let instance_columns: [&[Fp]; 1] = [&public_hashes];
-        let instances: Vec<&[&[Fp]]> = vec![&instance_columns];
-        let instances: Vec<&[Fp]> = vec![ &public_hashes[..] ];
-
-        let public_hashes_slice: &[Fp] = &public_hashes;*/
-
-
-// 2️⃣ Ez már stabil, mert a public_hashes_slice él addig, amíg a függvény véget nem ér
-//let instance_cols: [&[Fp]; 1] = [public_hashes_slice];
-//let instances: Vec<&[&[Fp]]> = vec![&instance_cols];
-let public_hashes_slice: &[Fp] = &public_hashes;        // len == num_public_hashes
-let instances: &[&[&[Fp]]] = &[&[public_hashes_slice]]; 
+        let public_hashes_slice: &[Fp] = &public_hashes;        // len == num_public_hashes
+        let instances: &[&[&[Fp]]] = &[&[public_hashes_slice]]; 
         halo2_proofs::plonk::create_proof(
             params.as_ref(),
             pk.as_ref(),
@@ -189,7 +166,7 @@ fn unification_input_from_goal(g: &GoalEntry, facts: &Vec<Config>) -> Unificatio
 
 /// ✅ Stringből (pl. "ancestor(a,b,c)") készít egy TermFp struktúrát.
 /// Ha kevesebb argumentum van, 0-val feltölti MAX_ARITY-ig.
-pub fn encode_str_to_termfp(input: &str, facts: &Vec<Config>) -> TermFp {
+fn encode_str_to_termfp(input: &str, facts: &Vec<Config>) -> TermFp {
     // 1️⃣ Szétválasztjuk a név és az argumentumokat
     let open = input.find('(').unwrap_or(input.len());
     let close = input.find(')').unwrap_or(input.len());

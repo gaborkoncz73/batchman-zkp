@@ -3,7 +3,7 @@ use halo2_proofs::{
     pasta::Fp,
     plonk::Error,
 };
-use crate::chips::sig_rlc_chip::SigRlcChip;
+use crate::chips::finding_rule::sig_rlc_chip::SigRlcChip;
 use crate::chips::finding_rule::sig_check_chip::SigCheckConfig;
 
 #[derive(Clone, Debug)]

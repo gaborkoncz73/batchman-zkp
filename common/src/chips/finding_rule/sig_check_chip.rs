@@ -6,14 +6,12 @@ use halo2_proofs::{
 
 use crate::chips::{
     rlc_chip::{RlcFixedChip, RlcFixedConfig},
-    sig_rlc_chip::SigRlcChip,
+    finding_rule::sig_rlc_chip::SigRlcChip,
     finding_rule::sig_or_compare_chip::SigOrCompareChip,
 };
 use crate::utils_2::common_helpers::MAX_CANDIDATES;
 
-/// ─────────────────────────────
 /// CONFIG
-/// ─────────────────────────────
 #[derive(Clone, Debug)]
 pub struct SigCheckConfig {
     pub sig_name: Column<Advice>,

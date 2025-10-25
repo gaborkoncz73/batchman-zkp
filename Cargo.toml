@@ -17,10 +17,11 @@ halo2_proofs = { version = "0.3", default-features = false}
 rayon = { version = "1.11", default-features = false }
 base64 = { version = "0.22", default-features = false, features = ["std"] }
 rand_core = { version = "0.6", default-features = false }
+halo2curves = { version = "0.9.0", default-features = false }
+halo2_gadgets = { version = "0.3", default-features = false }
+once_cell = { version = "1.21.3", default-features = false }
 
-
-
-blake2 = { version = "0.10.6 ", default-features = false }
+serde_yaml = { version = "0.9.34", default-features = false }
+num-bigint ={ version = "0.4.6", default-features = false }
+blake3 = { version = "1.8.2", default-features = false }
 regex = { version = "1.11.3", default-features = false }
-
-

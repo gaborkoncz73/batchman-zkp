@@ -1,13 +1,11 @@
-use halo2_gadgets::utilities::{decompose_running_sum, FieldValue};
 use halo2_proofs::{
-    circuit::{AssignedCell, Chip, Layouter, Region, Value},
+    circuit::{AssignedCell, Chip, Layouter, Value},
     pasta::Fp,
-    plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed, Instance},
-    poly::Rotation,
+    plonk::{Advice, Column, ConstraintSystem, Error, Instance},
 };
 use halo2curves::ff::Field;
 
-use crate::{chips::poseidon_hash::{PoseidonHashChip, PoseidonHashConfig}, utils_2::common_helpers::MAX_FACTS_HASHES};
+use crate::{chips::fact_check::poseidon_hash::{PoseidonHashChip, PoseidonHashConfig}, utils_2::common_helpers::MAX_FACTS_HASHES};
 
 #[derive(Clone, Debug)]
 pub struct FactConfig {
@@ -109,7 +107,6 @@ impl FactChip {
                 // Σ(bit_i * pub_i) accumulator
                 let mut pub_sel_val = Value::known(Fp::ZERO);
                 let mut pub_sel_cell = zero.clone();
-                println!("\n\n\n"); 
                  for i in 0..MAX_FACTS_HASHES {
                     // 1. Public hash copy from instance
                     let pub_local = region.assign_advice_from_instance(
@@ -120,9 +117,6 @@ impl FactChip {
                         i + 1,
                     )?;
 
-
-
-                    //println!("CPU: {:?}, CIRC: {:?}",pub_local.value(),hashed_local.value() );
                     // 2. Compute bit_i = 1 if hashed==pub_local else 0 (as witness)
                     let bit_i = region.assign_advice(
                         || format!("bit[{i}]"),
@@ -140,7 +134,6 @@ impl FactChip {
                         i + 2,
                         || is_fact.value().zip(bit_i.value()).map(|(f, b)| f * *b * (*b - Fp::ONE)),
                     )?;
-                    //println!("bool cell: {:?}, zero cell: {:?}", bool_expr.cell(), zero.cell());
                     region.constrain_equal(bool_expr.cell(), zero.cell())?;
 
                     // Update Σbit_i
@@ -162,7 +155,6 @@ impl FactChip {
                     )?;
                 }
 
-                println!("\n\n\n");
 
                 
                 // 4. Enforce exactly one match if is_fact=1: is_fact * (sum_bits - 1) = 0
@@ -172,9 +164,7 @@ impl FactChip {
                     3 * MAX_FACTS_HASHES + 2,
                     || is_fact_local.value().zip(sum_bits_cell.value()).map(|(f, s)| f * (s - Fp::ONE)),
                 )?;
-                println!("is_fact:{:?}\n sum: {:?}\nsum:_check: {:?}\n zero: {:?}", is_fact.value(),sum_bits_cell.value(), sum_check.value(),zero.value());
-                println!("sum cell: {:?}, zero cell: {:?}", sum_check.cell(), zero.cell());
-                //region.constrain_equal(sum_check.cell(), zero.cell())?;
+                region.constrain_equal(sum_check.cell(), zero.cell())?;
 
                 
                 // 5. Enforce membership: is_fact * (hashed_local - pub_sel) = 0

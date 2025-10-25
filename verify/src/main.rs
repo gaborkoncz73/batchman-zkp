@@ -3,7 +3,7 @@ mod reader;
 use std::fs;
 use std::sync::Arc;
 use rayon::prelude::*;
-use common::{data::RuleTemplateFileFp, utils_2::common_helpers::{cpu_rulehash_first_2, flatten_rule_template_to_fp, hash_rule_template_poseidon, pad_to_const, poseidon_hash_cpu_const}, *};
+use common::{data::RuleTemplateFileFp, *};
 use halo2_proofs::{
     pasta::{EqAffine, Fp},
     plonk::{keygen_vk, verify_proof, SingleVerifier, VerifyingKey},
@@ -14,7 +14,6 @@ use halo2_proofs::{
 use common::unification_checker_circuit::UnificationCircuit;
 use common::data::UnificationInputFp;
 use reader::read_proofs;
-const L_MAX: usize = 62;
 fn main() -> anyhow::Result<()> {
     // load proofs
     let proofs: Vec<(Vec<Vec<Fp>>, Vec<u8>)> = read_proofs("unif")?;
@@ -23,8 +22,6 @@ fn main() -> anyhow::Result<()> {
     let rules_text = fs::read_to_string("input/rules_template.json")?;
     let rules: data::RuleTemplateFile = serde_json::from_str(&rules_text)?;
 
-    let res = cpu_rulehash_first_2(&rules);
-    println!("Poseidon hash (identical to circuit) = {:?}", res); 
 
 
     let rules_fp = RuleTemplateFileFp::from(&rules);
@@ -32,7 +29,7 @@ fn main() -> anyhow::Result<()> {
 
 
     // same parameters as proving side
-    
+
     let params: Params<EqAffine> = Params::new(8);
     let shape = UnificationCircuit {
         rules: rules_fp,

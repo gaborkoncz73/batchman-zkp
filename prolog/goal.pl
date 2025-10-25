@@ -21,7 +21,7 @@ export_proof(File) :-
             ),
             close(Stream)
         ),
-        format("✅ Proof found and exported to '~w'~n", [File])
+        format("Proof found and exported to '~w'~n", [File])
     ;   setup_call_cleanup(
             open(File, write, Stream),
             json_write_dict(Stream, _{error:"no_proof"},
@@ -36,7 +36,7 @@ export_proof(File) :-
             ),
             close(Stream)
         ),
-        format("⚠️ No proof found, wrote fallback JSON to '~w'~n", [File])
+        format("No proof found, wrote fallback JSON to '~w'~n", [File])
     ).
 
 % --- auto-run on startup ---

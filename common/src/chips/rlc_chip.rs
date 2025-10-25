@@ -5,8 +5,6 @@ use halo2_proofs::{
     poly::Rotation,
 };
 
-use crate::{ utils_2::common_helpers::{MAX_ARITY}};
-
 #[derive(Clone, Debug)]
 pub struct RlcFixedConfig {
     pub token: Column<Advice>,  // input tokenek: [name, arg0, arg1, ...]

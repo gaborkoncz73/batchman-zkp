@@ -1,33 +1,16 @@
-use std::sync::Mutex;
 use halo2_proofs::{
-    circuit::{Chip, Layouter, SimpleFloorPlanner},
+    circuit::{AssignedCell, Chip, Layouter, SimpleFloorPlanner},
     pasta::Fp,
     plonk::{Circuit, Column, ConstraintSystem, Error, Instance},
 };
 use crate::{
     chips::{
-         finding_rule::body_subtree_chip::{UnifCompareConfig}, fact_hash_chip::{FactChip, FactConfig}, rlc_chip::RlcFixedChip, rows_compress_config::{RowsCompressChip, RowsCompressConfig}, rule_rows_chip::{RuleRowsChip, RuleRowsConfig}, finding_rule::sig_check_chip::{SigCheckChip, SigCheckConfig}, ConsistencyChip, DotChip
+         finding_rule::body_subtree_chip::{UnifCompareConfig}, fact_check::fact_hash_chip::{FactChip, FactConfig}, rlc_chip::RlcFixedChip, value_check::rows_compress_config::{RowsCompressChip, RowsCompressConfig}, value_check::rule_rows_chip::{RuleRowsChip, RuleRowsConfig}, finding_rule::sig_check_chip::{SigCheckChip, SigCheckConfig}, value_check::dot_chip::DotChip
     },
     data::{ClauseTemplateFp, FactTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, UnificationInputFp},
     utils_2::{common_helpers::to_fp_value, consistency_helpers::bind_goal_name_args_inputs, predicate_helpers::bind_proof_and_candidates_sig_pairs},
 };
-use once_cell::sync::Lazy;
-
 pub const MAX_DOT_DIM: usize = 10;
-// Global constraint counter
-pub static TOTAL_CONSTRAINTS: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
-
-// Adds to the global constraint count
-pub fn add_constraints(n: u64) {
-    let mut counter = TOTAL_CONSTRAINTS.lock().unwrap();
-    *counter += n;
-}
-
-// Reads the current total constraint count
-pub fn get_constraints() -> u64 {
-    let counter = TOTAL_CONSTRAINTS.lock().unwrap();
-    *counter
-}
 
 // Circuit definition
 #[derive(Debug, Clone)]
@@ -38,7 +21,6 @@ pub struct UnificationCircuit {
 
 #[derive(Clone, Debug)]
 pub struct UnifConfig {
-    pub cons_cfg: <ConsistencyChip as Chip<Fp>>::Config,
     pub dot_cfg: <DotChip as Chip<Fp>>::Config,
     //pub hash_cfg: PoseidonHashConfig,
     pub rlc_cfg: <RlcFixedChip as Chip<Fp>>::Config,
@@ -70,12 +52,9 @@ impl Circuit<Fp> for UnificationCircuit {
 
     fn configure(meta: &mut ConstraintSystem<Fp>) -> Self::Config {
         let alpha = {
-            // pl. használd a már meglévő to_fp_value()-t
             to_fp_value("rlc_alpha_v1")
         };
-        let cons_cfg = ConsistencyChip::configure(meta);
         let dot_cfg = DotChip::configure(meta);
-        //let hash_cfg = PoseidonHashChip::configure(meta);
         
         let rlc_cfg = RlcFixedChip::configure(meta, alpha);
         let unif_cmp_cfg: UnifCompareConfig = UnifCompareConfig::configure(meta);
@@ -83,9 +62,6 @@ impl Circuit<Fp> for UnificationCircuit {
         let rows_compress_chip = RowsCompressChip::configure(meta);
         let rule_rows_cfg: RuleRowsConfig = RuleRowsChip::configure(meta);
 
-
-
-        // ⬇️ publikusan megadott hashek oszlopa
         let instance_hashes = meta.instance_column();
        
         meta.enable_equality(instance_hashes);
@@ -93,7 +69,7 @@ impl Circuit<Fp> for UnificationCircuit {
         let fact_cfg = FactChip::configure(meta, instance_hashes);
 
 
-        UnifConfig { cons_cfg, dot_cfg, /*hash_cfg*/ rlc_cfg,unif_cmp_cfg, sig_check_cfg, rows_compress_chip, rule_rows_cfg, fact_cfg, instance_hashes }
+        UnifConfig {dot_cfg, rlc_cfg,unif_cmp_cfg, sig_check_cfg, rows_compress_chip, rule_rows_cfg, fact_cfg, instance_hashes }
     }
 
     fn synthesize(
@@ -102,40 +78,6 @@ impl Circuit<Fp> for UnificationCircuit {
         mut layouter: impl Layouter<Fp>,
     ) -> Result<(), Error> {
         use halo2_proofs::circuit::Value;
-
-        // ✅ Flatten the rules into Fp values
-        /*let flat = crate::utils_2::common_helpers::flatten_rule_template_to_fp(&self.rules);
-        let leaves: Vec<Value<Fp>> = flat.iter().map(|&x| Value::known(x)).collect();
-
-        // ✅ Expected hash from public instance
-        let expected_cell = layouter.assign_region(
-            || "load expected hash (instance)",
-            |mut region| {
-                region.assign_advice_from_instance(
-                    || "expected hash",
-                    cfg.instance,
-                    0, // public input row = 0
-                    cfg.hash_cfg.expected_col,
-                    0,
-                )
-            },
-        )?;
-
-        // ✅ Compute Poseidon tree hash for all flattened Fp values
-        let root_cell = HashEqChip::tree_hash_all(
-            &cfg.hash_cfg,
-            layouter.namespace(|| "rulehash full tree"),
-            &leaves,
-        )?;
-
-        // ✅ Enforce equality: hash(root) == expected (public input)
-        layouter.assign_region(
-            || "enforce tree root == expected",
-            |mut region| {
-                region.constrain_equal(root_cell.cell(), expected_cell.cell())?;
-                Ok(())
-            },
-        )?;*/
 
     // Consistency check for Goal name + args == Term name + args == Unif goal name + args
     let (
@@ -200,48 +142,39 @@ impl Circuit<Fp> for UnificationCircuit {
         &is_fact_cell,
     )?;
     
-    //println!("goal: , {:?}:{:?}", self.unif.goal_name.name, self.unif.goal_name.args);
-    //println!("b: {:?}\n\n", b_flags);
-
     // Helper: determinisztikus flatten offsetek (head + children).
     // Ezt a segítségeddel már tudod (pl. ClauseTemplate-ből):
-    /*let rows_chip = RuleRowsChip::construct(cfg.rule_rows_cfg.clone());
-    let target_len = b_flags.len();
-    let mut built = 0usize;
-    let mut all_clause_rows = Vec::with_capacity(target_len);
+    let rows_chip = RuleRowsChip::construct(cfg.rule_rows_cfg.clone());
+    let mut all_clause_rows = Vec::new();
+    for (p_i, pred) in self.rules.predicates.iter().enumerate() {
+        for (c_i, clause) in pred.clauses.iter().enumerate() {
 
-    'outer: for (p_i, pred) in self.rules.predicates.iter().enumerate() {
-    for (c_i, clause) in pred.clauses.iter().enumerate() {
-        if built == target_len { break 'outer; }
+            let eqs_fp     = clause_equalities_as_index_tuples_fp(clause);
+            let offsets_fp = offsets_for_clause_fp(pred, clause);
 
-        let eqs_fp     = clause_equalities_as_index_tuples_fp(clause);
-        let offsets_fp = offsets_for_clause_fp(pred, clause);
+            let rows_ij = rows_chip.assign_rule_rows_fp(
+                layouter.namespace(|| format!("rows for pred{}_clause{}", p_i, c_i)),
+                &eqs_fp,
+                &offsets_fp,
+                MAX_DOT_DIM,
+            )?;
+            
 
-        let rows_ij = rows_chip.assign_rule_rows_fp(
-            layouter.namespace(|| format!("rows for pred{}_clause{}", p_i, c_i)),
-            &eqs_fp,
-            &offsets_fp,
-            pred.arity,
-            MAX_DOT_DIM,
-        )?;
-        
-
-        all_clause_rows.push(rows_ij);
-        built += 1;
-        }
+            all_clause_rows.push(rows_ij);
+            }
     }
 
-        let compress_chip = RowsCompressChip::construct(cfg.rows_compress_chip.clone());
-        let compressed_vec: Vec<AssignedCell<Fp,Fp>> = compress_chip.assign_compressed_active_simple(
-            layouter.namespace(|| "compress active clause rows (no r)"),
-            &all_clause_rows,  // [clause][row][k]
-            &b_flags,          // one-hot flags a SigCheck-ből
-        )?;
+    let compress_chip = RowsCompressChip::construct(cfg.rows_compress_chip.clone());
+    let compressed_vec: Vec<AssignedCell<Fp,Fp>> = compress_chip.assign_compressed_active_simple(
+        layouter.namespace(|| "compress active clause rows (no r)"),
+        &all_clause_rows,  // [clause][row][k]
+        &b_flags,          // one-hot flags a SigCheck-ből
+    )?;
 
-        let w_cells: Vec<AssignedCell<Fp,Fp>> = {
+    let w_cells: Vec<AssignedCell<Fp,Fp>> = {
         let mut w_fp: Vec<Fp> = Vec::new();
 
-        // head goal args (Fp-k, mert UnificationInputFp)
+        // head goal args (Fp-k, mert UnificationInputFp)           
         w_fp.extend_from_slice(&self.unif.goal_name.args);
 
         // body args (minden TermFp args)
@@ -295,24 +228,24 @@ impl Circuit<Fp> for UnificationCircuit {
         &w_cells,
         &compressed_vec,
         &flag_cell,
-        &is_fact_cell, // 👈 bekötve ide
+        &is_fact_cell,
     )?;
 
     let fact_hash_chip= FactChip::construct(cfg.fact_cfg.clone());
 
     let goal_name_salt_cell = layouter.assign_region(
-    || "assign goal_name_salt",
-    |mut region| {
-        region.assign_advice(
-            || "goal salt",
-            cfg.fact_cfg.salt, // any advice column, e.g., from FactConfig or your own column
-            0,
-            || Value::known(self.unif.goal_name.fact_hashes), // or however your salt is stored
-        )
-    },
-)?;
+        || "assign goal_name_salt",
+        |mut region| {
+            region.assign_advice(
+                || "goal salt",
+                cfg.fact_cfg.salt, // any advice column, e.g., from FactConfig or your own column
+                0,
+                || Value::known(self.unif.goal_name.fact_hashes), // or however your salt is stored
+            )
+        },
+    )?;
 
-        fact_hash_chip.assign(
+    fact_hash_chip.assign(
         layouter.namespace(|| "Fact membership"),
         &goal_name_cell,
         &goal_name_arg_cells,
@@ -320,8 +253,8 @@ impl Circuit<Fp> for UnificationCircuit {
         &is_fact_local_for_fact_check,
     )?;
 
-            */
-        Ok(())
+            
+    Ok(())
     }
 }
 
@@ -353,7 +286,6 @@ pub fn offsets_for_clause_fp(pred: &PredicateTemplateFp, clause: &ClauseTemplate
     for ch in &clause.children {
         offsets.push(cur);
         cur += ch.arity;
-        println!("ch: {:?}", ch.arity);
     }
 
     offsets

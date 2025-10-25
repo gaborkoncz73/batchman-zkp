@@ -4,7 +4,7 @@ use halo2_proofs::{
     plonk::Error,
 };
 
-use crate::chips::{fact_hash_chip::FactConfig};
+use crate::chips::{fact_check::fact_hash_chip::FactConfig};
 use crate::data::UnificationInputFp;
 
 /// Segédfüggvény a goal, unif_goal és term mezők bekötéséhez.
