@@ -64,9 +64,6 @@ pub enum ProofNode {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GoalEntry {
     pub goal: String,
-    pub goal_term: Term,
-    pub goal_unification: Unification,
-    pub substitution: Vec<String>,
     pub subtree: Vec<ProofNode>,
 }
 
@@ -76,44 +73,15 @@ pub struct Term {
     pub args: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Unification {
-    pub goal: String,
-    pub body: Vec<serde_json::Value>,
-}
-// ------------------------------------------------------
-// 🔹 Flat input struktúra (nem tartalmaz rekurzív subtree-t)
-// ------------------------------------------------------
-/*#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UnificationInput {
-    pub goal_name: String,
-    pub goal_term_args: Vec<String>,
-    pub goal_term_name: String,
-    pub unif_body: Vec<String>,          // pl. ["parent(alice,bob)", "ancestor(bob,john)"]
-    pub unif_goal: String,
-    pub substitution: Vec<String>,       // pl. ["X=bob", "Y=john"]
-    pub subtree_goals: Vec<String>,      // pl. ["parent(alice,bob)", "ancestor(bob,john)"]
-}*/
-
 #[derive(Clone, Debug)]
 pub struct UnificationInputFp {
     pub goal_name: TermFp,
-    pub goal_term_args: Vec<Fp>,
-    pub goal_term_name: Fp,
-    pub unif_body: Vec<TermFp>,
-    pub unif_goal: TermFp,
-    pub substitution: Vec<Fp>,
     pub subtree_goals: Vec<TermFp>,
 }
 impl Default for UnificationInputFp {
     fn default() -> Self {
         Self {
             goal_name: TermFp::default(),
-            goal_term_args: vec![Fp::zero(); MAX_ARITY],
-            goal_term_name: Fp::zero(),
-            unif_body: Vec::new(),
-            unif_goal: TermFp::default(),
-            substitution: Vec::new(),
             subtree_goals: Vec::new(),
         }
     }

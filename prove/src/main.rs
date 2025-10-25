@@ -38,8 +38,6 @@ struct Config {
 
 fn main() -> Result<()> {
     // --- inputok ---
-    println!("aa");
-
     let config_file = "input/facts.yaml";
 
     let file_content = fs::read_to_string(config_file)
@@ -64,11 +62,10 @@ fn main() -> Result<()> {
     let rules_fp = RuleTemplateFileFp::from(&rules);
     // --- Params + keygen ---
 
-    let params: Params<EqAffine> = Params::new(8);
+    let params: Params<EqAffine> = Params::new(7);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),
-        num_public_hashes:3,
     };
     let vk: VerifyingKey<EqAffine> = keygen_vk(&params, &shape)?;
     let pk: ProvingKey<EqAffine> = keygen_pk(&params, vk.clone(), &shape)?;
@@ -120,7 +117,6 @@ fn prove_tree(
         let circuit = UnificationCircuit {
             rules: rules_fp,
             unif: unif_input_fp,
-            num_public_hashes: public_hashes.len(),
         };
         // --- proof készítés ---
         let mut transcript = Blake2bWrite::<Vec<u8>, _, Challenge255<_>>::init(vec![]);
@@ -177,71 +173,16 @@ fn unification_input_from_goal(g: &GoalEntry, facts: &Vec<Config>) -> Unificatio
     //Creating the goal_name
     let goal_name_termfp = encode_str_to_termfp(&g.goal, facts);
     
-    //Creating the goal_term parts
-    let goal_term_name_fp = to_fp_value(&g.goal_term.name);
-
-    let mut goal_term_args_fp: Vec<Fp> = g.goal_term.args.iter().map(|s| to_fp_value(s)).collect();
-    goal_term_args_fp.resize(MAX_ARITY, Fp::zero());
-
-    //Creating the goal_unify_name
-    let goal_unif_name_termfp = encode_str_to_termfp(&g.goal_unification.goal, facts);
-
-
-    // body/subtree maradhat
-    let unif_body_fp: Vec<TermFp> = g.goal_unification
-        .body
-        .iter()
-        .map(|a|encode_json_val_to_termfp(a,facts)) // NINCS filter_map!
-        .collect();
-
+    //Creating the subtree goals term list
     let subtree_goals_fp: Vec<TermFp> = g.subtree
         .iter()
-        .map(|a|encode_proofnode_to_termfp(a,facts)) // NINCS filter_map!
+        .map(|a|encode_proofnode_to_termfp(a,facts)) 
         .collect();
 
     UnificationInputFp {
-        goal_name: goal_name_termfp,       // ⬅ már PADDELT RLC(name,args)
-        goal_term_name: goal_term_name_fp,
-        goal_term_args: goal_term_args_fp,      // ⬅ PADDELT args, hogy a chip ugyanígy lássa
-        unif_body: unif_body_fp,
-        unif_goal: goal_unif_name_termfp,       // ⬅ ugyanaz az érték
-        substitution: g.substitution.iter().map(|s| to_fp_value(s)).collect(),
+        goal_name: goal_name_termfp, 
         subtree_goals: subtree_goals_fp,
     }
-}
-
-
-pub fn encode_predicate_to_fp_vec(input: &str) -> Vec<Fp> {
-    // 1️⃣ Szétszedjük a bemenetet: pl. "ancestor(a,b,c)" -> "ancestor", ["a", "b", "c"]
-    let open = input.find('(').unwrap_or(input.len());
-    let close = input.find(')').unwrap_or(input.len());
-    let name = &input[..open].trim();
-
-    let args_str = if open < close {
-        &input[open + 1..close]
-    } else {
-        ""
-    };
-
-    let args: Vec<&str> = args_str
-        .split(',')
-        .filter(|s| !s.trim().is_empty())
-        .map(|s| s.trim())
-        .collect();
-
-    // 2️⃣ Token lista: [predicate_name] + args
-    let mut tokens: Vec<Fp> = Vec::with_capacity(MAX_ARITY);
-    tokens.push(to_fp_value(name));
-    for arg in &args {
-        tokens.push(to_fp_value(arg));
-    }
-
-    // 3️⃣ Padding nullákkal MAX_ARITY-ig
-    while tokens.len() < MAX_ARITY + 1{
-        tokens.push(Fp::zero());
-    }
-
-    tokens
 }
 
 
@@ -293,16 +234,6 @@ pub fn encode_str_to_termfp(input: &str, facts: &Vec<Config>) -> TermFp {
         name: name_fp,
         args,
         fact_hashes: salt,
-    }
-}
-
-fn encode_json_val_to_termfp(v: &serde_json::Value, facts: &Vec<Config>) -> TermFp {
-    if let Some(s) = v.as_str() {
-        encode_str_to_termfp(s,&facts) // a meglévő, string → TermFp
-    } else if v == &serde_json::Value::Bool(true) {
-        TermFp { name: to_fp_value("__TRUE__"), args: vec![Fp::zero(); MAX_ARITY], fact_hashes: Fp::zero() }
-    } else {
-        TermFp { name: to_fp_value("__INVALID__"), args: vec![Fp::zero(); MAX_ARITY], fact_hashes: Fp::zero()  }
     }
 }
 

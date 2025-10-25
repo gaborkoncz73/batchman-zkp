@@ -32,11 +32,11 @@ fn main() -> anyhow::Result<()> {
 
 
     // same parameters as proving side
+    
     let params: Params<EqAffine> = Params::new(8);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),
-        num_public_hashes: 0,
     };
     let vk: VerifyingKey<EqAffine> = keygen_vk(&params, &shape)?;
     let params = Arc::new(params);

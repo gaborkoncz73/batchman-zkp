@@ -11,6 +11,8 @@ use crate::{chips::poseidon_hash::{PoseidonHashChip, PoseidonHashConfig}, utils_
 
 #[derive(Clone, Debug)]
 pub struct FactConfig {
+    pub name: Column<Advice>,
+    pub args: Column<Advice>,
     pub fact: Column<Advice>,
     pub salt: Column<Advice>,
     pub hash_public: Column<Instance>,
@@ -38,6 +40,8 @@ impl FactChip {
         let fact = meta.advice_column();
         let salt = meta.advice_column();
         let hash_advice = meta.advice_column();
+        let name = meta.advice_column();
+        let args = meta.advice_column();
         //let hash_public = meta.instance_column();
         let is_fact = meta.advice_column();
         meta.enable_equality(hash_public); 
@@ -47,7 +51,7 @@ impl FactChip {
         meta.enable_equality(is_fact);
 
         let pos_cfg = PoseidonHashChip::configure(meta);
-        FactConfig { fact, salt, hash_public, hash_advice, is_fact, pos_cfg }
+        FactConfig { name, args, fact, salt, hash_public, hash_advice, is_fact, pos_cfg }
     }
  pub fn assign(
         &self,

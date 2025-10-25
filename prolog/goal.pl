@@ -1,29 +1,46 @@
 :- use_module(meta_interpreter).
 :- use_module(library(http/json)).
-
 :- consult(rules).
 :- consult(policy).
 
-% run the proof for ancestor(x,y)
+% --- goal to prove ---
+goal(ancestor(alice, john)).
+
+% --- run the proof ---
 run_proof(Tree) :-
-    Goal = ancestor(alice, john),
+    goal(Goal),
     prove(Goal, Tree).
 
-% export proof tree as JSON
+% --- export proof tree as pretty JSON ---
 export_proof(File) :-
     (   run_proof(Tree)
-    ->  open(File, write, Stream),
-        json_write_dict(Stream, Tree, [width(128), serialize_unknown(true)]),
-        close(Stream),
-        writeln('Proof found and exported')
-    ;   writeln('No proof could be found'),
-        open(File, write, Stream),
-        json_write_dict(Stream, _{error:"no_proof"}, [width(128)]),
-        close(Stream)
+    ->  setup_call_cleanup(
+            open(File, write, Stream),
+            json_write_dict(Stream, Tree,
+                [width(80), indent(4), serialize_unknown(true)]
+            ),
+            close(Stream)
+        ),
+        format("✅ Proof found and exported to '~w'~n", [File])
+    ;   setup_call_cleanup(
+            open(File, write, Stream),
+            json_write_dict(Stream, _{error:"no_proof"},
+                [width(80), indent(4)]
+            ),
+            close(Stream)
+        ),
+        setup_call_cleanup(
+            open(File, write, Stream),
+            json_write_dict(Stream, _{error:"no_proof"},
+                [width(128), indent(4)]
+            ),
+            close(Stream)
+        ),
+        format("⚠️ No proof found, wrote fallback JSON to '~w'~n", [File])
     ).
 
-% run automatically on startup
-:- initialization(main).
+% --- auto-run on startup ---
+:- initialization(main, main).
 
 main :-
     export_proof('input/proof_tree.json'),

@@ -4,7 +4,7 @@ use halo2_proofs::{
     plonk::Error,
 };
 use crate::chips::sig_rlc_chip::SigRlcChip;
-use crate::chips::sig_check_chip::SigCheckConfig;
+use crate::chips::finding_rule::sig_check_chip::SigCheckConfig;
 
 #[derive(Clone, Debug)]
 pub struct SigOrCompareChip {

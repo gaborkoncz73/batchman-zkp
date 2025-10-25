@@ -7,7 +7,7 @@ use halo2_proofs::{
 use crate::chips::{
     rlc_chip::{RlcFixedChip, RlcFixedConfig},
     sig_rlc_chip::SigRlcChip,
-    sig_or_compare_chip::SigOrCompareChip,
+    finding_rule::sig_or_compare_chip::SigOrCompareChip,
 };
 use crate::utils_2::common_helpers::MAX_CANDIDATES;
 

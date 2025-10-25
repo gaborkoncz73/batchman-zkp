@@ -157,48 +157,6 @@ impl RlcFixedChip {
             },
         )
     }
-
-    /// Páronkénti összehasonlítás ugyanazzal az RLC-vel (name + MAX_ARITY args)
-    pub fn cmp_term_lists_pairwise_with_rlc_cells(
-        &self,
-        mut layouter: impl Layouter<Fp>,
-        left: &[(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>)],
-        right: &[(AssignedCell<Fp, Fp>, Vec<AssignedCell<Fp, Fp>>)],
-    ) -> Result<(), Error> {
-        assert_eq!(left.len(), right.len(), "pair count mismatch");
-
-        for i in 0..left.len() {
-            let (lname, largs) = &left[i];
-            let (rname, rargs) = &right[i];
-
-            // állítsuk össze a bemenet listákat: [name, args...]
-            let mut l_inputs = Vec::with_capacity(1 + MAX_ARITY);
-            l_inputs.push(lname.clone());
-            for j in 0..MAX_ARITY { l_inputs.push(largs[j].clone()); }
-
-            let mut r_inputs = Vec::with_capacity(1 + MAX_ARITY);
-            r_inputs.push(rname.clone());
-            for j in 0..MAX_ARITY { r_inputs.push(rargs[j].clone()); }
-
-            // fold mindkét oldal (from_cells → teljes wiring)
-            let (l_combined, _) = self.assign_from_cells(
-                layouter.namespace(|| format!("RLC L[{}]", i)),
-                &l_inputs,
-            )?;
-            let (r_combined, _) = self.assign_from_cells(
-                layouter.namespace(|| format!("RLC R[{}]", i)),
-                &r_inputs,
-            )?;
-
-            // equality ugyanabban a turn-ben
-            layouter.assign_region(
-                || format!("pair {} eq", i),
-                |mut region| region.constrain_equal(l_combined.cell(), r_combined.cell()),
-            )?;
-        }
-
-        Ok(())
-    }
 }
 
 

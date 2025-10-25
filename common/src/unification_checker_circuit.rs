@@ -1,12 +1,12 @@
 use std::sync::Mutex;
 use halo2_proofs::{
-    circuit::{ AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner},
+    circuit::{Chip, Layouter, SimpleFloorPlanner},
     pasta::Fp,
     plonk::{Circuit, Column, ConstraintSystem, Error, Instance},
 };
 use crate::{
     chips::{
-         body_subtree_chip::{BodySubtreeChip, UnifCompareConfig}, fact_hash_chip::{self, FactChip, FactConfig}, rlc_chip::RlcFixedChip, rlc_goal_check_chip::{RlcGoalCheckChip, RlcGoalCheckConfig}, rolc_compare_chip::RlcCompareChip, rows_compress_config::{RowsCompressChip, RowsCompressConfig}, rule_rows_chip::{RuleRowsChip, RuleRowsConfig}, sig_check_chip::{SigCheckChip, SigCheckConfig}, ConsistencyChip, DotChip
+         finding_rule::body_subtree_chip::{UnifCompareConfig}, fact_hash_chip::{FactChip, FactConfig}, rlc_chip::RlcFixedChip, rows_compress_config::{RowsCompressChip, RowsCompressConfig}, rule_rows_chip::{RuleRowsChip, RuleRowsConfig}, finding_rule::sig_check_chip::{SigCheckChip, SigCheckConfig}, ConsistencyChip, DotChip
     },
     data::{ClauseTemplateFp, FactTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, UnificationInputFp},
     utils_2::{common_helpers::to_fp_value, consistency_helpers::bind_goal_name_args_inputs, predicate_helpers::bind_proof_and_candidates_sig_pairs},
@@ -34,7 +34,6 @@ pub fn get_constraints() -> u64 {
 pub struct UnificationCircuit {
     pub rules: RuleTemplateFileFp,
     pub unif: UnificationInputFp,
-    pub num_public_hashes: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -43,7 +42,6 @@ pub struct UnifConfig {
     pub dot_cfg: <DotChip as Chip<Fp>>::Config,
     //pub hash_cfg: PoseidonHashConfig,
     pub rlc_cfg: <RlcFixedChip as Chip<Fp>>::Config,
-    pub goal_check_cfg: RlcGoalCheckConfig,
     pub unif_cmp_cfg: UnifCompareConfig,
     pub sig_check_cfg: SigCheckConfig,
     pub rows_compress_chip :RowsCompressConfig,
@@ -65,14 +63,8 @@ impl Circuit<Fp> for UnificationCircuit {
             },
             unif: UnificationInputFp {
                 goal_name: TermFp::default(),
-                goal_term_args: vec![],
-                goal_term_name: Fp::zero(),
-                unif_body: vec![],
-                unif_goal: TermFp::default(),
-                substitution: vec![],
                 subtree_goals: vec![],
             },
-            num_public_hashes: 3,
         }
     }
 
@@ -84,7 +76,6 @@ impl Circuit<Fp> for UnificationCircuit {
         let cons_cfg = ConsistencyChip::configure(meta);
         let dot_cfg = DotChip::configure(meta);
         //let hash_cfg = PoseidonHashChip::configure(meta);
-        let goal_check_cfg = RlcGoalCheckChip::configure(meta, alpha);
         
         let rlc_cfg = RlcFixedChip::configure(meta, alpha);
         let unif_cmp_cfg: UnifCompareConfig = UnifCompareConfig::configure(meta);
@@ -102,7 +93,7 @@ impl Circuit<Fp> for UnificationCircuit {
         let fact_cfg = FactChip::configure(meta, instance_hashes);
 
 
-        UnifConfig { cons_cfg, dot_cfg, /*hash_cfg*/ rlc_cfg, goal_check_cfg,unif_cmp_cfg, sig_check_cfg, rows_compress_chip, rule_rows_cfg, fact_cfg, instance_hashes }
+        UnifConfig { cons_cfg, dot_cfg, /*hash_cfg*/ rlc_cfg,unif_cmp_cfg, sig_check_cfg, rows_compress_chip, rule_rows_cfg, fact_cfg, instance_hashes }
     }
 
     fn synthesize(
@@ -150,44 +141,12 @@ impl Circuit<Fp> for UnificationCircuit {
     let (
         goal_name_cell,
         goal_name_arg_cells,
-        term_name_cell,
-        term_arg_cells,
-        unif_goal_name_cell,
-        unif_goal_arg_cells,
     ) = bind_goal_name_args_inputs(
         "Bind parent inputs",
         &mut layouter,
-        &cfg.goal_check_cfg,
+        &cfg.fact_cfg,
         &self.unif,
     )?;
-
-    let goal_check = RlcGoalCheckChip::construct(cfg.goal_check_cfg.clone());
-    goal_check.assign(
-        layouter.namespace(|| "GoalCheck"),
-        &goal_name_cell,
-        &goal_name_arg_cells,
-        &term_name_cell,
-        &term_arg_cells,
-        &unif_goal_name_cell,
-        &unif_goal_arg_cells,
-    )?;
-
-    // Consistency check for Subtree and Body 
-    let body_chip = BodySubtreeChip::construct(cfg.unif_cmp_cfg.clone());
-    let (body_pairs, subtree_pairs) = body_chip.assign(
-        layouter.namespace(|| "Body-Subtree"),
-        &self.unif.unif_body,
-        &self.unif.subtree_goals,
-    )?;
-
-    let rlc_cmp = RlcCompareChip::construct(cfg.rlc_cfg.clone());
-    rlc_cmp.assign_pairwise(
-        layouter.namespace(|| "RLC compare"),
-        &body_pairs,
-        &subtree_pairs,
-    )?;
-
-
 
     //Check if the used unification is a valid rule
     let (proof_pairs, candidate_pairs_all) = bind_proof_and_candidates_sig_pairs(
@@ -195,18 +154,16 @@ impl Circuit<Fp> for UnificationCircuit {
         &mut layouter,
         &cfg.unif_cmp_cfg,
         &self.unif.goal_name,   // goal TermFp
-        &self.unif.unif_body,   // body TermFp-k
+        &self.unif.subtree_goals,   // subtree TermFp vec
         &self.rules.predicates, // predikátumok
     )?;
 
-    // is_fact = (body üres?) — itt egyszerűen tanúként bevisszük:
-
     // Rules-only check (fact ág kommentelve)
-    let sig_chip = SigCheckChip::construct(cfg.sig_check_cfg.clone());
     let is_fact_cell = layouter.assign_region(
         || "is_fact",
         |mut region| {
-            // a 3. proof-pár második komponense (arity)
+
+            // 3. component, name, arity, ? than its fact
             let fact_val = proof_pairs.get(1)
                 .map(|(_name, arity)| {
                     arity.value().map(|v| if *v == Fp::zero() { Fp::one() } else { Fp::zero() })
@@ -222,7 +179,7 @@ impl Circuit<Fp> for UnificationCircuit {
         },
     )?;
 
-        let is_fact_local_for_fact_check = layouter.assign_region(
+    let is_fact_local_for_fact_check = layouter.assign_region(
         || "copy is_fact for FactChip",
         |mut region| {
             let local = region.assign_advice(
@@ -235,11 +192,11 @@ impl Circuit<Fp> for UnificationCircuit {
             Ok(local)
         },
     )?;
-    
+    let sig_chip = SigCheckChip::construct(cfg.sig_check_cfg.clone());
     let b_flags = sig_chip.assign(
         layouter.namespace(|| "Sig membership (rules or fact placeholder)"),
         &proof_pairs,
-        &candidate_pairs_all, // this can be &[] for fact
+        &candidate_pairs_all,
         &is_fact_cell,
     )?;
     
@@ -248,7 +205,7 @@ impl Circuit<Fp> for UnificationCircuit {
 
     // Helper: determinisztikus flatten offsetek (head + children).
     // Ezt a segítségeddel már tudod (pl. ClauseTemplate-ből):
-    let rows_chip = RuleRowsChip::construct(cfg.rule_rows_cfg.clone());
+    /*let rows_chip = RuleRowsChip::construct(cfg.rule_rows_cfg.clone());
     let target_len = b_flags.len();
     let mut built = 0usize;
     let mut all_clause_rows = Vec::with_capacity(target_len);
@@ -285,10 +242,10 @@ impl Circuit<Fp> for UnificationCircuit {
         let mut w_fp: Vec<Fp> = Vec::new();
 
         // head goal args (Fp-k, mert UnificationInputFp)
-        w_fp.extend_from_slice(&self.unif.goal_term_args);
+        w_fp.extend_from_slice(&self.unif.goal_name.args);
 
         // body args (minden TermFp args)
-        for t in &self.unif.unif_body {
+        for t in &self.unif.subtree_goals {
             w_fp.extend_from_slice(&t.args);
         }
 
@@ -363,7 +320,7 @@ impl Circuit<Fp> for UnificationCircuit {
         &is_fact_local_for_fact_check,
     )?;
 
-
+            */
         Ok(())
     }
 }
@@ -396,6 +353,7 @@ pub fn offsets_for_clause_fp(pred: &PredicateTemplateFp, clause: &ClauseTemplate
     for ch in &clause.children {
         offsets.push(cur);
         cur += ch.arity;
+        println!("ch: {:?}", ch.arity);
     }
 
     offsets
