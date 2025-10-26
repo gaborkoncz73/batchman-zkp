@@ -1,8 +1,13 @@
-use std::fs;
+mod writer;
+pub mod helpers;
+
+use std::path::Path;
+use std::{collections::HashMap, fs};
 use std::sync::Arc;
 use anyhow::Result;
-use common::{data::{ GoalEntry, ProofNode, RuleTemplateFileFp, TermFp}, utils_2::common_helpers::MAX_FACTS_HASHES};
+use common::data::RuleTemplateFileFp;
 use rand_core::OsRng;
+use rayon::prelude::*;
 
 use halo2_proofs::{
     pasta::{EqAffine, Fp},
@@ -11,57 +16,52 @@ use halo2_proofs::{
     transcript::{Blake2bWrite, Challenge255},
 };
 
-use halo2_gadgets::poseidon::primitives::{
-    Hash as PoseidonHash, P128Pow5T3, ConstantLength,
-};
-
-use rayon::prelude::*;
-
 use common::{data, data::UnificationInputFp};
 use common::unification_checker_circuit::UnificationCircuit;
-use common::utils_2::common_helpers::{ to_fp_value, MAX_ARITY};
+use common::io::read_fact_hashes::read_fact_hashes;
+use data::Config;
+use helpers::{build_fact_map, unification_input_from_goal_and_facts};
 
-mod writer;
-use serde::{ Deserialize};
-use writer::{init_output_dir, write_proof};
+use writer::{write_proof};
 
-//Config struct to read the yaml
-#[derive(Debug, Deserialize)]
-struct Config {
-    predicate: String,
-    args: Vec<String>,
-    salt: String,
-}
-
+use crate::writer::remove_proofs_file;
 
 fn main() -> Result<()> {
-    // --- inputok ---
+    // Fact struct
     let config_file = "input/facts.yaml";
-
     let file_content = fs::read_to_string(config_file)
         .expect("Failed to read the YAML file.");
+    let fact_configs: Vec<Config> = serde_yaml::from_str(&file_content)
+        .expect("Wrong YAML format");
 
-    let configs: Vec<Config> = serde_yaml::from_str(&file_content)
-        .expect("Wring YAML format");
+    // Building fact HashMap
+    let facts = build_fact_map(&fact_configs);
 
+    // Processing the rules
     let rules_text = fs::read_to_string("input/rules_template.json")?;
     let rules: data::RuleTemplateFile = serde_json::from_str(&rules_text)?;
+    let rules_fp = RuleTemplateFileFp::from(&rules);
 
+    // Processing the proof tree
     let proof_text = fs::read_to_string("input/proof_tree.json")?;
     let tree: Vec<data::ProofNode> = serde_json::from_str(&proof_text)?;
 
+    // Public input hashes
+    let path = Path::new("output/fact_hashes.json");
+    let public_hashes: Vec<Fp> = read_fact_hashes(path)?;
+
+    // Debug
     println!(
         "Loaded {} predicates, {} facts, {} proof nodes.",
         rules.predicates.len(),
         rules.facts.len(),
         tree.len()
     );
-    let rules_fp = RuleTemplateFileFp::from(&rules);
-    // --- Params + keygen ---
-
+    
+    // Params + keygen
     let params: Params<EqAffine> = Params::new(8);
     let shape = UnificationCircuit {
-        rules: rules_fp,
+        rules: rules_fp.clone(),
         unif: UnificationInputFp::default(),
     };
     let vk: VerifyingKey<EqAffine> = keygen_vk(&params, &shape)?;
@@ -70,52 +70,41 @@ fn main() -> Result<()> {
     let params = Arc::new(params);
     let pk = Arc::new(pk);
 
-    init_output_dir()?;
+    // Clearing the unif_proofs.json
+    remove_proofs_file("unif_proofs.json")?;
 
+    // Starting the proving from the root
     tree.iter()
-    .try_for_each(|node| {
-        if let Err(e) = prove_tree(&rules, node, &params,  &pk, &configs) {
-            eprintln!("Error on node: {e:?}");
-            return Err(e);
-        }
-        Ok(())
-    })?;
+        .try_for_each(|node|prove_tree(&rules_fp, node, &params,  &pk, &facts, &public_hashes))?;
 
     println!("All unification goals proof saved!");
     Ok(())
 }
 
+// Recursive proving function
 fn prove_tree(
-    rules: &data::RuleTemplateFile,
+    rules_fp: &data::RuleTemplateFileFp,
     node: &data::ProofNode,
     params: &Arc<Params<EqAffine>>,
     pk: &Arc<ProvingKey<EqAffine>>,
-    facts: &Vec<Config>,
+    facts: &HashMap<String, Fp>,
+    public_hashes: &Vec<Fp>,
 ) -> Result<()> {
     if let data::ProofNode::GoalNode(g) = node {
         
-        let rules_fp = RuleTemplateFileFp::from(rules);
+        // Constructing the Unification inputs from the goal node and the facts hashmap
+        let unif_input_fp = unification_input_from_goal_and_facts(g, facts);
 
-        let unif_input_fp = unification_input_from_goal(g, facts);
-
-        let public_hashes: Vec<Fp> = facts
-            .iter()
-            .map(|f| {
-                let args_ref: Vec<&str> = f.args.iter().map(|s| s.as_str()).collect();
-                fact_hash_native_salted(&f.predicate, &args_ref, &f.salt)
-            })
-            .chain(std::iter::repeat(Fp::zero()))
-            .take(MAX_FACTS_HASHES)
-            .collect();
-        // Circuit Fp bemenettel
+        // Circuit Fp with proper inputs
         let circuit = UnificationCircuit {
-            rules: rules_fp,
+            rules: rules_fp.clone(),
             unif: unif_input_fp,
         };
-        // --- proof készítés ---
+
+        // Proof generation
         let mut transcript = Blake2bWrite::<Vec<u8>, _, Challenge255<_>>::init(vec![]);
 
-        let public_hashes_slice: &[Fp] = &public_hashes;        // len == num_public_hashes
+        let public_hashes_slice: &[Fp] = &public_hashes;        
         let instances: &[&[&[Fp]]] = &[&[public_hashes_slice]]; 
         halo2_proofs::plonk::create_proof(
             params.as_ref(),
@@ -127,148 +116,11 @@ fn prove_tree(
         )?;
         let proof = transcript.finalize();
 
-        write_proof("unif", &proof, &instances)?;
+        write_proof("unif", &proof)?;
 
-        // rekurzió
+        // Recursion
         g.subtree.par_iter()
-            .try_for_each(|sub| prove_tree(rules, sub, params, pk, facts))?;
+            .try_for_each(|sub| prove_tree(rules_fp, sub, params, pk, facts, &public_hashes))?;
     }
     Ok(())
-}
-
-
-
-pub fn rlc_encode_cpu(tokens: &[Fp], alpha: Fp) -> Fp {
-    let mut acc = Fp::zero();
-    for &t in tokens {
-        acc = acc * alpha + t;
-    }
-    acc
-}
-
-fn unification_input_from_goal(g: &GoalEntry, facts: &Vec<Config>) -> UnificationInputFp {
-    //Creating the goal_name
-    let goal_name_termfp = encode_str_to_termfp(&g.goal, facts);
-    
-    //Creating the subtree goals term list
-    let subtree_goals_fp: Vec<TermFp> = g.subtree
-        .iter()
-        .map(|a|encode_proofnode_to_termfp(a,facts)) 
-        .collect();
-
-    UnificationInputFp {
-        goal_name: goal_name_termfp, 
-        subtree_goals: subtree_goals_fp,
-    }
-}
-
-
-
-/// ✅ Stringből (pl. "ancestor(a,b,c)") készít egy TermFp struktúrát.
-/// Ha kevesebb argumentum van, 0-val feltölti MAX_ARITY-ig.
-fn encode_str_to_termfp(input: &str, facts: &Vec<Config>) -> TermFp {
-    // 1️⃣ Szétválasztjuk a név és az argumentumokat
-    let open = input.find('(').unwrap_or(input.len());
-    let close = input.find(')').unwrap_or(input.len());
-
-    let name_str = input[..open].trim();
-    let args_str = if open < close {
-        &input[open + 1..close]
-    } else {
-        ""
-    };
-
-    // 2️⃣ Argumentumok listája
-    let mut args: Vec<Fp> = args_str
-        .split(',')
-        .filter(|s| !s.trim().is_empty())
-        .map(|s| to_fp_value(s.trim()))
-        .collect();
-
-    // 3️⃣ Padding nullákkal MAX_ARITY-ig
-    while args.len() < MAX_ARITY {
-        args.push(Fp::zero());
-    }
-    let name_fp = to_fp_value(name_str);
-    let hashed = fact_hash_native_term(&name_fp, &args);
-
-
-        let salt = facts
-            .iter()
-            .find_map(|conf| {
-                let name = to_fp_value(&conf.predicate);
-                let args: Vec<Fp> = conf.args.iter().map(|s| to_fp_value(s)).collect();
-                let example_hashed = fact_hash_native_term(&name, &args);
-                if hashed == example_hashed {
-                    Some(to_fp_value(&conf.salt))
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(Fp::zero());
-    // 4️⃣ TermFp létrehozása
-    TermFp {
-        name: name_fp,
-        args,
-        fact_hashes: salt,
-    }
-}
-
-fn encode_proofnode_to_termfp(n: &ProofNode, facts: &Vec<Config>) -> TermFp {
-    match n {
-        ProofNode::GoalNode(child) => encode_str_to_termfp(&child.goal, facts),
-        // ha van külön bool/leaf variánsod, azt kezeld itt:
-        // ProofNode::Bool(true) | ProofNode::LeafTrue => ...
-        // A példád alapján a JSON-ban "true" szerepel, ezért:
-        _ => TermFp { name: to_fp_value("__TRUE__"), args: vec![Fp::zero(); MAX_ARITY], fact_hashes: Fp::zero()  },
-    }
-}
-
-
-
-#[inline]
-fn poseidon_hash2_native(a: Fp, b: Fp) -> Fp {
-    // This matches: Hash::<Fp, _, P128Pow5T3, ConstantLength<2>, 3, 2> in-circuit
-    PoseidonHash::<Fp, P128Pow5T3, ConstantLength<2>, 3, 2>::init()
-                .hash([a, b])
-}
-
-// Native version of the chip’s `hash_list` folding:
-// acc := 0; for v in values { acc = Poseidon(acc, v) } ; return acc
-#[inline]
-fn poseidon_hash_list_native(values: &[Fp]) -> Fp {
-    let mut acc = Fp::zero();
-    for &v in values {
-        acc = poseidon_hash2_native(acc, v);
-    }
-    acc
-}
-
-/// Public function: hash(name, args, salt) exactly like the chip.
-///
-/// Inputs:
-/// - `name`: predicate/fact name (e.g. "parent")
-/// - `args`: predicate args as strings (e.g. ["alice","bob"])
-/// - `salt`: Fp salt (convert your BigUint→Fp off-chain the same way you do in-circuit)
-///
-/// Output:
-/// - Fp hash identical to the chip’s Poseidon fold.
-pub fn fact_hash_native_salted(name: &str, args: &[&str], salt: &str) -> Fp {
-    let mut tokens: Vec<Fp> = Vec::with_capacity(1 + args.len() + 1);
-    tokens.push(to_fp_value(name));
-    for a in args {
-        tokens.push(to_fp_value(a));
-    }
-    tokens.push(to_fp_value(salt));
-
-    poseidon_hash_list_native(&tokens)
-}
-
-pub fn fact_hash_native_term(name: &Fp, args: &[Fp]) -> Fp {
-    let mut tokens: Vec<Fp> = Vec::with_capacity(1 + args.len() + 1);
-    tokens.push(*name);
-    for a in args {
-        tokens.push(*a);
-    }
-    poseidon_hash_list_native(&tokens)
 }

@@ -11,5 +11,4 @@ common = { workspace = true }
 halo2_proofs = { workspace = true }
 rayon = { workspace = true }
 base64 = { workspace = true }
-halo2curves = { workspace = true }
-num-bigint = { workspace = true }
+

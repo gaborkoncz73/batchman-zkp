@@ -1,5 +1,5 @@
 [package]
-name = "prove"
+name = "issue"
 version = "0.1.0"
 edition = "2024"
 
@@ -15,4 +15,9 @@ halo2curves = { workspace = true }
 halo2_gadgets = { workspace = true }
 once_cell = { workspace = true }
 rand_core  = { workspace = true, features = ["getrandom"] }
+
+
+num-bigint = { workspace = true, features = ["serde"]}
 serde_yaml = { workspace = true }
+
+snark-verifier = "0.2.3"

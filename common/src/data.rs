@@ -244,3 +244,10 @@ impl Default for FactTemplateFp {
     }
 }
 
+// Config struct to read the yaml
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    pub predicate: String,
+    pub args: Vec<String>,
+    pub salt: String,
+}

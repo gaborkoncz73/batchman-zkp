@@ -3,54 +3,34 @@ use std::{
     io::{BufWriter, Read, Write},
     path::Path, sync::Mutex,
 };
-use num_bigint::BigUint;
+use anyhow::Result;
 use once_cell::sync::Lazy;
-use halo2_proofs::pasta::Fp;
 use serde::{Serialize, Deserialize};
 use base64::{engine::general_purpose, Engine as _};
-use halo2curves::ff::PrimeField;
 #[derive(Serialize, Deserialize)]
 struct ProofEntry {
     proof_b64: String,
-    inputs_b64: Vec<Vec<String>>,
 }
-
-pub fn init_output_dir() -> anyhow::Result<()> {
-    let out_dir = Path::new("out");
-    if out_dir.exists() {
-        fs::remove_dir_all(out_dir)?;
+pub fn remove_proofs_file(name: &str) -> Result<()> {
+    let file_path = Path::new("output").join(format!("{}", name));
+    if file_path.exists() {
+        fs::remove_file(file_path)?;
     }
-    fs::create_dir_all(out_dir)?;
     Ok(())
 }
 
 static FILE_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
-
-pub fn write_proof(name: &str, proof_bytes: &[u8], instances: &[&[&[Fp]]]) -> anyhow::Result<()> {
-    // 🔒 Mutex lock – csak egy szál írhat egyszerre
+pub fn write_proof(name: &str, proof_bytes: &[u8]) -> anyhow::Result<()> {
+    // Mutex lock – one thread can write at a time
     let _guard = FILE_LOCK.lock().unwrap();
 
-    let out_dir = Path::new("out");
+    let out_dir = Path::new("output");
     fs::create_dir_all(out_dir)?;
     let file_path = out_dir.join(format!("{}_proofs.json", name));
 
-    let inputs_b64: Vec<Vec<String>> = instances
-        .iter()
-        .flat_map(|circuits| circuits.iter()) // iterate per circuit
-        .map(|cols| {
-        cols.iter()
-            .map(|fp| {
-                let bytes = fp.to_repr(); // 32-byte representation
-                let int = BigUint::from_bytes_le(bytes.as_ref());
-                int.to_str_radix(10) // decimal string
-            })
-            .collect::<Vec<String>>()
-    })
-    .collect();
-
     let proof_b64 = general_purpose::STANDARD.encode(proof_bytes);
-    let entry = ProofEntry { proof_b64, inputs_b64 };
+    let entry = ProofEntry { proof_b64 };
 
     let mut existing: Vec<ProofEntry> = if file_path.exists() {
         let mut content = String::new();
