@@ -5,11 +5,12 @@ use halo2_proofs::{
 };
 use crate::{
     chips::{
-         finding_rule::body_subtree_chip::{UnifCompareConfig}, fact_check::fact_hash_chip::{FactChip, FactConfig}, rlc_chip::RlcFixedChip, value_check::rows_compress_config::{RowsCompressChip, RowsCompressConfig}, value_check::rule_rows_chip::{RuleRowsChip, RuleRowsConfig}, finding_rule::sig_check_chip::{SigCheckChip, SigCheckConfig}, value_check::dot_chip::DotChip
+         fact_check::fact_hash_chip::{FactChip, FactConfig}, finding_rule::{body_subtree_chip::UnifCompareConfig, sig_check_chip::{SigCheckChip, SigCheckConfig}}, rlc_chip::RlcFixedChip, rules_check_chip::{RulesChip, RulesConfig}, value_check::{dot_chip::DotChip, rows_compress_config::{RowsCompressChip, RowsCompressConfig}, rule_rows_chip::{RuleRowsChip, RuleRowsConfig}}
     },
     data::{ClauseTemplateFp, FactTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, UnificationInputFp},
-    utils_2::{common_helpers::to_fp_value, consistency_helpers::bind_goal_name_args_inputs, predicate_helpers::bind_proof_and_candidates_sig_pairs},
+    utils_2::{common_helpers::to_fp_value, consistency_helpers::{bind_goal_name_args_inputs, bind_rules}, predicate_helpers::bind_proof_and_candidates_sig_pairs},
 };
+use halo2_proofs::circuit::Value;
 pub const MAX_DOT_DIM: usize = 10;
 
 // Circuit definition
@@ -29,8 +30,10 @@ pub struct UnifConfig {
     pub rows_compress_chip :RowsCompressConfig,
     pub rule_rows_cfg: RuleRowsConfig,
     pub fact_cfg: FactConfig,
+    pub rules_check_cfg: RulesConfig,
 
-   pub instance_hashes: Column<Instance>,
+    pub public_facts_hashes: Column<Instance>,
+    pub public_rules_hash: Column<Instance>,
 }
 
 impl Circuit<Fp> for UnificationCircuit {
@@ -62,22 +65,37 @@ impl Circuit<Fp> for UnificationCircuit {
         let rows_compress_chip = RowsCompressChip::configure(meta);
         let rule_rows_cfg: RuleRowsConfig = RuleRowsChip::configure(meta);
 
-        let instance_hashes = meta.instance_column();
+        let public_facts_hashes = meta.instance_column();
+        let public_rules_hash = meta.instance_column();
        
-        meta.enable_equality(instance_hashes);
+        meta.enable_equality(public_facts_hashes);
+        meta.enable_equality(public_rules_hash);
 
-        let fact_cfg = FactChip::configure(meta, instance_hashes);
+        let fact_cfg = FactChip::configure(meta, public_facts_hashes);
+        let rules_check_cfg = RulesChip::configure(meta, public_rules_hash);
 
-
-        UnifConfig {dot_cfg, rlc_cfg,unif_cmp_cfg, sig_check_cfg, rows_compress_chip, rule_rows_cfg, fact_cfg, instance_hashes }
+        UnifConfig {dot_cfg, rlc_cfg,unif_cmp_cfg, sig_check_cfg, rows_compress_chip, rule_rows_cfg, fact_cfg, rules_check_cfg, public_facts_hashes, public_rules_hash }
     }
 
     fn synthesize(
         &self,
         cfg: Self::Config,
         mut layouter: impl Layouter<Fp>,
-    ) -> Result<(), Error> {
-        use halo2_proofs::circuit::Value;
+    ) -> Result<(), Error>
+    {
+        let binded_flattened_rules =
+            bind_rules("Bind rules",
+                &mut layouter,
+                &cfg.rules_check_cfg,
+                &self.rules,
+            )?;
+
+        let rules_check_chip= RulesChip::construct(cfg.rules_check_cfg.clone());
+
+        rules_check_chip.assign(
+            layouter.namespace(||"Rules consistency"),
+            &binded_flattened_rules,
+        )?;
 
     // Consistency check for Goal name + args == Term name + args == Unif goal name + args
     let (

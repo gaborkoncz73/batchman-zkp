@@ -5,7 +5,7 @@ use halo2_proofs::{
     plonk::Error,
 };
 
-use crate::{chips::finding_rule::body_subtree_chip::UnifCompareConfig, data::{PredicateTemplateFp, TermFp}, utils_2::common_helpers::{MAX_CANDIDATES, MAX_CHILDREN, MAX_SIGS}};
+use crate::{chips::finding_rule::body_subtree_chip::UnifCompareConfig, data::{PredicateTemplateFp, TermFp}, utils_2::common_helpers::{MAX_CANDIDATES, MAX_CHILDREN}};
 
 pub fn bind_proof_and_candidates_sig_pairs(
     region_name: &str,
@@ -71,7 +71,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
             }
 
             // padding proof until MAX_SIGS
-            while proof_pairs.len() < MAX_SIGS {
+            while proof_pairs.len() < MAX_CHILDREN {
                 let n = region.assign_advice(
                     || format!("proof.pad.name{}", proof_pairs.len()),
                     cfg.proof_pairs,
@@ -132,7 +132,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
                     }
 
                     // padding until MAX_SIGS
-                    while v.len() < MAX_SIGS {
+                    while v.len() < MAX_CHILDREN {
                         let pad_name = region.assign_advice(
                             || format!("pad.name"),
                             cfg.candidate_pairs,
@@ -155,7 +155,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
             // padding until MAX_CANDIDATES
             while candidate_pairs_all.len() < MAX_CANDIDATES {
                 let mut v: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
-                for _ in 0..MAX_SIGS {
+                for _ in 0..MAX_CHILDREN + 1 {
                     let n = region.assign_advice(
                         || "cand.pad.name",
                         cfg.candidate_pairs,

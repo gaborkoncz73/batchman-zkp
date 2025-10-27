@@ -135,6 +135,44 @@ impl From<&RuleTemplateFile> for RuleTemplateFileFp {
             facts: facts_fixed,
         }
     }
+    
+}
+
+impl RuleTemplateFileFp {
+    /// Flatten all rules and facts into a single Vec<Fp>
+    pub fn to_flat_vec(&self) -> Vec<Fp> {
+        let mut v = Vec::new();
+
+        // Iterate over predicates
+        for pred in &self.predicates {
+            v.push(pred.name);
+            v.push(pred.arity);
+
+            // Iterate over clauses
+            for clause in &pred.clauses {
+                // Children
+                for ch in &clause.children {
+                    v.push(ch.name);
+                    v.push(ch.arity);
+                }
+
+                // Equalities
+                for eq in &clause.equalities {
+                    v.push(eq.left.node);
+                    v.push(eq.left.arg);
+                    v.push(eq.right.node);
+                    v.push(eq.right.arg);
+                }
+            }
+        }
+
+        // Iterate over facts
+        for fact in &self.facts {
+            v.push(fact.name);
+            v.push(fact.arity);
+        }
+        v
+    }
 }
 
 impl From<&ClauseTemplate> for ClauseTemplateFp {

@@ -6,6 +6,7 @@ use std::{collections::HashMap, fs};
 use std::sync::Arc;
 use anyhow::Result;
 use common::data::RuleTemplateFileFp;
+use common::utils_2::off_circuit_poseidon::poseidon_hash_list_native;
 use rand_core::OsRng;
 use rayon::prelude::*;
 
@@ -39,8 +40,13 @@ fn main() -> Result<()> {
 
     // Processing the rules
     let rules_text = fs::read_to_string("input/rules_template.json")?;
+
     let rules: data::RuleTemplateFile = serde_json::from_str(&rules_text)?;
+
     let rules_fp = RuleTemplateFileFp::from(&rules);
+    
+    // Flar rules for rule hash commitment
+    let rules_vec_fp = RuleTemplateFileFp::to_flat_vec(&rules_fp);
 
     // Processing the proof tree
     let proof_text = fs::read_to_string("input/proof_tree.json")?;
@@ -48,8 +54,17 @@ fn main() -> Result<()> {
 
     // Public input hashes
     let path = Path::new("output/fact_hashes.json");
-    let public_hashes: Vec<Fp> = read_fact_hashes(path)?;
+    let public_facts_hashes: Vec<Fp> = read_fact_hashes(path)?;
+    let public_rules_hashes = poseidon_hash_list_native(&rules_vec_fp);
 
+    // Creating the public inputs
+    let instance_columns: &[&[Fp]] = &[
+        &public_facts_hashes,   // first instance column
+        std::slice::from_ref(&public_rules_hashes), // second instance column
+    ];
+
+    // Wrap into &[&[&[Fp]]] for create_proof
+    let public_inputs: &[&[&[Fp]]] = &[instance_columns];
     // Debug
     println!(
         "Loaded {} predicates, {} facts, {} proof nodes.",
@@ -59,7 +74,7 @@ fn main() -> Result<()> {
     );
     
     // Params + keygen
-    let params: Params<EqAffine> = Params::new(8);
+    let params: Params<EqAffine> = Params::new(13);
     let shape = UnificationCircuit {
         rules: rules_fp.clone(),
         unif: UnificationInputFp::default(),
@@ -75,7 +90,7 @@ fn main() -> Result<()> {
 
     // Starting the proving from the root
     tree.iter()
-        .try_for_each(|node|prove_tree(&rules_fp, node, &params,  &pk, &facts, &public_hashes))?;
+        .try_for_each(|node|prove_tree(&rules_fp, node, &params,  &pk, &facts, &public_inputs))?;
 
     println!("All unification goals proof saved!");
     Ok(())
@@ -88,7 +103,7 @@ fn prove_tree(
     params: &Arc<Params<EqAffine>>,
     pk: &Arc<ProvingKey<EqAffine>>,
     facts: &HashMap<String, Fp>,
-    public_hashes: &Vec<Fp>,
+    public_inputs: &[&[&[Fp]]],
 ) -> Result<()> {
     if let data::ProofNode::GoalNode(g) = node {
         
@@ -104,13 +119,12 @@ fn prove_tree(
         // Proof generation
         let mut transcript = Blake2bWrite::<Vec<u8>, _, Challenge255<_>>::init(vec![]);
 
-        let public_hashes_slice: &[Fp] = &public_hashes;        
-        let instances: &[&[&[Fp]]] = &[&[public_hashes_slice]]; 
+        
         halo2_proofs::plonk::create_proof(
             params.as_ref(),
             pk.as_ref(),
             &[circuit],
-            &instances,
+            &public_inputs,
             OsRng,
             &mut transcript,
         )?;
@@ -120,7 +134,7 @@ fn prove_tree(
 
         // Recursion
         g.subtree.par_iter()
-            .try_for_each(|sub| prove_tree(rules_fp, sub, params, pk, facts, &public_hashes))?;
+            .try_for_each(|sub| prove_tree(rules_fp, sub, params, pk, facts, &public_inputs))?;
     }
     Ok(())
 }

@@ -1,22 +1,24 @@
 use halo2_proofs::pasta::Fp;
 
+// Facts for rules
+pub const MAX_PREDICATES: usize = 2;
+pub const MAX_CLAUSES: usize = 2;
+pub const MAX_CHILDREN: usize = 2;
+pub const MAX_EQUALITIES: usize = 6;
+pub const MAX_RULE_COMPONENTS: usize = 30;
+
+pub const MAX_CANDIDATES: usize = MAX_PREDICATES * MAX_CLAUSES;
 // MAX Term args len
 pub const MAX_ARITY: usize = 2;
 
-// MAX predicates in a unification
-pub const MAX_PAIRS: usize = 2;
+pub const MAX_FACTS_HASHES: usize = 3;
 
-pub const MAX_SUBTREE_LEN: usize = 2;
 
-pub const MAX_FACTS_HASHES: usize = 5;
 
-pub const MAX_CHILDREN: usize = 3;
-pub const MAX_CANDIDATES: usize = 3;
-pub const MAX_SIGS: usize = 1 + MAX_CHILDREN;
-pub const MAX_SIG_TOKENS: usize = 1 + 2 * (1 + MAX_CHILDREN);
-pub const MAX_EQUALITIES: usize = 4;
-pub const MAX_CLAUSES: usize = 2;
-pub const MAX_PREDICATES: usize = 2;
+pub const MAX_SIG_TOKENS: usize = (1 + MAX_ARITY) * (1 + MAX_CHILDREN);
+
+
+
 pub const MAX_FACTS: usize = 5;
 
 pub fn to_fp_value(s: &str) -> Fp {

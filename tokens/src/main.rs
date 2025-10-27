@@ -108,7 +108,7 @@ fn main() -> Result<()> {
 
     let rules = data::RuleTemplateFile { predicates, facts };
     let json = serde_json::to_string_pretty(&rules)?;
-    fs::write("input/rules_template.json", json)?;
+    fs::write("input/rules_template2.json", json)?;
 
     println!("rules_template.json is created with the facts and predicates fields");
     Ok(())

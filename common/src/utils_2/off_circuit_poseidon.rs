@@ -16,7 +16,7 @@ fn poseidon_hash2_native(a: Fp, b: Fp) -> Fp {
 // Native version of the chip’s `hash_list` folding:
 // acc := 0; for v in values { acc = Poseidon(acc, v) } ; return acc
 #[inline]
-fn poseidon_hash_list_native(values: &[Fp]) -> Fp {
+pub fn poseidon_hash_list_native(values: &[Fp]) -> Fp {
     let mut acc = Fp::zero();
     for &v in values {
         acc = poseidon_hash2_native(acc, v);
