@@ -1,115 +1,244 @@
 use anyhow::Result;
-use regex::Regex;
-use std::collections::HashSet;
-use std::fs;
-use common::data;
+use serde::Serialize;
+use std::collections::HashMap;
 
-fn main() -> Result<()> {
-    let text = fs::read_to_string("prolog/rules.pl")?;
+use antlr4rust::common_token_stream::CommonTokenStream;
+use antlr4rust::input_stream::InputStream;
+use antlr4rust::tree::{ParseTree, ParseTreeVisitorCompat};
 
-    let re_rule = Regex::new(r"(?m)^(\w+)\(([^)]*)\)\s*:-\s*(.*)\.")?;
-    let re_fact = Regex::new(r"(?m)^(\w+)\(([^)]*)\)\s*\.")?;
-    let re_body = Regex::new(r"(\w+)\(([^)]*)\)")?;
+mod parser;
+use parser::prologlexer::prologLexer;
+use parser::prologparser::{prologParser, ClauseContext};
+use parser::prologvisitor::prologVisitor;
 
-    let mut predicates: Vec<data::PredicateTemplate> = Vec::new();
-    let mut facts: Vec<data::FactTemplate> = Vec::new();
+// ===== JSON structures =====
 
-    let mut seen_heads: HashSet<(String, usize)> = HashSet::new();
-    let mut seen_body: HashSet<(String, usize)> = HashSet::new();
+#[derive(Debug, Serialize, Clone)]
+struct NodeRef {
+    node: usize,
+    arg: usize,
+}
 
-    // processing rules
-    for cap in re_rule.captures_iter(&text) {
-    let head_name = &cap[1];
-    let head_args: Vec<_> = cap[2].split(',').map(|s| s.trim()).collect();
-    let body = &cap[3];
+#[derive(Debug, Serialize, Clone)]
+struct Equality {
+    left: NodeRef,
+    right: NodeRef,
+}
 
-    let mut children = Vec::new();
-    let mut equalities = Vec::new();
+#[derive(Debug, Serialize, Clone)]
+struct Child {
+    name: String,
+    arity: usize,
+}
 
-    for (i, bcap) in re_body.captures_iter(body).enumerate() {
-        let child_name = bcap[1].to_string();
-        let child_args: Vec<_> = bcap[2].split(',').map(|s| s.trim()).collect();
+#[derive(Debug, Serialize, Clone)]
+struct Clause {
+    children: Vec<Child>,
+    equalities: Vec<Equality>,
+}
 
-        children.push(data::ChildSig {
-            name: child_name.clone(),
-            arity: child_args.len(),
-        });
-        seen_body.insert((child_name.clone(), child_args.len()));
+#[derive(Debug, Serialize, Clone)]
+struct Predicate {
+    name: String,
+    arity: usize,
+    clauses: Vec<Clause>,
+}
 
-        // automatic head–child unifications
-        for (j, carg) in child_args.iter().enumerate() {
-            if let Some(hpos) = head_args.iter().position(|x| x == carg) {
-                equalities.push(data::Equality {
-                    left:  data::TermRef { node: 0, arg: hpos },
-                    right: data::TermRef { node: i + 1, arg: j },
-                });
+#[derive(Debug, Serialize, Clone)]
+struct Root {
+    predicates: Vec<Predicate>,
+    facts: Vec<Child>,
+}
+
+// ===== JSON Builder =====
+
+pub struct JsonBuilder {
+    pub root: Root,
+    temp: (),
+}
+
+impl JsonBuilder {
+    fn new() -> Self {
+        Self {
+            root: Root {
+                predicates: Vec::new(),
+                facts: Vec::new(),
+            },
+            temp: (),
+        }
+    }
+
+    /// Split body predicates safely (ignores commas inside parentheses)
+    fn split_body_terms(body: &str) -> Vec<String> {
+        let mut result = Vec::new();
+        let mut level: i32 = 0; // <-- explicit type
+        let mut current = String::new();
+        for c in body.chars() {
+            match c {
+                '(' => {
+                    level += 1;
+                    current.push(c);
+                }
+                ')' => {
+                    if level > 0 {
+                        level -= 1;
+                    }
+                    current.push(c);
+                }
+                ',' if level == 0 => {
+                    result.push(current.trim().to_string());
+                    current.clear();
+                }
+                _ => current.push(c),
             }
         }
+        if !current.trim().is_empty() {
+            result.push(current.trim().to_string());
+        }
+        result
+    }
 
-        // auto child–child equalities
-        for (i1, a1) in child_args.iter().enumerate() {
-            for (k, other_bcap) in re_body.captures_iter(body).enumerate().skip(i + 1) {
-                let other_args: Vec<_> = other_bcap[2].split(',').map(|s| s.trim()).collect();
-                for (j, a2) in other_args.iter().enumerate() {
-                    if a1 == a2 {
-                        equalities.push(data::Equality {
-                            left:  data::TermRef { node: i + 1, arg: i1 },
-                            right: data::TermRef { node: k + 1, arg: j },
+    /// Parse "f(X,Y)" -> ("f", ["X","Y"])
+    fn parse_term(term: &str) -> (String, Vec<String>) {
+        let t = term.trim().trim_end_matches('.');
+
+        if let Some(open) = t.find('(') {
+            let close = t.rfind(')').unwrap_or(t.len());
+            let name = t[..open].trim().to_string();
+            let args_raw = &t[open + 1..close];
+            let args: Vec<String> = args_raw
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            (name, args)
+        } else {
+            (t.to_string(), vec![])
+        }
+    }
+
+    fn process_clause_text(&mut self, text: &str) {
+        let t = text.trim();
+
+        if let Some(colon_dash) = t.find(":-") {
+            // ===== Rule =====
+            let (head_raw, body_raw_with_dot) = t.split_at(colon_dash);
+            let head_text = head_raw.trim();
+            let body_text = body_raw_with_dot[2..].trim().trim_end_matches('.');
+
+            // Parse head and body
+            let (head_name, head_args) = Self::parse_term(head_text);
+
+            // Use the safe body splitter
+            let body_parts = Self::split_body_terms(body_text);
+            let body_terms: Vec<(String, Vec<String>)> =
+                body_parts.iter().map(|b| Self::parse_term(b)).collect();
+
+            // Build children
+            let children: Vec<Child> = body_terms
+                .iter()
+                .map(|(name, args)| Child {
+                    name: name.clone(),
+                    arity: args.len(),
+                })
+                .collect();
+
+            // --- Build variable map ---
+            let mut varmap: HashMap<String, Vec<NodeRef>> = HashMap::new();
+            let mut all_nodes: Vec<Vec<String>> = Vec::new();
+            all_nodes.push(head_args.clone());
+            for (_, args) in &body_terms {
+                all_nodes.push(args.clone());
+            }
+
+            for (node_idx, args) in all_nodes.iter().enumerate() {
+                for (arg_idx, var) in args.iter().enumerate() {
+                    if var.chars().next().map(|c| c.is_uppercase() || c == '_').unwrap_or(false) {
+                        varmap
+                            .entry(var.clone())
+                            .or_default()
+                            .push(NodeRef { node: node_idx, arg: arg_idx });
+                    }
+                }
+            }
+
+            // --- Generate equality pairs ---
+            let mut equalities = Vec::new();
+            for refs in varmap.values() {
+                if refs.len() > 1 {
+                    let first = &refs[0];
+                    for other in refs.iter().skip(1) {
+                        equalities.push(Equality {
+                            left: first.clone(),
+                            right: other.clone(),
                         });
                     }
                 }
             }
-        }
-    }
 
-    let clause = data::ClauseTemplate { children, equalities };
-    let key = (head_name.to_string(), head_args.len());
-    seen_heads.insert(key.clone());
-
-    // ✅ now match both name and arity
-    if let Some(pred) = predicates
-        .iter_mut()
-        .find(|p| p.name == head_name && p.arity == head_args.len())
-    {
-        pred.clauses.push(clause);
-    } else {
-        predicates.push(data::PredicateTemplate {
-            name: head_name.to_string(),
-            arity: head_args.len(),
-            clauses: vec![clause],
-        });
-    }
-}
-
-
-    // processing facts
-    for cap in re_fact.captures_iter(&text) {
-        let name = cap[1].to_string();
-        let args: Vec<_> = cap[2].split(',').map(|s| s.trim()).collect();
-        let key = (name.clone(), args.len());
-
-        // if it's not head, then it is real fact
-        if !seen_heads.contains(&key) {
-            facts.push(data::FactTemplate {
-                name,
-                arity: args.len(),
-            });
-        }
-    }
-
-    // Predicates that appear in the body but not in any head are also treated as facts
-    for (name, arity) in seen_body {
-        if !seen_heads.contains(&(name.clone(), arity)) {
-            if !facts.iter().any(|f| f.name == name && f.arity == arity) {
-                facts.push(data::FactTemplate { name, arity });
+            // --- Insert into predicate list ---
+            let clause = Clause { children, equalities };
+            if let Some(pred) = self
+                .root
+                .predicates
+                .iter_mut()
+                .find(|p| p.name == head_name && p.arity == head_args.len())
+            {
+                pred.clauses.push(clause);
+            } else {
+                self.root.predicates.push(Predicate {
+                    name: head_name,
+                    arity: head_args.len(),
+                    clauses: vec![clause],
+                });
+            }
+        } else if t.ends_with('.') {
+            // ===== Fact =====
+            let fact_text = t.trim_end_matches('.').trim();
+            let (name, args) = Self::parse_term(fact_text);
+            let arity = args.len();
+            if !self.root.facts.iter().any(|f| f.name == name && f.arity == arity) {
+                self.root.facts.push(Child { name, arity });
             }
         }
     }
+}
 
-    let rules = data::RuleTemplateFile { predicates, facts };
-    let json = serde_json::to_string_pretty(&rules)?;
-    fs::write("input/rules_template2.json", json)?;
+// ===== Implement Visitors =====
 
-    println!("rules_template.json is created with the facts and predicates fields");
+impl<'input> prologVisitor<'input> for JsonBuilder {
+    fn visit_clause(&mut self, ctx: &ClauseContext<'input>) {
+        let txt = ctx.get_text();
+        self.process_clause_text(&txt);
+    }
+}
+
+impl<'input> ParseTreeVisitorCompat<'input> for JsonBuilder {
+    type Node = parser::prologparser::prologParserContextType;
+    type Return = ();
+
+    fn temp_result(&mut self) -> &mut Self::Return {
+        &mut self.temp
+    }
+}
+
+// ===== main =====
+
+fn main() -> Result<()> {
+    let input_text =
+        std::fs::read_to_string("prolog/rules.pl").expect("Failed to read prolog/rules.pl");
+
+    let input = InputStream::new(input_text.as_str());
+    let lexer = prologLexer::new(input);
+    let token_source = CommonTokenStream::new(lexer);
+    let mut parser = prologParser::new(token_source);
+
+    let tree = parser.p_text().unwrap();
+
+    let mut builder = JsonBuilder::new();
+    builder.visit(&*tree);
+
+    let json = serde_json::to_string_pretty(&builder.root)?;
+    println!("{json}");
     Ok(())
 }
