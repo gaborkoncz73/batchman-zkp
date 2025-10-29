@@ -1,0 +1,597 @@
+{
+  "predicates": [
+    {
+      "name": "applySavingsSupport",
+      "arity": 4,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "support_matrix",
+              "arity": 4
+            },
+            {
+              "name": "applySupport",
+              "arity": 4
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 0,
+                "arg": 1
+              },
+              "right": {
+                "node": 1,
+                "arg": 1
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 0
+              },
+              "right": {
+                "node": 2,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 3
+              },
+              "right": {
+                "node": 2,
+                "arg": 3
+              }
+            },
+            {
+              "left": {
+                "node": 1,
+                "arg": 2
+              },
+              "right": {
+                "node": 2,
+                "arg": 1
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 2
+              },
+              "right": {
+                "node": 1,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 1,
+                "arg": 3
+              },
+              "right": {
+                "node": 2,
+                "arg": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "applySocialSupports",
+      "arity": 3,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "applySupport",
+              "arity": 4
+            },
+            {
+              "name": "applySocialSupports",
+              "arity": 3
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 0,
+                "arg": 2
+              },
+              "right": {
+                "node": 2,
+                "arg": 2
+              }
+            },
+            {
+              "left": {
+                "node": 1,
+                "arg": 3
+              },
+              "right": {
+                "node": 2,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 0
+              },
+              "right": {
+                "node": 1,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 1
+              },
+              "right": "[(_,SupportType,SupportValue)|CredsTail]"
+            }
+          ]
+        },
+        {
+          "children": [],
+          "equalities": [
+            {
+              "left": {
+                "node": 0,
+                "arg": 0
+              },
+              "right": {
+                "node": 0,
+                "arg": 2
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 1
+              },
+              "right": "[]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "applySupport",
+      "arity": 4,
+      "clauses": [
+        {
+          "children": [],
+          "equalities": [
+            {
+              "left": {
+                "node": 0,
+                "arg": 1
+              },
+              "right": "nominal"
+            }
+          ]
+        },
+        {
+          "children": [],
+          "equalities": [
+            {
+              "left": {
+                "node": 0,
+                "arg": 1
+              },
+              "right": "percent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "consumptionClass",
+      "arity": 2,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "rolling_treshold",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 1,
+                "arg": 0
+              },
+              "right": "'high'"
+            }
+          ]
+        },
+        {
+          "children": [
+            {
+              "name": "rolling_treshold",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 1,
+                "arg": 0
+              },
+              "right": "'mid'"
+            }
+          ]
+        },
+        {
+          "children": [],
+          "equalities": [
+            {
+              "left": {
+                "node": 0,
+                "arg": 0
+              },
+              "right": "_RollingConsumptionVar"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "endPrice",
+      "arity": 1,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "monthlyConsumptions",
+              "arity": 1
+            },
+            {
+              "name": "sumOfMonthlyConsumptions",
+              "arity": 2
+            },
+            {
+              "name": "rollingConsumption",
+              "arity": 2
+            },
+            {
+              "name": "currentConsumption",
+              "arity": 1
+            },
+            {
+              "name": "consumptionClass",
+              "arity": 2
+            },
+            {
+              "name": "savingsClass",
+              "arity": 3
+            },
+            {
+              "name": "priceBase",
+              "arity": 1
+            },
+            {
+              "name": "applySavingsSupport",
+              "arity": 4
+            },
+            {
+              "name": "socialCreds",
+              "arity": 1
+            },
+            {
+              "name": "applySocialSupports",
+              "arity": 3
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 2,
+                "arg": 1
+              },
+              "right": {
+                "node": 3,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 5,
+                "arg": 1
+              },
+              "right": {
+                "node": 8,
+                "arg": 2
+              }
+            },
+            {
+              "left": {
+                "node": 4,
+                "arg": 0
+              },
+              "right": {
+                "node": 6,
+                "arg": 1
+              }
+            },
+            {
+              "left": {
+                "node": 1,
+                "arg": 0
+              },
+              "right": {
+                "node": 2,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 6,
+                "arg": 2
+              },
+              "right": {
+                "node": 8,
+                "arg": 1
+              }
+            },
+            {
+              "left": {
+                "node": 9,
+                "arg": 0
+              },
+              "right": {
+                "node": 10,
+                "arg": 1
+              }
+            },
+            {
+              "left": {
+                "node": 8,
+                "arg": 3
+              },
+              "right": {
+                "node": 10,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 3,
+                "arg": 1
+              },
+              "right": {
+                "node": 5,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 3,
+                "arg": 1
+              },
+              "right": {
+                "node": 6,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 7,
+                "arg": 0
+              },
+              "right": {
+                "node": 8,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 0
+              },
+              "right": {
+                "node": 10,
+                "arg": 2
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "inputPriceOk",
+      "arity": 0,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "endPrice",
+              "arity": 1
+            },
+            {
+              "name": "inputPayment",
+              "arity": 1
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 1,
+                "arg": 0
+              },
+              "right": {
+                "node": 2,
+                "arg": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "monthlyConsumptions",
+      "arity": 1,
+      "clauses": [
+        {
+          "children": [],
+          "equalities": []
+        }
+      ]
+    },
+    {
+      "name": "priceBase",
+      "arity": 1,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "currentConsumption",
+              "arity": 1
+            },
+            {
+              "name": "currentPrice",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 2,
+                "arg": 1
+              },
+              "right": "'HUF'"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rollingConsumption",
+      "arity": 2,
+      "clauses": [
+        {
+          "children": [],
+          "equalities": []
+        }
+      ]
+    },
+    {
+      "name": "savingsClass",
+      "arity": 3,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "savings_treshold",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 1,
+                "arg": 0
+              },
+              "right": "'high'"
+            }
+          ]
+        },
+        {
+          "children": [
+            {
+              "name": "savings_treshold",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 1,
+                "arg": 0
+              },
+              "right": "'mid'"
+            }
+          ]
+        },
+        {
+          "children": [
+            {
+              "name": "savings_treshold",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 1,
+                "arg": 0
+              },
+              "right": "'low'"
+            }
+          ]
+        },
+        {
+          "children": [],
+          "equalities": []
+        }
+      ]
+    },
+    {
+      "name": "socialCreds",
+      "arity": 1,
+      "clauses": [
+        {
+          "children": [],
+          "equalities": []
+        }
+      ]
+    },
+    {
+      "name": "sumOfMonthlyConsumptions",
+      "arity": 2,
+      "clauses": [
+        {
+          "children": [
+            {
+              "name": "sumOfMonthlyConsumptions",
+              "arity": 2
+            }
+          ],
+          "equalities": [
+            {
+              "left": {
+                "node": 0,
+                "arg": 0
+              },
+              "right": "[Amount|Tail]"
+            }
+          ]
+        },
+        {
+          "children": [],
+          "equalities": [
+            {
+              "left": {
+                "node": 0,
+                "arg": 0
+              },
+              "right": "[]"
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 1
+              },
+              "right": "0"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
