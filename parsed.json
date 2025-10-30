@@ -18,62 +18,74 @@
           "equalities": [
             {
               "left": {
-                "node": 0,
-                "arg": 3
+                "node": 1,
+                "arg": 2,
+                "list_index": 0
               },
               "right": {
                 "node": 2,
-                "arg": 3
-              }
-            },
-            {
-              "left": {
-                "node": 0,
-                "arg": 1
-              },
-              "right": {
-                "node": 1,
-                "arg": 1
-              }
-            },
-            {
-              "left": {
-                "node": 1,
-                "arg": 2
-              },
-              "right": {
-                "node": 2,
-                "arg": 1
+                "arg": 1,
+                "list_index": 0
               }
             },
             {
               "left": {
                 "node": 0,
-                "arg": 2
+                "arg": 2,
+                "list_index": 0
               },
               "right": {
                 "node": 1,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               }
             },
             {
               "left": {
                 "node": 0,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": {
                 "node": 2,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 3,
+                "list_index": 0
+              },
+              "right": {
+                "node": 2,
+                "arg": 3,
+                "list_index": 0
               }
             },
             {
               "left": {
                 "node": 1,
-                "arg": 3
+                "arg": 3,
+                "list_index": 0
               },
               "right": {
                 "node": 2,
-                "arg": 2
+                "arg": 2,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "node": 1,
+                "arg": 1,
+                "list_index": 0
               }
             }
           ],
@@ -100,31 +112,73 @@
             {
               "left": {
                 "node": 0,
-                "arg": 2
+                "arg": 1,
+                "list_index": 2
               },
               "right": {
-                "node": 2,
-                "arg": 2
-              }
-            },
-            {
-              "left": {
                 "node": 1,
-                "arg": 3
-              },
-              "right": {
-                "node": 2,
-                "arg": 0
+                "arg": 2,
+                "list_index": 0
               }
             },
             {
               "left": {
                 "node": 0,
-                "arg": 0
+                "arg": 1,
+                "list_index": 1
               },
               "right": {
                 "node": 1,
-                "arg": 0
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 2,
+                "list_index": 0
+              },
+              "right": {
+                "node": 2,
+                "arg": 2,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "node": 1,
+                "arg": 3,
+                "list_index": 0
+              },
+              "right": {
+                "node": 2,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "node": 1,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 1,
+                "list_index": 3
+              },
+              "right": {
+                "node": 2,
+                "arg": 1,
+                "list_index": 0
               }
             }
           ],
@@ -136,19 +190,14 @@
             {
               "left": {
                 "node": 0,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": {
                 "node": 0,
-                "arg": 2
+                "arg": 2,
+                "list_index": 0
               }
-            },
-            {
-              "left": {
-                "node": 0,
-                "arg": 1
-              },
-              "right": "[]"
             }
           ],
           "builtins": []
@@ -165,7 +214,8 @@
             {
               "left": {
                 "node": 0,
-                "arg": 1
+                "arg": 1,
+                "list_index": 0
               },
               "right": "nominal"
             }
@@ -205,7 +255,8 @@
             {
               "left": {
                 "node": 0,
-                "arg": 1
+                "arg": 1,
+                "list_index": 0
               },
               "right": "percent"
             }
@@ -290,14 +341,16 @@
             {
               "left": {
                 "node": 1,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": "'high'"
             },
             {
               "left": {
                 "node": 0,
-                "arg": 1
+                "arg": 1,
+                "list_index": 0
               },
               "right": "'high'"
             }
@@ -345,14 +398,16 @@
             {
               "left": {
                 "node": 1,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": "'mid'"
             },
             {
               "left": {
                 "node": 0,
-                "arg": 1
+                "arg": 1,
+                "list_index": 0
               },
               "right": "'mid'"
             }
@@ -395,14 +450,16 @@
             {
               "left": {
                 "node": 0,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": "_RollingConsumptionVar"
             },
             {
               "left": {
                 "node": 0,
-                "arg": 1
+                "arg": 1,
+                "list_index": 0
               },
               "right": "'low'"
             }
@@ -476,112 +533,134 @@
           "equalities": [
             {
               "left": {
-                "node": 2,
-                "arg": 1
+                "node": 5,
+                "arg": 1,
+                "list_index": 0
               },
               "right": {
-                "node": 3,
-                "arg": 0
+                "node": 8,
+                "arg": 2,
+                "list_index": 0
               }
             },
             {
               "left": {
                 "node": 1,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": {
                 "node": 2,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               }
             },
             {
               "left": {
-                "node": 4,
-                "arg": 0
-              },
-              "right": {
-                "node": 6,
-                "arg": 1
-              }
-            },
-            {
-              "left": {
-                "node": 6,
-                "arg": 2
-              },
-              "right": {
                 "node": 8,
-                "arg": 1
-              }
-            },
-            {
-              "left": {
-                "node": 7,
-                "arg": 0
+                "arg": 3,
+                "list_index": 0
               },
               "right": {
-                "node": 8,
-                "arg": 0
+                "node": 10,
+                "arg": 0,
+                "list_index": 0
               }
             },
             {
               "left": {
                 "node": 0,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": {
                 "node": 10,
-                "arg": 2
+                "arg": 2,
+                "list_index": 0
               }
             },
             {
               "left": {
                 "node": 3,
-                "arg": 1
+                "arg": 1,
+                "list_index": 0
               },
               "right": {
                 "node": 5,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               }
             },
             {
               "left": {
                 "node": 3,
-                "arg": 1
+                "arg": 1,
+                "list_index": 0
               },
               "right": {
                 "node": 6,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               }
             },
             {
               "left": {
-                "node": 5,
-                "arg": 1
+                "node": 4,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "node": 6,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "node": 6,
+                "arg": 2,
+                "list_index": 0
               },
               "right": {
                 "node": 8,
-                "arg": 2
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "node": 2,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "node": 3,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "node": 7,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "node": 8,
+                "arg": 0,
+                "list_index": 0
               }
             },
             {
               "left": {
                 "node": 9,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": {
                 "node": 10,
-                "arg": 1
-              }
-            },
-            {
-              "left": {
-                "node": 8,
-                "arg": 3
-              },
-              "right": {
-                "node": 10,
-                "arg": 0
+                "arg": 1,
+                "list_index": 0
               }
             }
           ],
@@ -608,11 +687,13 @@
             {
               "left": {
                 "node": 1,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": {
                 "node": 2,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               }
             }
           ],
@@ -638,7 +719,7 @@
                 },
                 {
                   "kind": "Atom",
-                  "value": ".(…)"
+                  "value": "[]_or_list"
                 }
               ]
             }
@@ -665,7 +746,8 @@
             {
               "left": {
                 "node": 2,
-                "arg": 1
+                "arg": 1,
+                "list_index": 0
               },
               "right": "'HUF'"
             }
@@ -753,14 +835,16 @@
             {
               "left": {
                 "node": 1,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": "'high'"
             },
             {
               "left": {
                 "node": 0,
-                "arg": 2
+                "arg": 2,
+                "list_index": 0
               },
               "right": "'high'"
             }
@@ -832,14 +916,16 @@
             {
               "left": {
                 "node": 1,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": "'mid'"
             },
             {
               "left": {
                 "node": 0,
-                "arg": 2
+                "arg": 2,
+                "list_index": 0
               },
               "right": "'mid'"
             }
@@ -911,14 +997,16 @@
             {
               "left": {
                 "node": 1,
-                "arg": 0
+                "arg": 0,
+                "list_index": 0
               },
               "right": "'low'"
             },
             {
               "left": {
                 "node": 0,
-                "arg": 2
+                "arg": 2,
+                "list_index": 0
               },
               "right": "'low'"
             }
@@ -985,7 +1073,8 @@
             {
               "left": {
                 "node": 0,
-                "arg": 2
+                "arg": 2,
+                "list_index": 0
               },
               "right": "'none'"
             }
@@ -1027,7 +1116,7 @@
                 },
                 {
                   "kind": "Atom",
-                  "value": ".(…)"
+                  "value": "[]_or_list"
                 }
               ]
             }
@@ -1046,7 +1135,20 @@
               "arity": 2
             }
           ],
-          "equalities": [],
+          "equalities": [
+            {
+              "left": {
+                "node": 0,
+                "arg": 0,
+                "list_index": 2
+              },
+              "right": {
+                "node": 1,
+                "arg": 0,
+                "list_index": 0
+              }
+            }
+          ],
           "builtins": [
             {
               "operator": "is",
@@ -1066,8 +1168,9 @@
                       "arg": 1
                     },
                     {
-                      "kind": "Var",
-                      "name": "Amount"
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 0
                     }
                   ]
                 }
@@ -1081,14 +1184,8 @@
             {
               "left": {
                 "node": 0,
-                "arg": 0
-              },
-              "right": "[]"
-            },
-            {
-              "left": {
-                "node": 0,
-                "arg": 1
+                "arg": 1,
+                "list_index": 0
               },
               "right": "0"
             }
