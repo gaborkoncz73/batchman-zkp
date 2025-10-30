@@ -6,90 +6,105 @@
       "clauses": [
         {
           "children": [
-            {
-              "name": "support_matrix",
-              "arity": 4
-            },
-            {
-              "name": "applySupport",
-              "arity": 4
-            }
+            [
+              {
+                "name": "support_matrix",
+                "arity": 4
+              }
+            ],
+            [
+              {
+                "name": "applySupport",
+                "arity": 4
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 1,
-                "arg": 2,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
                 "list_index": 0
               },
               "right": {
-                "node": 2,
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 0,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 2,
                 "list_index": 0
               },
               "right": {
-                "node": 1,
-                "arg": 0,
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 0,
-                "arg": 0,
-                "list_index": 0
-              },
-              "right": {
-                "node": 2,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "node": 0,
+                "children_node_list": 0,
+                "predicate": 0,
                 "arg": 3,
                 "list_index": 0
               },
               "right": {
-                "node": 2,
+                "children_node_list": 2,
+                "predicate": 0,
                 "arg": 3,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 1,
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 3,
                 "list_index": 0
               },
               "right": {
-                "node": 2,
+                "children_node_list": 2,
+                "predicate": 0,
                 "arg": 2,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 0,
-                "arg": 1,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 2,
                 "list_index": 0
               },
               "right": {
-                "node": 1,
-                "arg": 1,
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
                 "list_index": 0
               }
             }
-          ],
-          "builtins": []
+          ]
         }
       ]
     },
@@ -99,153 +114,103 @@
       "clauses": [
         {
           "children": [
-            {
-              "name": "applySupport",
-              "arity": 4
-            },
-            {
-              "name": "applySocialSupports",
-              "arity": 3
-            }
+            [
+              {
+                "name": "applySupport",
+                "arity": 4
+              }
+            ],
+            [
+              {
+                "name": "applySocialSupports",
+                "arity": 3
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 0,
-                "arg": 1,
-                "list_index": 2
-              },
-              "right": {
-                "node": 1,
-                "arg": 2,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "node": 0,
-                "arg": 1,
-                "list_index": 1
-              },
-              "right": {
-                "node": 1,
-                "arg": 1,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "node": 0,
-                "arg": 2,
-                "list_index": 0
-              },
-              "right": {
-                "node": 2,
-                "arg": 2,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "node": 1,
-                "arg": 3,
-                "list_index": 0
-              },
-              "right": {
-                "node": 2,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "node": 0,
-                "arg": 0,
-                "list_index": 0
-              },
-              "right": {
-                "node": 1,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "node": 0,
+                "children_node_list": 0,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 3
               },
               "right": {
-                "node": 2,
+                "children_node_list": 2,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               }
-            }
-          ],
-          "builtins": []
-        },
-        {
-          "children": [],
-          "equalities": [
+            },
             {
               "left": {
-                "node": 0,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 2,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 2,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 1
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 3,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 2
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 2,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
               "right": {
-                "node": 0,
-                "arg": 2,
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
                 "list_index": 0
               }
-            }
-          ],
-          "builtins": []
-        }
-      ]
-    },
-    {
-      "name": "applySupport",
-      "arity": 4,
-      "clauses": [
-        {
-          "children": [],
-          "equalities": [
-            {
-              "left": {
-                "node": 0,
-                "arg": 1,
-                "list_index": 0
-              },
-              "right": "nominal"
-            }
-          ],
-          "builtins": [
-            {
-              "operator": "is",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 3
-                },
-                {
-                  "kind": "BuiltIn",
-                  "operator": "-",
-                  "operands": [
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 0
-                    },
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 2
-                    }
-                  ]
-                }
-              ]
             }
           ]
         },
@@ -254,73 +219,194 @@
           "equalities": [
             {
               "left": {
-                "node": 0,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 2,
+                "list_index": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "applySupport",
+      "arity": 4,
+      "clauses": [
+        {
+          "children": [
+            [
+              {
+                "name": "is",
+                "arity": 2
+              },
+              {
+                "name": "-",
+                "arity": 1
+              }
+            ]
+          ],
+          "equalities": [
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 2,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 1,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 3,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": "nominal"
+            }
+          ]
+        },
+        {
+          "children": [
+            [
+              {
+                "name": "is",
+                "arity": 2
+              },
+              {
+                "name": "*",
+                "arity": 1
+              },
+              {
+                "name": "div",
+                "arity": 1
+              }
+            ],
+            [
+              {
+                "name": "is",
+                "arity": 2
+              },
+              {
+                "name": "-",
+                "arity": 1
+              }
+            ]
+          ],
+          "equalities": [
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 3,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 1,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               },
               "right": "percent"
-            }
-          ],
-          "builtins": [
-            {
-              "operator": "is",
-              "operands": [
-                {
-                  "kind": "Var",
-                  "name": "AmountToBeSubtracted"
-                },
-                {
-                  "kind": "BuiltIn",
-                  "operator": "*",
-                  "operands": [
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 0
-                    },
-                    {
-                      "kind": "BuiltIn",
-                      "operator": "div",
-                      "operands": [
-                        {
-                          "kind": "Ref",
-                          "node": 0,
-                          "arg": 2
-                        },
-                        {
-                          "kind": "Atom",
-                          "value": "100"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
             },
             {
-              "operator": "is",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 3
-                },
-                {
-                  "kind": "BuiltIn",
-                  "operator": "-",
-                  "operands": [
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 0
-                    },
-                    {
-                      "kind": "Var",
-                      "name": "AmountToBeSubtracted"
-                    }
-                  ]
-                }
-              ]
+              "left": {
+                "children_node_list": 1,
+                "predicate": 2,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": "100"
             }
           ]
         }
@@ -332,15 +418,72 @@
       "clauses": [
         {
           "children": [
-            {
-              "name": "rolling_treshold",
-              "arity": 2
-            }
+            [
+              {
+                "name": "rolling_treshold",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": ">",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "=",
+                "arity": 2
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 1,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
@@ -348,56 +491,83 @@
             },
             {
               "left": {
-                "node": 0,
+                "children_node_list": 3,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               },
               "right": "'high'"
-            }
-          ],
-          "builtins": [
-            {
-              "operator": ">",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 0
-                },
-                {
-                  "kind": "Ref",
-                  "node": 1,
-                  "arg": 1
-                }
-              ]
-            },
-            {
-              "operator": "=",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 1
-                },
-                {
-                  "kind": "Atom",
-                  "value": "'high'"
-                }
-              ]
             }
           ]
         },
         {
           "children": [
-            {
-              "name": "rolling_treshold",
-              "arity": 2
-            }
+            [
+              {
+                "name": "rolling_treshold",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": ">",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "=",
+                "arity": 2
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 1,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
@@ -405,51 +575,43 @@
             },
             {
               "left": {
-                "node": 0,
+                "children_node_list": 3,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               },
               "right": "'mid'"
             }
-          ],
-          "builtins": [
-            {
-              "operator": ">",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 0
-                },
-                {
-                  "kind": "Ref",
-                  "node": 1,
-                  "arg": 1
-                }
-              ]
-            },
-            {
-              "operator": "=",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 1
-                },
-                {
-                  "kind": "Atom",
-                  "value": "'mid'"
-                }
-              ]
-            }
           ]
         },
         {
-          "children": [],
+          "children": [
+            [
+              {
+                "name": "=",
+                "arity": 2
+              }
+            ]
+          ],
           "equalities": [
             {
               "left": {
-                "node": 0,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
@@ -457,27 +619,12 @@
             },
             {
               "left": {
-                "node": 0,
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               },
               "right": "'low'"
-            }
-          ],
-          "builtins": [
-            {
-              "operator": "=",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 1
-                },
-                {
-                  "kind": "Atom",
-                  "value": "'low'"
-                }
-              ]
             }
           ]
         }
@@ -489,182 +636,223 @@
       "clauses": [
         {
           "children": [
-            {
-              "name": "monthlyConsumptions",
-              "arity": 1
-            },
-            {
-              "name": "sumOfMonthlyConsumptions",
-              "arity": 2
-            },
-            {
-              "name": "rollingConsumption",
-              "arity": 2
-            },
-            {
-              "name": "currentConsumption",
-              "arity": 1
-            },
-            {
-              "name": "consumptionClass",
-              "arity": 2
-            },
-            {
-              "name": "savingsClass",
-              "arity": 3
-            },
-            {
-              "name": "priceBase",
-              "arity": 1
-            },
-            {
-              "name": "applySavingsSupport",
-              "arity": 4
-            },
-            {
-              "name": "socialCreds",
-              "arity": 1
-            },
-            {
-              "name": "applySocialSupports",
-              "arity": 3
-            }
+            [
+              {
+                "name": "monthlyConsumptions",
+                "arity": 1
+              }
+            ],
+            [
+              {
+                "name": "sumOfMonthlyConsumptions",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "rollingConsumption",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "currentConsumption",
+                "arity": 1
+              }
+            ],
+            [
+              {
+                "name": "consumptionClass",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "savingsClass",
+                "arity": 3
+              }
+            ],
+            [
+              {
+                "name": "priceBase",
+                "arity": 1
+              }
+            ],
+            [
+              {
+                "name": "applySavingsSupport",
+                "arity": 4
+              }
+            ],
+            [
+              {
+                "name": "socialCreds",
+                "arity": 1
+              }
+            ],
+            [
+              {
+                "name": "applySocialSupports",
+                "arity": 3
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 5,
+                "children_node_list": 2,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               },
               "right": {
-                "node": 8,
-                "arg": 2,
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 0,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 1,
+                "children_node_list": 4,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
               "right": {
-                "node": 2,
-                "arg": 0,
+                "children_node_list": 6,
+                "predicate": 0,
+                "arg": 1,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 8,
+                "children_node_list": 8,
+                "predicate": 0,
                 "arg": 3,
                 "list_index": 0
               },
               "right": {
-                "node": 10,
+                "children_node_list": 10,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 0,
+                "children_node_list": 9,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
               "right": {
-                "node": 10,
+                "children_node_list": 10,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 10,
+                "predicate": 0,
                 "arg": 2,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 3,
+                "children_node_list": 3,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               },
               "right": {
-                "node": 5,
+                "children_node_list": 5,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 3,
+                "children_node_list": 3,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               },
               "right": {
-                "node": 6,
+                "children_node_list": 6,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 4,
+                "children_node_list": 7,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
               "right": {
-                "node": 6,
-                "arg": 1,
+                "children_node_list": 8,
+                "predicate": 0,
+                "arg": 0,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 6,
+                "children_node_list": 6,
+                "predicate": 0,
                 "arg": 2,
                 "list_index": 0
               },
               "right": {
-                "node": 8,
+                "children_node_list": 8,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 2,
+                "children_node_list": 5,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               },
               "right": {
-                "node": 3,
-                "arg": 0,
+                "children_node_list": 8,
+                "predicate": 0,
+                "arg": 2,
                 "list_index": 0
               }
             },
             {
               "left": {
-                "node": 7,
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
               "right": {
-                "node": 8,
+                "children_node_list": 2,
+                "predicate": 0,
                 "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "node": 9,
-                "arg": 0,
-                "list_index": 0
-              },
-              "right": {
-                "node": 10,
-                "arg": 1,
                 "list_index": 0
               }
             }
-          ],
-          "builtins": []
+          ]
         }
       ]
     },
@@ -674,30 +862,35 @@
       "clauses": [
         {
           "children": [
-            {
-              "name": "endPrice",
-              "arity": 1
-            },
-            {
-              "name": "inputPayment",
-              "arity": 1
-            }
+            [
+              {
+                "name": "endPrice",
+                "arity": 1
+              }
+            ],
+            [
+              {
+                "name": "inputPayment",
+                "arity": 1
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 1,
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
               "right": {
-                "node": 2,
+                "children_node_list": 2,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               }
             }
-          ],
-          "builtins": []
+          ]
         }
       ]
     },
@@ -706,22 +899,46 @@
       "arity": 1,
       "clauses": [
         {
-          "children": [],
-          "equalities": [],
-          "builtins": [
+          "children": [
+            [
+              {
+                "name": "=",
+                "arity": 2
+              }
+            ]
+          ],
+          "equalities": [
             {
-              "operator": "=",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 0
-                },
-                {
-                  "kind": "Atom",
-                  "value": "[]_or_list"
-                }
-              ]
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": "2001"
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 1
+              },
+              "right": "[2001,2001,2001,2001,2001,2000,2000,2000,2000,2000,2000]"
             }
           ]
         }
@@ -733,51 +950,80 @@
       "clauses": [
         {
           "children": [
-            {
-              "name": "currentConsumption",
-              "arity": 1
-            },
-            {
-              "name": "currentPrice",
-              "arity": 2
-            }
+            [
+              {
+                "name": "currentConsumption",
+                "arity": 1
+              }
+            ],
+            [
+              {
+                "name": "currentPrice",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "is",
+                "arity": 2
+              },
+              {
+                "name": "*",
+                "arity": 1
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 2,
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 1,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 2,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               },
               "right": "'HUF'"
-            }
-          ],
-          "builtins": [
-            {
-              "operator": "is",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 0
-                },
-                {
-                  "kind": "BuiltIn",
-                  "operator": "*",
-                  "operands": [
-                    {
-                      "kind": "Ref",
-                      "node": 2,
-                      "arg": 0
-                    },
-                    {
-                      "kind": "Ref",
-                      "node": 1,
-                      "arg": 0
-                    }
-                  ]
-                }
-              ]
             }
           ]
         }
@@ -788,33 +1034,55 @@
       "arity": 2,
       "clauses": [
         {
-          "children": [],
-          "equalities": [],
-          "builtins": [
+          "children": [
+            [
+              {
+                "name": "is",
+                "arity": 2
+              },
+              {
+                "name": "div",
+                "arity": 1
+              }
+            ]
+          ],
+          "equalities": [
             {
-              "operator": "is",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 1
-                },
-                {
-                  "kind": "BuiltIn",
-                  "operator": "div",
-                  "operands": [
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 0
-                    },
-                    {
-                      "kind": "Atom",
-                      "value": "12"
-                    }
-                  ]
-                }
-              ]
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 1,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": "12"
             }
           ]
         }
@@ -826,15 +1094,110 @@
       "clauses": [
         {
           "children": [
-            {
-              "name": "savings_treshold",
-              "arity": 2
-            }
+            [
+              {
+                "name": "savings_treshold",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "is",
+                "arity": 2
+              },
+              {
+                "name": "-",
+                "arity": 1
+              }
+            ],
+            [
+              {
+                "name": ">",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "=",
+                "arity": 2
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 1,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 2,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 4,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 1,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
@@ -842,80 +1205,121 @@
             },
             {
               "left": {
-                "node": 0,
-                "arg": 2,
+                "children_node_list": 4,
+                "predicate": 0,
+                "arg": 1,
                 "list_index": 0
               },
               "right": "'high'"
             }
-          ],
-          "builtins": [
-            {
-              "operator": "is",
-              "operands": [
-                {
-                  "kind": "Var",
-                  "name": "CurrentSaving"
-                },
-                {
-                  "kind": "BuiltIn",
-                  "operator": "-",
-                  "operands": [
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 0
-                    },
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 1
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "operator": ">",
-              "operands": [
-                {
-                  "kind": "Var",
-                  "name": "CurrentSaving"
-                },
-                {
-                  "kind": "Ref",
-                  "node": 1,
-                  "arg": 1
-                }
-              ]
-            },
-            {
-              "operator": "=",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 2
-                },
-                {
-                  "kind": "Atom",
-                  "value": "'high'"
-                }
-              ]
-            }
           ]
         },
         {
           "children": [
-            {
-              "name": "savings_treshold",
-              "arity": 2
-            }
+            [
+              {
+                "name": "savings_treshold",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "is",
+                "arity": 2
+              },
+              {
+                "name": "-",
+                "arity": 1
+              }
+            ],
+            [
+              {
+                "name": ">",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "=",
+                "arity": 2
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 1,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 1,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 2,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 4,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
@@ -923,80 +1327,121 @@
             },
             {
               "left": {
-                "node": 0,
-                "arg": 2,
+                "children_node_list": 4,
+                "predicate": 0,
+                "arg": 1,
                 "list_index": 0
               },
               "right": "'mid'"
-            }
-          ],
-          "builtins": [
-            {
-              "operator": "is",
-              "operands": [
-                {
-                  "kind": "Var",
-                  "name": "CurrentSaving"
-                },
-                {
-                  "kind": "BuiltIn",
-                  "operator": "-",
-                  "operands": [
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 0
-                    },
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 1
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "operator": ">",
-              "operands": [
-                {
-                  "kind": "Var",
-                  "name": "CurrentSaving"
-                },
-                {
-                  "kind": "Ref",
-                  "node": 1,
-                  "arg": 1
-                }
-              ]
-            },
-            {
-              "operator": "=",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 2
-                },
-                {
-                  "kind": "Atom",
-                  "value": "'mid'"
-                }
-              ]
             }
           ]
         },
         {
           "children": [
-            {
-              "name": "savings_treshold",
-              "arity": 2
-            }
+            [
+              {
+                "name": "savings_treshold",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "is",
+                "arity": 2
+              },
+              {
+                "name": "-",
+                "arity": 1
+              }
+            ],
+            [
+              {
+                "name": ">",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "=",
+                "arity": 2
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 1,
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 2,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 4,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 1,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
@@ -1004,95 +1449,47 @@
             },
             {
               "left": {
-                "node": 0,
-                "arg": 2,
+                "children_node_list": 4,
+                "predicate": 0,
+                "arg": 1,
                 "list_index": 0
               },
               "right": "'low'"
             }
-          ],
-          "builtins": [
-            {
-              "operator": "is",
-              "operands": [
-                {
-                  "kind": "Var",
-                  "name": "CurrentSaving"
-                },
-                {
-                  "kind": "BuiltIn",
-                  "operator": "-",
-                  "operands": [
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 0
-                    },
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 1
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "operator": ">",
-              "operands": [
-                {
-                  "kind": "Var",
-                  "name": "CurrentSaving"
-                },
-                {
-                  "kind": "Ref",
-                  "node": 1,
-                  "arg": 1
-                }
-              ]
-            },
-            {
-              "operator": "=",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 2
-                },
-                {
-                  "kind": "Atom",
-                  "value": "'low'"
-                }
-              ]
-            }
           ]
         },
         {
-          "children": [],
+          "children": [
+            [
+              {
+                "name": "=",
+                "arity": 2
+              }
+            ]
+          ],
           "equalities": [
             {
               "left": {
-                "node": 0,
+                "children_node_list": 0,
+                "predicate": 0,
                 "arg": 2,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
                 "list_index": 0
               },
               "right": "'none'"
-            }
-          ],
-          "builtins": [
-            {
-              "operator": "=",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 2
-                },
-                {
-                  "kind": "Atom",
-                  "value": "'none'"
-                }
-              ]
             }
           ]
         }
@@ -1103,22 +1500,64 @@
       "arity": 1,
       "clauses": [
         {
-          "children": [],
-          "equalities": [],
-          "builtins": [
+          "children": [
+            [
+              {
+                "name": "=",
+                "arity": 2
+              }
+            ]
+          ],
+          "equalities": [
             {
-              "operator": "=",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 0
-                },
-                {
-                  "kind": "Atom",
-                  "value": "[]_or_list"
-                }
-              ]
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": "'ChangedWorkcapacityCredential'"
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 1
+              },
+              "right": "nominal"
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 2
+              },
+              "right": "10000"
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 3
+              },
+              "right": "[]"
             }
           ]
         }
@@ -1130,51 +1569,79 @@
       "clauses": [
         {
           "children": [
-            {
-              "name": "sumOfMonthlyConsumptions",
-              "arity": 2
-            }
+            [
+              {
+                "name": "sumOfMonthlyConsumptions",
+                "arity": 2
+              }
+            ],
+            [
+              {
+                "name": "is",
+                "arity": 2
+              },
+              {
+                "name": "+",
+                "arity": 1
+              }
+            ]
           ],
           "equalities": [
             {
               "left": {
-                "node": 0,
-                "arg": 0,
-                "list_index": 2
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
               },
               "right": {
-                "node": 1,
+                "children_node_list": 2,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               }
-            }
-          ],
-          "builtins": [
+            },
             {
-              "operator": "is",
-              "operands": [
-                {
-                  "kind": "Ref",
-                  "node": 0,
-                  "arg": 1
-                },
-                {
-                  "kind": "BuiltIn",
-                  "operator": "+",
-                  "operands": [
-                    {
-                      "kind": "Ref",
-                      "node": 1,
-                      "arg": 1
-                    },
-                    {
-                      "kind": "Ref",
-                      "node": 0,
-                      "arg": 0
-                    }
-                  ]
-                }
-              ]
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 1,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 1
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
             }
           ]
         },
@@ -1183,14 +1650,14 @@
           "equalities": [
             {
               "left": {
-                "node": 0,
+                "children_node_list": 0,
+                "predicate": 0,
                 "arg": 1,
                 "list_index": 0
               },
               "right": "0"
             }
-          ],
-          "builtins": []
+          ]
         }
       ]
     }
