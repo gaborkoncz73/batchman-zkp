@@ -30,10 +30,10 @@ pub struct UnifConfig {
     pub rows_compress_chip :RowsCompressConfig,
     pub rule_rows_cfg: RuleRowsConfig,
     pub fact_cfg: FactConfig,
-    pub rules_check_cfg: RulesConfig,
+    //pub rules_check_cfg: RulesConfig,
 
     pub public_facts_hashes: Column<Instance>,
-    pub public_rules_hash: Column<Instance>,
+    //pub public_rules_hash: Column<Instance>,
 }
 
 impl Circuit<Fp> for UnificationCircuit {
@@ -66,15 +66,15 @@ impl Circuit<Fp> for UnificationCircuit {
         let rule_rows_cfg: RuleRowsConfig = RuleRowsChip::configure(meta);
 
         let public_facts_hashes = meta.instance_column();
-        let public_rules_hash = meta.instance_column();
+        //let public_rules_hash = meta.instance_column();
        
         meta.enable_equality(public_facts_hashes);
-        meta.enable_equality(public_rules_hash);
+        //meta.enable_equality(public_rules_hash);
 
         let fact_cfg = FactChip::configure(meta, public_facts_hashes);
-        let rules_check_cfg = RulesChip::configure(meta, public_rules_hash);
+        //let rules_check_cfg = RulesChip::configure(meta, public_rules_hash);
 
-        UnifConfig {dot_cfg, rlc_cfg,unif_cmp_cfg, sig_check_cfg, rows_compress_chip, rule_rows_cfg, fact_cfg, rules_check_cfg, public_facts_hashes, public_rules_hash }
+        UnifConfig {dot_cfg, rlc_cfg,unif_cmp_cfg, sig_check_cfg, rows_compress_chip, rule_rows_cfg, fact_cfg, public_facts_hashes/*, rules_check_cfg,  public_rules_hash*/ }
     }
 
     fn synthesize(
@@ -83,7 +83,7 @@ impl Circuit<Fp> for UnificationCircuit {
         mut layouter: impl Layouter<Fp>,
     ) -> Result<(), Error>
     {
-        let binded_flattened_rules =
+        /*let binded_flattened_rules =
             bind_rules("Bind rules",
                 &mut layouter,
                 &cfg.rules_check_cfg,
@@ -95,7 +95,7 @@ impl Circuit<Fp> for UnificationCircuit {
         rules_check_chip.assign(
             layouter.namespace(||"Rules consistency"),
             &binded_flattened_rules,
-        )?;
+        )?;*/
 
     // Consistency check for Goal name + args == Term name + args == Unif goal name + args
     let (

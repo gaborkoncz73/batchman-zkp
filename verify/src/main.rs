@@ -33,10 +33,10 @@ fn main() -> Result<()> {
     let rules: RuleTemplateFile = serde_json::from_str(&rules_text)?;
 
     let rules_fp = RuleTemplateFileFp::from(&rules);
-    let flatten_rules_fp = RuleTemplateFileFp::to_flat_vec(&rules_fp);
-    let public_rules_hashes = poseidon_hash_list_native(&flatten_rules_fp);
+    //let flatten_rules_fp = RuleTemplateFileFp::to_flat_vec(&rules_fp);
+    //let public_rules_hashes = poseidon_hash_list_native(&flatten_rules_fp);
     // Same params + vkgen
-    let params: Params<EqAffine> = Params::new(13);
+    let params: Params<EqAffine> = Params::new(8);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),
@@ -48,8 +48,8 @@ fn main() -> Result<()> {
 
     // Constructing the public inputs
     let instance_columns: &[&[Fp]] = &[
-        &public_hashes,   // first instance column
-        std::slice::from_ref(&public_rules_hashes), // second instance column
+        &public_hashes/*,   // first instance column
+        std::slice::from_ref(&public_rules_hashes), // second instance column*/
     ];
 
     // Wrap into &[&[&[Fp]]] for create_proof

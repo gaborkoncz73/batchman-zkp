@@ -46,7 +46,7 @@ fn main() -> Result<()> {
     let rules_fp = RuleTemplateFileFp::from(&rules);
     
     // Flar rules for rule hash commitment
-    let rules_vec_fp = RuleTemplateFileFp::to_flat_vec(&rules_fp);
+    //let rules_vec_fp = RuleTemplateFileFp::to_flat_vec(&rules_fp);
 
     // Processing the proof tree
     let proof_text = fs::read_to_string("input/proof_tree.json")?;
@@ -55,12 +55,12 @@ fn main() -> Result<()> {
     // Public input hashes
     let path = Path::new("output/fact_hashes.json");
     let public_facts_hashes: Vec<Fp> = read_fact_hashes(path)?;
-    let public_rules_hashes = poseidon_hash_list_native(&rules_vec_fp);
+    //let public_rules_hashes = poseidon_hash_list_native(&rules_vec_fp);
 
     // Creating the public inputs
     let instance_columns: &[&[Fp]] = &[
-        &public_facts_hashes,   // first instance column
-        std::slice::from_ref(&public_rules_hashes), // second instance column
+        &public_facts_hashes/*,   // first instance column
+        std::slice::from_ref(&public_rules_hashes),  // second instance column*/
     ];
 
     // Wrap into &[&[&[Fp]]] for create_proof
@@ -74,7 +74,7 @@ fn main() -> Result<()> {
     );
     
     // Params + keygen
-    let params: Params<EqAffine> = Params::new(13);
+    let params: Params<EqAffine> = Params::new(8);
     let shape = UnificationCircuit {
         rules: rules_fp.clone(),
         unif: UnificationInputFp::default(),
