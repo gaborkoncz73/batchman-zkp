@@ -19,31 +19,21 @@
             {
               "left": {
                 "node": 0,
+                "arg": 3
+              },
+              "right": {
+                "node": 2,
+                "arg": 3
+              }
+            },
+            {
+              "left": {
+                "node": 0,
                 "arg": 1
               },
               "right": {
                 "node": 1,
                 "arg": 1
-              }
-            },
-            {
-              "left": {
-                "node": 0,
-                "arg": 0
-              },
-              "right": {
-                "node": 2,
-                "arg": 0
-              }
-            },
-            {
-              "left": {
-                "node": 0,
-                "arg": 3
-              },
-              "right": {
-                "node": 2,
-                "arg": 3
               }
             },
             {
@@ -63,6 +53,16 @@
               },
               "right": {
                 "node": 1,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 0
+              },
+              "right": {
+                "node": 2,
                 "arg": 0
               }
             },
@@ -76,7 +76,8 @@
                 "arg": 2
               }
             }
-          ]
+          ],
+          "builtins": []
         }
       ]
     },
@@ -125,15 +126,9 @@
                 "node": 1,
                 "arg": 0
               }
-            },
-            {
-              "left": {
-                "node": 0,
-                "arg": 1
-              },
-              "right": "[(_,SupportType,SupportValue)|CredsTail]"
             }
-          ]
+          ],
+          "builtins": []
         },
         {
           "children": [],
@@ -155,7 +150,8 @@
               },
               "right": "[]"
             }
-          ]
+          ],
+          "builtins": []
         }
       ]
     },
@@ -173,6 +169,34 @@
               },
               "right": "nominal"
             }
+          ],
+          "builtins": [
+            {
+              "operator": "is",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 3
+                },
+                {
+                  "kind": "BuiltIn",
+                  "operator": "-",
+                  "operands": [
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 0
+                    },
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 2
+                    }
+                  ]
+                }
+              ]
+            }
           ]
         },
         {
@@ -184,6 +208,68 @@
                 "arg": 1
               },
               "right": "percent"
+            }
+          ],
+          "builtins": [
+            {
+              "operator": "is",
+              "operands": [
+                {
+                  "kind": "Var",
+                  "name": "AmountToBeSubtracted"
+                },
+                {
+                  "kind": "BuiltIn",
+                  "operator": "*",
+                  "operands": [
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 0
+                    },
+                    {
+                      "kind": "BuiltIn",
+                      "operator": "div",
+                      "operands": [
+                        {
+                          "kind": "Ref",
+                          "node": 0,
+                          "arg": 2
+                        },
+                        {
+                          "kind": "Atom",
+                          "value": "100"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "operator": "is",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 3
+                },
+                {
+                  "kind": "BuiltIn",
+                  "operator": "-",
+                  "operands": [
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 0
+                    },
+                    {
+                      "kind": "Var",
+                      "name": "AmountToBeSubtracted"
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }
@@ -207,6 +293,44 @@
                 "arg": 0
               },
               "right": "'high'"
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 1
+              },
+              "right": "'high'"
+            }
+          ],
+          "builtins": [
+            {
+              "operator": ">",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 0
+                },
+                {
+                  "kind": "Ref",
+                  "node": 1,
+                  "arg": 1
+                }
+              ]
+            },
+            {
+              "operator": "=",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 1
+                },
+                {
+                  "kind": "Atom",
+                  "value": "'high'"
+                }
+              ]
             }
           ]
         },
@@ -224,6 +348,44 @@
                 "arg": 0
               },
               "right": "'mid'"
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 1
+              },
+              "right": "'mid'"
+            }
+          ],
+          "builtins": [
+            {
+              "operator": ">",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 0
+                },
+                {
+                  "kind": "Ref",
+                  "node": 1,
+                  "arg": 1
+                }
+              ]
+            },
+            {
+              "operator": "=",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 1
+                },
+                {
+                  "kind": "Atom",
+                  "value": "'mid'"
+                }
+              ]
             }
           ]
         },
@@ -236,6 +398,29 @@
                 "arg": 0
               },
               "right": "_RollingConsumptionVar"
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 1
+              },
+              "right": "'low'"
+            }
+          ],
+          "builtins": [
+            {
+              "operator": "=",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 1
+                },
+                {
+                  "kind": "Atom",
+                  "value": "'low'"
+                }
+              ]
             }
           ]
         }
@@ -301,12 +486,12 @@
             },
             {
               "left": {
-                "node": 5,
-                "arg": 1
+                "node": 1,
+                "arg": 0
               },
               "right": {
-                "node": 8,
-                "arg": 2
+                "node": 2,
+                "arg": 0
               }
             },
             {
@@ -321,62 +506,12 @@
             },
             {
               "left": {
-                "node": 1,
-                "arg": 0
-              },
-              "right": {
-                "node": 2,
-                "arg": 0
-              }
-            },
-            {
-              "left": {
                 "node": 6,
                 "arg": 2
               },
               "right": {
                 "node": 8,
                 "arg": 1
-              }
-            },
-            {
-              "left": {
-                "node": 9,
-                "arg": 0
-              },
-              "right": {
-                "node": 10,
-                "arg": 1
-              }
-            },
-            {
-              "left": {
-                "node": 8,
-                "arg": 3
-              },
-              "right": {
-                "node": 10,
-                "arg": 0
-              }
-            },
-            {
-              "left": {
-                "node": 3,
-                "arg": 1
-              },
-              "right": {
-                "node": 5,
-                "arg": 0
-              }
-            },
-            {
-              "left": {
-                "node": 3,
-                "arg": 1
-              },
-              "right": {
-                "node": 6,
-                "arg": 0
               }
             },
             {
@@ -398,8 +533,59 @@
                 "node": 10,
                 "arg": 2
               }
+            },
+            {
+              "left": {
+                "node": 3,
+                "arg": 1
+              },
+              "right": {
+                "node": 5,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 3,
+                "arg": 1
+              },
+              "right": {
+                "node": 6,
+                "arg": 0
+              }
+            },
+            {
+              "left": {
+                "node": 5,
+                "arg": 1
+              },
+              "right": {
+                "node": 8,
+                "arg": 2
+              }
+            },
+            {
+              "left": {
+                "node": 9,
+                "arg": 0
+              },
+              "right": {
+                "node": 10,
+                "arg": 1
+              }
+            },
+            {
+              "left": {
+                "node": 8,
+                "arg": 3
+              },
+              "right": {
+                "node": 10,
+                "arg": 0
+              }
             }
-          ]
+          ],
+          "builtins": []
         }
       ]
     },
@@ -429,7 +615,8 @@
                 "arg": 0
               }
             }
-          ]
+          ],
+          "builtins": []
         }
       ]
     },
@@ -439,7 +626,23 @@
       "clauses": [
         {
           "children": [],
-          "equalities": []
+          "equalities": [],
+          "builtins": [
+            {
+              "operator": "=",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 0
+                },
+                {
+                  "kind": "Atom",
+                  "value": ".(…)"
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -466,6 +669,34 @@
               },
               "right": "'HUF'"
             }
+          ],
+          "builtins": [
+            {
+              "operator": "is",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 0
+                },
+                {
+                  "kind": "BuiltIn",
+                  "operator": "*",
+                  "operands": [
+                    {
+                      "kind": "Ref",
+                      "node": 2,
+                      "arg": 0
+                    },
+                    {
+                      "kind": "Ref",
+                      "node": 1,
+                      "arg": 0
+                    }
+                  ]
+                }
+              ]
+            }
           ]
         }
       ]
@@ -476,7 +707,34 @@
       "clauses": [
         {
           "children": [],
-          "equalities": []
+          "equalities": [],
+          "builtins": [
+            {
+              "operator": "is",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 1
+                },
+                {
+                  "kind": "BuiltIn",
+                  "operator": "div",
+                  "operands": [
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 0
+                    },
+                    {
+                      "kind": "Atom",
+                      "value": "12"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -498,6 +756,68 @@
                 "arg": 0
               },
               "right": "'high'"
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 2
+              },
+              "right": "'high'"
+            }
+          ],
+          "builtins": [
+            {
+              "operator": "is",
+              "operands": [
+                {
+                  "kind": "Var",
+                  "name": "CurrentSaving"
+                },
+                {
+                  "kind": "BuiltIn",
+                  "operator": "-",
+                  "operands": [
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 0
+                    },
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "operator": ">",
+              "operands": [
+                {
+                  "kind": "Var",
+                  "name": "CurrentSaving"
+                },
+                {
+                  "kind": "Ref",
+                  "node": 1,
+                  "arg": 1
+                }
+              ]
+            },
+            {
+              "operator": "=",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 2
+                },
+                {
+                  "kind": "Atom",
+                  "value": "'high'"
+                }
+              ]
             }
           ]
         },
@@ -515,6 +835,68 @@
                 "arg": 0
               },
               "right": "'mid'"
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 2
+              },
+              "right": "'mid'"
+            }
+          ],
+          "builtins": [
+            {
+              "operator": "is",
+              "operands": [
+                {
+                  "kind": "Var",
+                  "name": "CurrentSaving"
+                },
+                {
+                  "kind": "BuiltIn",
+                  "operator": "-",
+                  "operands": [
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 0
+                    },
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "operator": ">",
+              "operands": [
+                {
+                  "kind": "Var",
+                  "name": "CurrentSaving"
+                },
+                {
+                  "kind": "Ref",
+                  "node": 1,
+                  "arg": 1
+                }
+              ]
+            },
+            {
+              "operator": "=",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 2
+                },
+                {
+                  "kind": "Atom",
+                  "value": "'mid'"
+                }
+              ]
             }
           ]
         },
@@ -532,12 +914,98 @@
                 "arg": 0
               },
               "right": "'low'"
+            },
+            {
+              "left": {
+                "node": 0,
+                "arg": 2
+              },
+              "right": "'low'"
+            }
+          ],
+          "builtins": [
+            {
+              "operator": "is",
+              "operands": [
+                {
+                  "kind": "Var",
+                  "name": "CurrentSaving"
+                },
+                {
+                  "kind": "BuiltIn",
+                  "operator": "-",
+                  "operands": [
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 0
+                    },
+                    {
+                      "kind": "Ref",
+                      "node": 0,
+                      "arg": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "operator": ">",
+              "operands": [
+                {
+                  "kind": "Var",
+                  "name": "CurrentSaving"
+                },
+                {
+                  "kind": "Ref",
+                  "node": 1,
+                  "arg": 1
+                }
+              ]
+            },
+            {
+              "operator": "=",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 2
+                },
+                {
+                  "kind": "Atom",
+                  "value": "'low'"
+                }
+              ]
             }
           ]
         },
         {
           "children": [],
-          "equalities": []
+          "equalities": [
+            {
+              "left": {
+                "node": 0,
+                "arg": 2
+              },
+              "right": "'none'"
+            }
+          ],
+          "builtins": [
+            {
+              "operator": "=",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 2
+                },
+                {
+                  "kind": "Atom",
+                  "value": "'none'"
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -547,7 +1015,23 @@
       "clauses": [
         {
           "children": [],
-          "equalities": []
+          "equalities": [],
+          "builtins": [
+            {
+              "operator": "=",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 0
+                },
+                {
+                  "kind": "Atom",
+                  "value": ".(…)"
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -562,13 +1046,32 @@
               "arity": 2
             }
           ],
-          "equalities": [
+          "equalities": [],
+          "builtins": [
             {
-              "left": {
-                "node": 0,
-                "arg": 0
-              },
-              "right": "[Amount|Tail]"
+              "operator": "is",
+              "operands": [
+                {
+                  "kind": "Ref",
+                  "node": 0,
+                  "arg": 1
+                },
+                {
+                  "kind": "BuiltIn",
+                  "operator": "+",
+                  "operands": [
+                    {
+                      "kind": "Ref",
+                      "node": 1,
+                      "arg": 1
+                    },
+                    {
+                      "kind": "Var",
+                      "name": "Amount"
+                    }
+                  ]
+                }
+              ]
             }
           ]
         },
@@ -589,7 +1092,8 @@
               },
               "right": "0"
             }
-          ]
+          ],
+          "builtins": []
         }
       ]
     }
