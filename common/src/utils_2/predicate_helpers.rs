@@ -1,4 +1,4 @@
-
+/*
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter},
     pasta::Fp,
@@ -176,4 +176,4 @@ pub fn bind_proof_and_candidates_sig_pairs(
             Ok((proof_pairs, candidate_pairs_all))
         },
     )
-}
+}*/

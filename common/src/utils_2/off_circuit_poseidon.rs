@@ -1,4 +1,4 @@
-use halo2_gadgets::poseidon::primitives::{
+/*use halo2_gadgets::poseidon::primitives::{
     Hash as PoseidonHash, P128Pow5T3, ConstantLength,
 };
 use halo2_proofs::pasta::Fp;
@@ -51,4 +51,4 @@ pub fn fact_hash_native_term(name: &Fp, args: &[Fp]) -> Fp {
         tokens.push(*a);
     }
     poseidon_hash_list_native(&tokens)
-}
+}*/

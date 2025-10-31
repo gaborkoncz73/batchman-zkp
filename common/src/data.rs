@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use halo2_proofs::pasta::Fp;
-use crate::utils_2::common_helpers::{to_fp_value, MAX_ARITY, MAX_CHILDREN, MAX_CLAUSES, MAX_EQUALITIES, MAX_FACTS, MAX_PREDICATES};
+use crate::utils_2::common_helpers::{MAX_ARITY, MAX_CHILDREN, MAX_CLAUSES, MAX_EQUALITIES, MAX_FACTS, MAX_PRED_LIST, MAX_PREDICATES, to_fp_value};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RuleTemplateFile {
@@ -67,37 +67,32 @@ pub struct GoalEntry {
     pub subtree: Vec<ProofNode>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Term {
-    pub name: String,
-    pub args: Vec<String>,
-}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct UnificationInputFp {
-    pub goal_name: TermFp,
-    pub subtree_goals: Vec<TermFp>,
+    pub goal_name: Vec<TermFp>,
+    pub subtree_goals: Vec<Vec<TermFp>>,
 }
 impl Default for UnificationInputFp {
     fn default() -> Self {
         Self {
-            goal_name: TermFp::default(),
-            subtree_goals: Vec::new(),
+            goal_name: vec![TermFp::default(); MAX_PRED_LIST],
+            subtree_goals: vec![vec![TermFp::default(); MAX_PRED_LIST];MAX_ARITY],
         }
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TermFp {
-    pub name: Fp,
-    pub args: Vec<Fp>,
-    pub fact_hashes: Fp,
+    pub name: String,
+    pub args: Vec<Vec<String>>,
+    pub fact_hashes: String,
 }
 impl Default for TermFp{
     fn default() -> Self {
         Self {
-            name: Fp::zero(),
-            args: vec![Fp::zero(); MAX_ARITY], 
-            fact_hashes: Fp::zero(), }
+            name: String::new(),
+            args: vec![vec![String::new(); MAX_PRED_LIST];MAX_ARITY], 
+            fact_hashes: String::new(), }
     }
 }
 

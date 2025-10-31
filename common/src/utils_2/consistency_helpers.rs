@@ -1,4 +1,4 @@
-use halo2_proofs::{
+/*use halo2_proofs::{
     circuit::{Layouter, AssignedCell, Value},
     pasta::Fp,
     plonk::Error,
@@ -168,4 +168,4 @@ pub fn bind_rules(
             Ok(flattened_rules)
         },
     )
-}
+}*/

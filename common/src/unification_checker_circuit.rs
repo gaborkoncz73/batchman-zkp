@@ -1,4 +1,4 @@
-use halo2_proofs::{
+/*use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, SimpleFloorPlanner},
     pasta::Fp,
     plonk::{Circuit, Column, ConstraintSystem, Error, Instance},
@@ -307,4 +307,4 @@ pub fn offsets_for_clause_fp(pred: &PredicateTemplateFp, clause: &ClauseTemplate
     }
 
     offsets
-}
+}*/

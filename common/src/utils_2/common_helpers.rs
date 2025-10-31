@@ -1,3 +1,5 @@
+use std::usize;
+
 use halo2_proofs::pasta::Fp;
 
 // Facts for rules
@@ -9,15 +11,15 @@ pub const MAX_RULE_COMPONENTS: usize = 30;
 
 pub const MAX_CANDIDATES: usize = MAX_PREDICATES * MAX_CLAUSES;
 // MAX Term args len
-pub const MAX_ARITY: usize = 2;
+pub const MAX_ARITY: usize = 4;
 
-pub const MAX_FACTS_HASHES: usize = 3;
+pub const MAX_FACTS_HASHES: usize = 4;
 
 
 
 pub const MAX_SIG_TOKENS: usize = (1 + MAX_ARITY) * (1 + MAX_CHILDREN);
 
-
+pub const MAX_PRED_LIST:usize = 4;
 
 pub const MAX_FACTS: usize = 5;
 

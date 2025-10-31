@@ -1,12 +1,15 @@
 mod writer;
 pub mod helpers;
 
+use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use std::{collections::HashMap, fs};
 use std::sync::Arc;
 use anyhow::Result;
-use common::data::RuleTemplateFileFp;
-use common::utils_2::off_circuit_poseidon::poseidon_hash_list_native;
+use common::data::{GoalEntry, ProofNode, RuleTemplateFileFp, TermFp};
+use common::utils_2::common_helpers::to_fp_value;
+//use common::utils_2::off_circuit_poseidon::poseidon_hash_list_native;
 use rand_core::OsRng;
 use rayon::prelude::*;
 
@@ -18,16 +21,19 @@ use halo2_proofs::{
 };
 
 use common::{data, data::UnificationInputFp};
-use common::unification_checker_circuit::UnificationCircuit;
+//use common::unification_checker_circuit::UnificationCircuit;
 use common::io::read_fact_hashes::read_fact_hashes;
 use data::Config;
-use helpers::{build_fact_map, unification_input_from_goal_and_facts};
+use helpers::{build_fact_map/*, unification_input_from_goal_and_facts*/};
 
+use serde::Serialize;
+use serde_json::to_string_pretty;
 use writer::{write_proof};
 
+use crate::helpers::{encode_str_to_termfp, unification_input_from_goal_and_facts};
 use crate::writer::remove_proofs_file;
 
-fn main() -> Result<()> {
+/*fn main() -> Result<()> {
     // Fact struct
     let config_file = "input/facts.yaml";
     let file_content = fs::read_to_string(config_file)
@@ -74,7 +80,7 @@ fn main() -> Result<()> {
     );
     
     // Params + keygen
-    let params: Params<EqAffine> = Params::new(8);
+    /*let params: Params<EqAffine> = Params::new(8);
     let shape = UnificationCircuit {
         rules: rules_fp.clone(),
         unif: UnificationInputFp::default(),
@@ -83,21 +89,21 @@ fn main() -> Result<()> {
     let pk: ProvingKey<EqAffine> = keygen_pk(&params, vk.clone(), &shape)?;
 
     let params = Arc::new(params);
-    let pk = Arc::new(pk);
+    let pk = Arc::new(pk);*/
 
     // Clearing the unif_proofs.json
-    remove_proofs_file("unif_proofs.json")?;
+    //remove_proofs_file("unif_proofs.json")?;
 
     // Starting the proving from the root
-    tree.iter()
+    /*tree.iter()
         .try_for_each(|node|prove_tree(&rules_fp, node, &params,  &pk, &facts, &public_inputs))?;
 
-    println!("All unification goals proof saved!");
+    println!("All unification goals proof saved!");*/
     Ok(())
 }
 
 // Recursive proving function
-fn prove_tree(
+/*fn prove_tree(
     rules_fp: &data::RuleTemplateFileFp,
     node: &data::ProofNode,
     params: &Arc<Params<EqAffine>>,
@@ -137,4 +143,88 @@ fn prove_tree(
             .try_for_each(|sub| prove_tree(rules_fp, sub, params, pk, facts, &public_inputs))?;
     }
     Ok(())
+}*/ */
+
+
+
+// -----------------------------------------------------------------------------
+// A hierarchikus (rekurzívan kibontott) kimeneti csomópont
+// -----------------------------------------------------------------------------
+
+// A hierarchikus kimeneti fa (egy goal + a saját subtree-je)
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("🚀 Starting recursive unification input export...");
+
+    // ✅ facts.yaml
+    let config_text = fs::read_to_string("input/facts.yaml")?;
+    let fact_configs: Vec<data::Config> = serde_yaml::from_str(&config_text)?;
+    let facts: HashMap<String, Fp> = build_fact_map(&fact_configs);
+
+    // ✅ proof_tree.json
+    let tree_text = fs::read_to_string("input/proof_tree.json")?;
+    let proof_nodes: Vec<ProofNode> = serde_json::from_str(&tree_text)?;
+
+    println!("📌 Loaded {} proof nodes", proof_nodes.len());
+
+    // ✅ DFS traversal of all proof nodes
+    let mut results: Vec<UnificationInputFp> = Vec::new();
+    for node in proof_nodes.iter() {
+        collect_unification_inputs(node, &facts, &mut results);
+    }
+
+    // ✅ Output JSON
+    let json_output = to_string_pretty(&results)?;
+    let mut file = File::create("output/unification_inputs.json")?;
+    file.write_all(json_output.as_bytes())?;
+
+    println!("✅ Saved {} unification inputs → output/unification_inputs.json", results.len());
+    Ok(())
+}
+
+/// Recursively walk DFS on the proof tree
+fn collect_unification_inputs(
+    node: &ProofNode,
+    facts: &HashMap<String, Fp>,
+    results: &mut Vec<UnificationInputFp>,
+) {
+    if let ProofNode::GoalNode(g) = node {
+
+        // ✅ Encode this goal itself
+        let unif = build_unification_from_goal(g, facts);
+        results.push(unif);
+
+        // ✅ Recurse deeply into subtree
+        for list in g.subtree.iter() {
+                collect_unification_inputs(list, facts, results);
+        
+        }
+    }
+}
+
+/// Build a full unification input for ONE goal node
+fn build_unification_from_goal(
+    g: &GoalEntry,
+    facts: &HashMap<String, Fp>,
+) -> UnificationInputFp {
+
+    // ✅ goal_name: Vec<TermFp>
+    let goal_name_terms = encode_str_to_termfp(&g.goal, facts);
+
+    // ✅ subtree_goals: Vec<Vec<TermFp>>
+    let subtree_terms: Vec<Vec<TermFp>> = g.subtree
+    .iter()
+    .map(|subnode| {
+        if let ProofNode::GoalNode(subg) = subnode {
+            // ✅ encode this immediate subtree goal
+            encode_str_to_termfp(&subg.goal, facts)
+        } else {
+            Vec::new()
+        }
+    })
+    .collect();
+
+    UnificationInputFp {
+        goal_name: goal_name_terms,
+        subtree_goals: subtree_terms,
+    }
 }

@@ -1,4 +1,4 @@
-mod reader;
+/*mod reader;
 
 use common::data::{RuleTemplateFile, RuleTemplateFileFp, UnificationInputFp};
 use common::unification_checker_circuit::UnificationCircuit;
@@ -71,4 +71,8 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}*/
+
+pub fn main(){
+    
 }

@@ -1,4 +1,4 @@
-use std::{fs, path::Path};
+/*use std::{fs, path::Path};
 use anyhow::Result;
 use halo2_proofs::pasta::Fp;
 use num_bigint::BigUint;
@@ -38,4 +38,9 @@ fn main() -> Result<()> {
 
     println!("Saved {} fact hashes to {:?}", fact_hashes.len(), out_path);
     Ok(())
+}
+*/
+
+pub fn main() {
+    
 }
