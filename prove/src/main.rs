@@ -24,7 +24,7 @@ use halo2_proofs::{
 use common::{data, data::UnificationInputFp};
 //use common::unification_checker_circuit::UnificationCircuit;
 use common::io::read_fact_hashes::read_fact_hashes;
-use data::Config;
+use data::FactEntry;
 use helpers::{build_fact_map, unification_input_from_goal_and_facts};
 
 use serde::Serialize;
@@ -39,11 +39,12 @@ fn main() -> Result<()> {
     let config_file = "input/facts.yaml";
     let file_content = fs::read_to_string(config_file)
         .expect("Failed to read the YAML file.");
-    let fact_configs: Vec<Config> = serde_yaml::from_str(&file_content)
+    let fact_configs: Vec<FactEntry> = serde_yaml::from_str(&file_content)
         .expect("Wrong YAML format");
 
     // Building fact HashMap
     let facts = build_fact_map(&fact_configs);
+
 
     // Processing the rules
     let rules_text = fs::read_to_string("input/rules.json")?;
@@ -123,7 +124,7 @@ fn prove_tree(
         };
 
         // Proof generation
-        let mut transcript = Blake2bWrite::<Vec<u8>, _, Challenge255<_>>::init(vec![]);
+        let mut transcript: Blake2bWrite<Vec<u8>, EqAffine, Challenge255<EqAffine>> = Blake2bWrite::<Vec<u8>, _, Challenge255<_>>::init(vec![]);
 
         
         halo2_proofs::plonk::create_proof(

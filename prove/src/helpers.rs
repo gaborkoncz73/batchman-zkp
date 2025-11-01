@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use common::{data::{Config, GoalEntry, ProofNode, TermFp, UnificationInputFp}, utils_2::common_helpers::{MAX_ARITY, MAX_PRED_LIST, to_fp_value}};
+use common::{data::{FactEntry, GoalEntry, ProofNode, TermFp, UnificationInputFp}, utils_2::common_helpers::{MAX_ARITY, MAX_PRED_LIST, to_fp_value}};
 use halo2_proofs::pasta::Fp;
 
 // From the goal and hashmap it creates the Unification input
@@ -46,6 +46,11 @@ if !has_op && has_list {
     let name_str = input[..open].trim();
     let args_str = &input[open + 1..close];
     // ✅ applySocialSupports special handling
+
+    if name_str == "sumOfMonthlyConsumptions" && args_str.contains("[]"){
+        out_terms.push(encode_str_to_termfp_og(input, facts));
+        return out_terms;
+    }
     if name_str == "applySocialSupports" {
         let mut matrix = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
 
@@ -323,7 +328,7 @@ fn encode_proofnode_to_termfp(
 }
 
 // Building the factmap to get the salts easier
-pub fn build_fact_map(facts: &[Config]) -> HashMap<String, Fp> {
+pub fn build_fact_map(facts: &[FactEntry]) -> HashMap<String, Fp> {
     let mut map = HashMap::new();
 
     for conf in facts {
@@ -333,7 +338,6 @@ pub fn build_fact_map(facts: &[Config]) -> HashMap<String, Fp> {
         } else {
             format!("{}({})", conf.predicate, conf.args.join(","))
         };
-
         // Convert salt to Fp
         let salt = to_fp_value(&conf.salt);
 
@@ -408,25 +412,23 @@ fn encode_str_to_termfp_og(input: &str, facts: &HashMap<String, Fp>) -> TermFp {
         .filter(|s| !s.is_empty())
         .collect();
 
-    // Pad to MAX_ARITY
-    while flat_args.len() < MAX_ARITY {
-        flat_args.push("");
+    if name_str == "consumptionClass" && flat_args[1] == "low" {
+        flat_args[0] = "_";
     }
+    let reconstructed = format!("{}({})", name_str, flat_args.join(","));
 
     // ✅ Convert to correct 2D args matrix
     let mut args_matrix = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
-    for (i, val) in flat_args.into_iter().enumerate() {
+    for (i, val) in flat_args.clone().into_iter().enumerate() {
         if !val.is_empty() {
             args_matrix[i][0] = to_fp_value(val);
         }
     }
-
-    // Name into Fp
-    let name_fp = name_str;
-
+    
+    let salt = facts.get(&reconstructed).copied().unwrap_or(Fp::zero());
     TermFp {
-        name: to_fp_value(name_fp),
+        name: to_fp_value(name_str),
         args: args_matrix,
-        fact_hashes: Fp::zero(),
+        fact_hashes: salt,
     }
 }

@@ -1,4 +1,3 @@
-use halo2_gadgets::utilities::FieldValue;
 use halo2_proofs::{
     circuit::{Layouter, AssignedCell, Value},
     pasta::Fp,
@@ -36,6 +35,7 @@ impl SigOrCompareChip {
             proof_flat.push(pair.clone());
         }
     }
+
     let mut candidates_flat: Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>> = Vec::new();
     for cand in candidate_pairs_nested {
         let mut flat: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
@@ -51,7 +51,7 @@ impl SigOrCompareChip {
         layouter.namespace(|| "sig RLC(proof)"),
         &proof_flat,
     )?;
-
+    
     // candidate RLC-k és match flag-ek (b_i)
     let mut b_flags: Vec<AssignedCell<Fp, Fp>> = Vec::new();
 
@@ -89,7 +89,6 @@ impl SigOrCompareChip {
     }
 
     // Compute product: prod(1 - b_i)
-    let one = Value::known(Fp::one());
     let mut prod_not_b = Value::known(Fp::one());
 
     for b in b_flags.iter() {

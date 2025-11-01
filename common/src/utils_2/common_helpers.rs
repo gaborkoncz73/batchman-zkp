@@ -12,7 +12,12 @@ pub const MAX_CANDIDATES: usize = MAX_PREDICATES_OVERALL * MAX_CLAUSES_PER_PREDI
 
 pub const MAX_ARITY: usize = 4;
 
+pub const MAX_FACTS_HASHES: usize = 17;
+
 pub const MAX_CHILDREN: usize = 11;
+
+
+
 pub const MAX_EQUALITIES: usize = 6;
 pub const MAX_RULE_COMPONENTS: usize = 30;
 
@@ -20,15 +25,12 @@ pub const MAX_RULE_COMPONENTS: usize = 30;
 // MAX Term args len
 
 
-pub const MAX_FACTS_HASHES: usize = 4;
+
 
 
 
 pub const MAX_SIG_TOKENS: usize = MAX_PRED_LIST *(1 + MAX_ARITY) * (1 + MAX_CHILDREN);
 
-
-
-pub const MAX_FACTS: usize = 5;
 
 pub fn to_fp_value(s: &str) -> Fp {
     // 1️⃣ hash → 32 byte

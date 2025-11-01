@@ -126,7 +126,6 @@ impl Circuit<Fp> for UnificationCircuit {
             )
         },
     )?;
-
     let is_fact_local_for_fact_check = layouter.assign_region(
         || "copy is_fact for FactChip",
         |mut region| {
@@ -140,7 +139,7 @@ impl Circuit<Fp> for UnificationCircuit {
             Ok(local)
         },
     )?;
-    
+ //   println!()
     let sig_chip = SigCheckChip::construct(cfg.sig_check_cfg.clone());
     let b_flags = sig_chip.assign(
         layouter.namespace(|| "Sig membership (rules or fact placeholder)"),
@@ -148,6 +147,48 @@ impl Circuit<Fp> for UnificationCircuit {
         &candidate_pairs_all,
         &is_fact_cell,
     )?;
+
+    let fact_hash_chip= FactChip::construct(cfg.fact_cfg.clone());
+
+    let mut flag_copy_cells: Vec<AssignedCell<Fp, Fp>> = Vec::new();
+
+    for (i, bflag) in b_flags.iter().enumerate() {
+        let copied = layouter.assign_region(
+            || format!("flag_copy_{i}"),
+            |mut region| {
+                region.assign_advice(
+                    || "flag_copy",
+                    cfg.fact_cfg.salt,
+                    i+1,
+                    || bflag.value().copied()
+                )
+            },
+        )?;
+        flag_copy_cells.push(copied.clone());
+    }
+
+
+    let goal_name_salt_cell = layouter.assign_region(
+        || "assign goal_name_salt",
+        |mut region| {
+            region.assign_advice(
+                || "goal salt",
+                cfg.fact_cfg.salt, // any advice column, e.g., from FactConfig or your own column
+                0,
+                || Value::known(self.unif.goal_name.get(0).unwrap().fact_hashes), // or however your salt is stored
+            )
+        },
+    )?;
+    fact_hash_chip.assign(
+        layouter.namespace(|| "Fact membership"),
+        &goal_name_cell,
+        &goal_name_arg_cells,
+        &goal_name_salt_cell,
+        &is_fact_local_for_fact_check,
+        &flag_copy_cells,
+    )?;
+
+
     // Helper: determinisztikus flatten offsetek (head + children).
     // Ezt a segítségeddel már tudod (pl. ClauseTemplate-ből):
     /*let rows_chip = RuleRowsChip::construct(cfg.rule_rows_cfg.clone());

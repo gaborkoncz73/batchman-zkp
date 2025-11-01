@@ -4,7 +4,7 @@ use halo2_proofs::{
     plonk::Error,
 };
 
-use crate::{chips::{fact_check::fact_hash_chip::FactConfig, rules_check_chip::RulesConfig}, data::RuleTemplateFileFp};
+use crate::{chips::{fact_check::fact_hash_chip::FactConfig, rules_check_chip::RulesConfig}, data::RuleTemplateFileFp, utils_2::common_helpers::MAX_ARITY};
 use crate::data::UnificationInputFp;
 
 /// Segédfüggvény a goal, unif_goal és term mezők bekötéséhez.
@@ -14,23 +14,21 @@ pub fn bind_goal_name_args_inputs(
     layouter: &mut impl Layouter<Fp>,
     cfg: &FactConfig,
     unif: &UnificationInputFp,
-) -> Result<
-    (
+) -> Result<(
         Vec<AssignedCell<Fp, Fp>>,     // goal_name_cells
-        Vec<Vec<AssignedCell<Fp, Fp>>>,// goal_argument_cells[pred][arg]
-    ),
-    Error,
-> {
+        Vec<Vec<Vec<AssignedCell<Fp, Fp>>>>,// goal_argument_cells[p][(a,l)]
+    ), Error>
+{
     layouter.assign_region(
         || region_name,
         |mut region| {
             let mut name_cells = Vec::new();
-            let mut arg_cells = Vec::new();
+            
+            let mut all_arg_cells = Vec::new();
+
 
             for (p_i, pred) in unif.goal_name.iter().enumerate() {
-                //
-                // ✅ Bind predicate name cell
-                //
+                // --- name ---
                 let name_cell = region.assign_advice(
                     || format!("goal_name_{}", p_i),
                     cfg.name,
@@ -39,27 +37,28 @@ pub fn bind_goal_name_args_inputs(
                 )?;
                 name_cells.push(name_cell);
 
-                //
-                // ✅ Bind argument matrix cells
-                //
-                let mut pred_arg_cells = Vec::new();
-
+                // --- args matrix ---
+                
+                let mut arg_cells = Vec::new();
                 for (a_i, arg_row) in pred.args.iter().enumerate() {
+                    let mut pred_arg_cells = Vec::new();
                     for (l_i, arg_val) in arg_row.iter().enumerate() {
+                        let row_idx = p_i * MAX_ARITY + a_i;  // ✅ unique placement per predicate
+
                         let c = region.assign_advice(
-                            || format!("goal_arg_{}_{}_{}", p_i, a_i, l_i),
+                            || format!("goal_arg_p{}_a{}_l{}", p_i, a_i, l_i),
                             cfg.args,
-                            a_i, // ✅ row → advice column index = arg index
+                            row_idx,
                             || Value::known(*arg_val),
                         )?;
                         pred_arg_cells.push(c);
                     }
+                    arg_cells.push(pred_arg_cells);
                 }
 
-                arg_cells.push(pred_arg_cells);
+                all_arg_cells.push(arg_cells);
             }
-
-            Ok((name_cells, arg_cells))
+            Ok((name_cells, all_arg_cells))
         }
     )
 }

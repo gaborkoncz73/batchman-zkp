@@ -1,9 +1,9 @@
-/*use halo2_gadgets::poseidon::primitives::{
+use halo2_gadgets::poseidon::primitives::{
     Hash as PoseidonHash, P128Pow5T3, ConstantLength,
 };
 use halo2_proofs::pasta::Fp;
 
-use crate::utils_2::common_helpers::to_fp_value;
+use crate::utils_2::common_helpers::{MAX_ARITY, to_fp_value};
 
 
 #[inline]
@@ -35,9 +35,13 @@ pub fn poseidon_hash_list_native(values: &[Fp]) -> Fp {
 /// - Fp hash identical to the chip’s Poseidon fold.
 pub fn fact_hash_native_salted(name: &str, args: &[&str], salt: &str) -> Fp {
     let mut tokens: Vec<Fp> = Vec::with_capacity(1 + args.len() + 1);
+
     tokens.push(to_fp_value(name));
     for a in args {
         tokens.push(to_fp_value(a));
+    }
+    while tokens.len() < MAX_ARITY + 1{
+        tokens.push(Fp::zero());
     }
     tokens.push(to_fp_value(salt));
 
@@ -51,4 +55,4 @@ pub fn fact_hash_native_term(name: &Fp, args: &[Fp]) -> Fp {
         tokens.push(*a);
     }
     poseidon_hash_list_native(&tokens)
-}*/
+}

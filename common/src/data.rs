@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use halo2_proofs::pasta::Fp;
-use crate::utils_2::common_helpers::{MAX_ARITY, MAX_CHILDREN, MAX_CLAUSES_PER_PREDICATE, MAX_EQUALITIES, MAX_FACTS, MAX_PRED_LIST, MAX_PREDICATES_OVERALL, to_fp_value};
+use crate::utils_2::common_helpers::{MAX_ARITY, MAX_CHILDREN, MAX_CLAUSES_PER_PREDICATE, MAX_EQUALITIES, MAX_PRED_LIST, MAX_PREDICATES_OVERALL, to_fp_value};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RuleTemplateFile {
@@ -200,8 +200,8 @@ pub struct TermRefFp {
 
 // Config struct to read the yaml
 #[derive(Debug, Deserialize)]
-pub struct Config {
+pub struct FactEntry {
     pub predicate: String,
-    pub args: Vec<String>,
+    pub args: Vec<String>, // minden arg stringként jön a YAML-ből
     pub salt: String,
 }

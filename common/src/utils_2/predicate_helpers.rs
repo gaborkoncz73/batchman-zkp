@@ -243,7 +243,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
                         rows.push(r);
                     }
 
-                    // MIUTÁN minden BODY sor bekerült: SOROK SZÁMÁNAK paddingje
+                    // ✅ MIUTÁN minden BODY sor bekerült: SOROK SZÁMÁNAK paddingje
                     while rows.len() < MAX_CHILDREN {
                         let mut empty_row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
                         for _ in 0..MAX_CHILDREN {

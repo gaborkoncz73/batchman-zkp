@@ -16,3 +16,4 @@ halo2_gadgets = { workspace = true }
 once_cell = { workspace = true }
 rand_core  = { workspace = true, features = ["getrandom"] }
 serde_yaml = { workspace = true }
+regex = { workspace = true }
