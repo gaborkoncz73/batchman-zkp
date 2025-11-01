@@ -1,4 +1,4 @@
-/*use halo2_proofs::{
+use halo2_proofs::{
     circuit::{Layouter, AssignedCell, Value},
     pasta::Fp,
     plonk::Error,
@@ -16,42 +16,55 @@ pub fn bind_goal_name_args_inputs(
     unif: &UnificationInputFp,
 ) -> Result<
     (
-        AssignedCell<Fp, Fp>,                     // goal_name_cell
-        Vec<AssignedCell<Fp, Fp>>,                // goal_name_arg_cells
+        Vec<AssignedCell<Fp, Fp>>,     // goal_name_cells
+        Vec<Vec<AssignedCell<Fp, Fp>>>,// goal_argument_cells[pred][arg]
     ),
     Error,
 > {
     layouter.assign_region(
         || region_name,
         |mut region| {
-            // Goal name
-            let goal_name_cell: AssignedCell<Fp, Fp> = region.assign_advice(
-                || "goal_name",
-                cfg.name,
-                0,
-                || Value::known(unif.goal_name.name),
-            )?;
-            // Goal args
-            let mut goal_name_arg_cells = Vec::new();
-            for (i, arg) in unif.goal_name.args.iter().enumerate() {
-                let c = region.assign_advice(
-                    || format!("goal_name_arg_{i}"),
-                    cfg.args,
-                    i,
-                    || Value::known(*arg),
+            let mut name_cells = Vec::new();
+            let mut arg_cells = Vec::new();
+
+            for (p_i, pred) in unif.goal_name.iter().enumerate() {
+                //
+                // ✅ Bind predicate name cell
+                //
+                let name_cell = region.assign_advice(
+                    || format!("goal_name_{}", p_i),
+                    cfg.name,
+                    p_i,
+                    || Value::known(pred.name),
                 )?;
-                goal_name_arg_cells.push(c);
+                name_cells.push(name_cell);
+
+                //
+                // ✅ Bind argument matrix cells
+                //
+                let mut pred_arg_cells = Vec::new();
+
+                for (a_i, arg_row) in pred.args.iter().enumerate() {
+                    for (l_i, arg_val) in arg_row.iter().enumerate() {
+                        let c = region.assign_advice(
+                            || format!("goal_arg_{}_{}_{}", p_i, a_i, l_i),
+                            cfg.args,
+                            a_i, // ✅ row → advice column index = arg index
+                            || Value::known(*arg_val),
+                        )?;
+                        pred_arg_cells.push(c);
+                    }
+                }
+
+                arg_cells.push(pred_arg_cells);
             }
 
-            Ok((
-                goal_name_cell,
-                goal_name_arg_cells,
-            ))
-        },
+            Ok((name_cells, arg_cells))
+        }
     )
 }
 
-pub fn bind_rules(
+/*pub fn bind_rules(
     region_name: &str,
     layouter: &mut impl Layouter<Fp>,
     cfg: &RulesConfig,

@@ -70,8 +70,8 @@ impl SigCheckChip {
     pub fn assign(
         &self,
         mut layouter: impl Layouter<Fp>,
-        proof_pairs: &[(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)],
-        candidate_pairs_all: &[Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>],
+        proof_pairs: &[Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>],
+        candidate_pairs_all: &[Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>>],
         is_fact: &AssignedCell<Fp, Fp>,
     ) -> Result<Vec<AssignedCell<Fp, Fp>>, Error> { 
         let sig_rlc_chip = SigRlcChip::construct(self.cfg.rlc_cfg.clone());

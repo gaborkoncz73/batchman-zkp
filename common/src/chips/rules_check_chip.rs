@@ -50,7 +50,7 @@ impl RulesChip {
 
         let hashed = pos_chip.hash_list(layouter.namespace(|| "Poseidon(rules_flatten)"), &flatten_rules)?;
 
-        // 2️⃣ Membership check (gated by is_fact)
+        // Membership check (gated by is_fact)
         layouter.assign_region(
             || "membership check (is_fact-gated)",
             |mut region| {

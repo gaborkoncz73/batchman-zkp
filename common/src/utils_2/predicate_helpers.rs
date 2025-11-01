@@ -1,179 +1,303 @@
-/*
+
 use halo2_proofs::{
-    circuit::{AssignedCell, Layouter},
+    circuit::{AssignedCell, Layouter, Value},
     pasta::Fp,
     plonk::Error,
 };
 
-use crate::{chips::finding_rule::body_subtree_chip::UnifCompareConfig, data::{PredicateTemplateFp, TermFp}, utils_2::common_helpers::{MAX_CANDIDATES, MAX_CHILDREN}};
+use crate::{
+    chips::finding_rule::body_subtree_chip::UnifCompareConfig,
+    data::{PredicateTemplateFp, TermFp},
+    utils_2::common_helpers::{MAX_CANDIDATES, MAX_CHILDREN},
+};
+
 
 pub fn bind_proof_and_candidates_sig_pairs(
     region_name: &str,
     layouter: &mut impl Layouter<Fp>,
     cfg: &UnifCompareConfig,
-    goal_term: &TermFp,                    // Main term e.g. ancestor(alice,john)
-    subtree_terms: &[TermFp],                // Subtree terms (e. g. parent, ancestor)
-    rules: &[PredicateTemplateFp],         // Every rule predicates
+    goal_terms: &[TermFp],         // ✅ Vec<TermFp>
+    subtree_terms: &[Vec<TermFp>], // ✅ Vec<Vec<TermFp>>
+    rules: &[PredicateTemplateFp],
 ) -> Result<
     (
-        Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>,              // proof_pairs: (name, arity)
-        Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>>,         // candidate_pairs_all: vec![(name, arity)]
+        Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>>,               // final_proof_pairs [rows][(name,arity)]
+        Vec<Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>>>,          // candidate_pairs_all [candidate][rows][(name,arity)]
     ),
     Error,
 > {
-    use halo2_proofs::circuit::Value;
-
-    // arity counter
-    let measure_arity = |args: &Vec<Fp>| -> u64 {
-        args.iter().take_while(|&&a| a != Fp::zero()).count() as u64
+    //println!("gaty: {:?}", goal_terms);
+    // aritás mérése: a 2D mátrixot sorfolytonosan bejárjuk és az első zéróig számolunk
+    let measure_arity = |matrix: &Vec<Vec<Fp>>| -> Fp {
+        let count = matrix
+            .iter()
+            .take_while(|row| row.get(0).map(|v| *v != Fp::zero()).unwrap_or(false))
+            .count() as u64;
+        Fp::from(count)
     };
 
     layouter.assign_region(
         || region_name,
         |mut region| {
-            let mut proof_pairs: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
+            let mut final_proof_pairs: Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>> = Vec::new();
             let mut proof_row_offset = 0usize;
 
-            // Goal name
-            let goal_name_cell = region.assign_advice(
-                || "proof.goal.name",
-                cfg.proof_pairs,
-                proof_row_offset,
-                || Value::known(goal_term.name),
-            )?;
-            let goal_arity = Fp::from(measure_arity(&goal_term.args));
-            let goal_arity_cell = region.assign_advice(
-                || "proof.goal.arity",
-                cfg.proof_pairs,
-                proof_row_offset + 1,
-                || Value::known(goal_arity),
-            )?;
-            proof_pairs.push((goal_name_cell, goal_arity_cell));
-            proof_row_offset += 3;
+            // ── GOAL sor (a goal_terms predikátumlistája EGY sorban) ─────────────────
+            {
+                let mut row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
 
-            // Subtree terms
-            for (i, term) in subtree_terms.iter().enumerate() {
-                let name_cell = region.assign_advice(
-                    || format!("proof.body[{i}].name"),
-                    cfg.proof_pairs,
-                    proof_row_offset ,
-                    || Value::known(term.name),
-                )?;
-                let arity_fp = Fp::from(measure_arity(&term.args));
-                let arity_cell = region.assign_advice(
-                    || format!("proof.body[{i}].arity"),
-                    cfg.proof_pairs,
-                    proof_row_offset + 1,
-                    || Value::known(arity_fp),
-                )?;
-                proof_pairs.push((name_cell, arity_cell));
-                proof_row_offset += 2;
-            }
-
-            // padding proof until MAX_SIGS
-            while proof_pairs.len() < MAX_CHILDREN {
-                let n = region.assign_advice(
-                    || format!("proof.pad.name{}", proof_pairs.len()),
-                    cfg.proof_pairs,
-                    proof_row_offset,
-                    || Value::known(Fp::zero()),
-                )?;
-                let a = region.assign_advice(
-                    || format!("proof.pad.arity{}", proof_pairs.len()),
-                    cfg.proof_pairs,
-                    proof_row_offset + 1,
-                    || Value::known(Fp::zero()),
-                )?;
-                proof_pairs.push((n, a));
-                proof_row_offset += 2;
-            }
-
-            // Rule candidates
-            let mut candidate_pairs_all: Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>> = Vec::new();
-            let mut candidate_row_offset = 0usize;
-
-            for (p_i, pred) in rules.iter().enumerate() {
-                for (c_i, cl) in pred.clauses.iter().enumerate() {
-
-                    let mut v: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
-
-                    // pred name
-                    let head_name = region.assign_advice(
-                        || format!("head.name (p{p_i} c{c_i})"),
-                        cfg.candidate_pairs,
-                        candidate_row_offset,
-                        || Value::known(pred.name),
-                    )?;
-                    let head_arity = region.assign_advice(
-                        || format!("head.arity (p{p_i} c{c_i})"),
-                        cfg.candidate_pairs,
-                        candidate_row_offset + 1,
-                        || Value::known(pred.arity),
-                    )?;
-                    v.push((head_name, head_arity));
-                    candidate_row_offset += 2;
-
-                    // CHILDREN (child.name, child.arity)
-                    for (j, ch) in cl.children.iter().enumerate().take(MAX_CHILDREN) {
-                        let child_name = region.assign_advice(
-                            || format!("child[{j}].name"),
-                            cfg.candidate_pairs,
-                            candidate_row_offset,
-                            || Value::known(ch.name),
-                        )?;
-                        let child_arity = region.assign_advice(
-                            || format!("child[{j}].arity"),
-                            cfg.candidate_pairs,
-                            candidate_row_offset + 1,
-                            || Value::known(ch.arity),
-                        )?;
-                        v.push((child_name, child_arity));
-                        candidate_row_offset += 2;
-                    }
-
-                    // padding until MAX_SIGS
-                    while v.len() < MAX_CHILDREN {
-                        let pad_name = region.assign_advice(
-                            || format!("pad.name"),
-                            cfg.candidate_pairs,
-                            candidate_row_offset,
-                            || Value::known(Fp::zero()),
-                        )?;
-                        let pad_arity = region.assign_advice(
-                            || format!("pad.arity"),
-                            cfg.candidate_pairs,
-                            candidate_row_offset + 1,
-                            || Value::known(Fp::zero()),
-                        )?;
-                        v.push((pad_name, pad_arity));
-                        candidate_row_offset += 2;
-                    }
-                    candidate_pairs_all.push(v);
-                }
-            }
-
-            // padding until MAX_CANDIDATES
-            while candidate_pairs_all.len() < MAX_CANDIDATES {
-                let mut v: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
-                for _ in 0..MAX_CHILDREN + 1 {
+                for (gi, goal_term) in goal_terms.iter().enumerate() {
                     let n = region.assign_advice(
-                        || "cand.pad.name",
-                        cfg.candidate_pairs,
-                        candidate_row_offset,
-                        || Value::known(Fp::zero()),
+                        || format!("proof.goal[{gi}].name"),
+                        cfg.proof_pairs,
+                        proof_row_offset,
+                        || Value::known(goal_term.name),
                     )?;
                     let a = region.assign_advice(
-                        || "cand.pad.arity",
-                        cfg.candidate_pairs,
-                        candidate_row_offset + 1,
+                        || format!("proof.goal[{gi}].arity"),
+                        cfg.proof_pairs,
+                        proof_row_offset + 1,
+                        || Value::known(measure_arity(&goal_term.args)),
+                    )?;
+                    //println!("N: \n {:?} \nA?:? {:?}", n, a);
+                    row.push((n, a));
+                    
+                    proof_row_offset += 2;
+                }
+
+                // padding a sor végén
+                while row.len() < MAX_CHILDREN {
+                    let pn = region.assign_advice(
+                        || "proof.goal.pad.name",
+                        cfg.proof_pairs,
+                        proof_row_offset,
                         || Value::known(Fp::zero()),
                     )?;
-                    v.push((n, a));
-                    candidate_row_offset += 2;
+                    let pa = region.assign_advice(
+                        || "proof.goal.pad.arity",
+                        cfg.proof_pairs,
+                        proof_row_offset + 1,
+                        || Value::known(Fp::zero()),
+                    )?;
+                    row.push((pn, pa));
+                    proof_row_offset += 2;
                 }
-                candidate_pairs_all.push(v);
+
+                final_proof_pairs.push(row);
             }
-            Ok((proof_pairs, candidate_pairs_all))
+
+            // ── SUBTREE sorok (minden subtree külön SOR) ────────────────────────────
+            for (si, subtree) in subtree_terms.iter().enumerate() {
+                let mut row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
+
+                for (ti, term) in subtree.iter().enumerate() {
+                    let n = region.assign_advice(
+                        || format!("proof.sub[{si}][{ti}].name"),
+                        cfg.proof_pairs,
+                        proof_row_offset,
+                        || Value::known(term.name),
+                    )?;
+                    let a = region.assign_advice(
+                        || format!("proof.sub[{si}][{ti}].arity"),
+                        cfg.proof_pairs,
+                        proof_row_offset + 1,
+                        || Value::known(measure_arity(&term.args)),
+                    )?;
+                    row.push((n, a));
+                    proof_row_offset += 2;
+                }
+
+                // padding a sor végén
+                while row.len() < MAX_CHILDREN {
+                    let pn = region.assign_advice(
+                        || "proof.sub.pad.name",
+                        cfg.proof_pairs,
+                        proof_row_offset,
+                        || Value::known(Fp::zero()),
+                    )?;
+                    let pa = region.assign_advice(
+                        || "proof.sub.pad.arity",
+                        cfg.proof_pairs,
+                        proof_row_offset + 1,
+                        || Value::known(Fp::zero()),
+                    )?;
+                    row.push((pn, pa));
+                    proof_row_offset += 2;
+                }
+
+                final_proof_pairs.push(row);
+            }
+
+            // ── (opcionális) teljes proof rows padding MAX_CHILDREN-ig ──────────────
+            while final_proof_pairs.len() < MAX_CHILDREN {
+                let mut row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
+                for _ in 0..MAX_CHILDREN {
+                    let pn = region.assign_advice(
+                        || "proof.total.pad.name",
+                        cfg.proof_pairs,
+                        proof_row_offset,
+                        || Value::known(Fp::zero()),
+                    )?;
+                    let pa = region.assign_advice(
+                        || "proof.total.pad.arity",
+                        cfg.proof_pairs,
+                        proof_row_offset + 1,
+                        || Value::known(Fp::zero()),
+                    )?;
+                    row.push((pn, pa));
+                    proof_row_offset += 2;
+                }
+                final_proof_pairs.push(row);
+                
+            }
+
+            // ── CANDIDATES: 3D szerkezet [candidate][row][(name,arity)] ────────────
+            let mut candidate_pairs_all: Vec<Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>>> = Vec::new();
+            let mut candidate_row_offset = 0usize;
+
+            for pred in rules {
+                for cl in &pred.clauses {
+                    let mut rows: Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>> = Vec::new();
+
+                    // HEAD sor
+                    {
+                        let mut head_row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
+
+                        let hn = region.assign_advice(
+                            || "cand.head.name",
+                            cfg.candidate_pairs,
+                            candidate_row_offset,
+                            || Value::known(pred.name),
+                        )?;
+                        let ha = region.assign_advice(
+                            || "cand.head.arity",
+                            cfg.candidate_pairs,
+                            candidate_row_offset + 1,
+                            || Value::known(pred.arity),
+                        )?;
+                        head_row.push((hn, ha));
+                        candidate_row_offset += 2;
+
+                        while head_row.len() < MAX_CHILDREN {
+                            let pn = region.assign_advice(
+                                || "cand.head.pad.name",
+                                cfg.candidate_pairs,
+                                candidate_row_offset,
+                                || Value::known(Fp::zero()),
+                            )?;
+                            let pa = region.assign_advice(
+                                || "cand.head.pad.arity",
+                                cfg.candidate_pairs,
+                                candidate_row_offset + 1,
+                                || Value::known(Fp::zero()),
+                            )?;
+                            head_row.push((pn, pa));
+                            candidate_row_offset += 2;
+                        }
+
+                        rows.push(head_row);
+                    }
+
+                    // BODY sorok: a clause.children egy 2D lista → minden belső lista egy SOR
+                    // BODY sorok: minden belső lista egy SOR
+                    for (row_i, row_children) in cl.children.iter().enumerate() {
+                        let mut r: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
+
+                        // kitöltés
+                        for (col_i, ch) in row_children.iter().enumerate() {
+                            let n = region.assign_advice(
+                                || format!("cand.child[{row_i}][{col_i}].name"),
+                                cfg.candidate_pairs,
+                                candidate_row_offset,
+                                || Value::known(ch.name),
+                            )?;
+                            let a = region.assign_advice(
+                                || format!("cand.child[{row_i}][{col_i}].arity"),
+                                cfg.candidate_pairs,
+                                candidate_row_offset + 1,
+                                || Value::known(ch.arity),
+                            )?;
+                            r.push((n, a));
+                            candidate_row_offset += 2;
+                        }
+
+                        // OSZLOPOK (párok) paddingje a SOR VÉGÉN — UGYANÚGY, mint a proof-nál
+                        while r.len() < MAX_CHILDREN {
+                            let pn = region.assign_advice(
+                                || "cand.child.pad.name",
+                                cfg.candidate_pairs,
+                                candidate_row_offset,
+                                || Value::known(Fp::zero()),
+                            )?;
+                            let pa = region.assign_advice(
+                                || "cand.child.pad.arity",
+                                cfg.candidate_pairs,
+                                candidate_row_offset + 1,
+                                || Value::known(Fp::zero()),
+                            )?;
+                            r.push((pn, pa));
+                            candidate_row_offset += 2;
+                        }
+
+                        // ✅ most toljuk be a sort
+                        rows.push(r);
+                    }
+
+                    // MIUTÁN minden BODY sor bekerült: SOROK SZÁMÁNAK paddingje
+                    while rows.len() < MAX_CHILDREN {
+                        let mut empty_row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
+                        for _ in 0..MAX_CHILDREN {
+                            let pn = region.assign_advice(
+                                || "cand.rows.pad.name",
+                                cfg.candidate_pairs,
+                                candidate_row_offset,
+                                || Value::known(Fp::zero()),
+                            )?;
+                            let pa = region.assign_advice(
+                                || "cand.rows.pad.arity",
+                                cfg.candidate_pairs,
+                                candidate_row_offset + 1,
+                                || Value::known(Fp::zero()),
+                            )?;
+                            empty_row.push((pn, pa));
+                            candidate_row_offset += 2;
+                        }
+                        rows.push(empty_row);
+                    }
+
+
+                    candidate_pairs_all.push(rows);
+                }
+            }
+
+            // kandidátusok paddingje MAX_CANDIDATES-ig
+            while candidate_pairs_all.len() < MAX_CANDIDATES {
+                // üres jelölt: MAX_CHILDREN sor, soronként MAX_CHILDREN pár (mind 0)
+                let mut empty_rule: Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>> = Vec::new();
+                for _ in 0..MAX_CHILDREN {
+                    let mut row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
+                    for _ in 0..MAX_CHILDREN {
+                        let pn = region.assign_advice(
+                            || "cand.full.pad.name",
+                            cfg.candidate_pairs,
+                            candidate_row_offset,
+                            || Value::known(Fp::zero()),
+                        )?;
+                        let pa = region.assign_advice(
+                            || "cand.full.pad.arity",
+                            cfg.candidate_pairs,
+                            candidate_row_offset + 1,
+                            || Value::known(Fp::zero()),
+                        )?;
+                        row.push((pn, pa));
+                        candidate_row_offset += 2;
+                    }
+                    empty_rule.push(row);
+                }
+                candidate_pairs_all.push(empty_rule);
+            }
+            
+            Ok((final_proof_pairs, candidate_pairs_all))
         },
     )
-}*/
+}

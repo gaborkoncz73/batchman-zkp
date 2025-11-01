@@ -47,7 +47,7 @@ if !has_op && has_list {
     let args_str = &input[open + 1..close];
     // ✅ applySocialSupports special handling
     if name_str == "applySocialSupports" {
-        let mut matrix = vec![vec![String::new(); MAX_PRED_LIST]; MAX_ARITY];
+        let mut matrix = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
 
         let parts = split_top_level_commas(args_str)
             .into_iter()
@@ -56,7 +56,7 @@ if !has_op && has_list {
 
         if parts.len() >= 3 {
             // 1️⃣ Input paraméter
-            matrix[0][0] = parts[0].to_owned();
+            matrix[0][0] = to_fp_value(parts[0]);
 
             // 2️⃣ Credential lista feldolgozás
             let list_arg = parts[1];
@@ -69,28 +69,28 @@ if !has_op && has_list {
                         // tuple szétszedése
                         let tuple_fields = parse_tuple_fields_keep_all(first);
                         for (i, f) in tuple_fields.into_iter().take(3).enumerate() {
-                            matrix[1][i] = f;
+                            matrix[1][i] = to_fp_value(&f);
                         }
                     } else {
-                        matrix[1][0] = first.to_string();
+                        matrix[1][0] = to_fp_value(first);
                     }
                 }
             }
 
             // 3️⃣ Result paraméter
-            matrix[2][0] = parts[2].to_owned();
+            matrix[2][0] = to_fp_value(parts[2]);
         }
 
         out_terms.push(TermFp {
-            name: name_str.to_owned(),
+            name: to_fp_value(name_str),
             args: matrix,
-            fact_hashes: "text".to_owned(),
+            fact_hashes: Fp::zero(),
         });
         return out_terms;
     }
 
     if name_str == "monthlyConsumptions" {
-        let mut matrix = vec![vec![String::new(); MAX_PRED_LIST]; MAX_ARITY];
+        let mut matrix = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
 
         // belső lista -> csak számok vesszőkkel (szögletes zárójelek nélkül)
         let list_inner = args_str
@@ -99,12 +99,12 @@ if !has_op && has_list {
             .trim_end_matches(']')
             .to_string();
 
-        matrix[0][0] = list_inner;
+        matrix[0][0] = to_fp_value(&list_inner);
 
         out_terms.push(TermFp {
-            name: name_str.to_owned(),
+            name: to_fp_value(name_str),
             args: matrix,
-            fact_hashes: "text".to_string(),
+            fact_hashes: Fp::zero(),
         });
 
         return out_terms;
@@ -112,8 +112,8 @@ if !has_op && has_list {
     let pred_name = name_str.to_string();
     let args_vec: Vec<&str> = split_top_level_commas(args_str);
 
-    let mut matrix: Vec<Vec<String>> =
-        vec![vec![String::new(); MAX_PRED_LIST]; MAX_ARITY];
+    let mut matrix: Vec<Vec<Fp>> =
+        vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
 
     for (arg_i, arg) in args_vec.iter().enumerate() {
         let arg = arg.trim();
@@ -127,12 +127,12 @@ if !has_op && has_list {
 
             if !elems.is_empty() {
                 // First element
-                matrix[arg_i][0] = elems[0].to_string();
+                matrix[arg_i][0] = to_fp_value(elems[0]);
 
                 if elems.len() > 1 {
                     // Remaining elements → merged into ONE string for Tail
                     let tail = elems[1..].join(",");
-                    matrix[arg_i][1] = tail;
+                    matrix[arg_i][1] = to_fp_value(&tail);
                 }
 
                 // Everything else stays empty
@@ -146,7 +146,7 @@ if !has_op && has_list {
             let inner = &arg[1..arg.len() - 1];  // levágjuk a []-t
 
             if inner.is_empty() {
-                matrix[arg_i][0] = "[]".to_string();
+                matrix[arg_i][0] = Fp::zero();
                 continue;
             }
 
@@ -160,11 +160,11 @@ if !has_op && has_list {
                 if elem.starts_with("(") && elem.ends_with(")") {
                     let tuple_parts = parse_tuple_fields_keep_all(elem);
                     for (t_i, part) in tuple_parts.clone().into_iter().enumerate() {
-                        matrix[arg_i][idx + t_i] = part;
+                        matrix[arg_i][idx + t_i] = to_fp_value(&part);
                     }
                     idx += tuple_parts.len();
                 } else {
-                    matrix[arg_i][idx] = elem.to_string();
+                    matrix[arg_i][idx] = to_fp_value(elem);
                     idx += 1;
                 }
             }
@@ -172,14 +172,14 @@ if !has_op && has_list {
 
         // ✅ Nem lista → sima argumentum
         else {
-            matrix[arg_i][0] = arg.to_string();
+            matrix[arg_i][0] = to_fp_value(arg);
         }
     }
 
     out_terms.push(TermFp {
-        name: pred_name,
+        name: to_fp_value(&pred_name),
         args: matrix,
-        fact_hashes: "text".to_string(),
+        fact_hashes: Fp::zero(),
     });
 
     return out_terms;
@@ -196,8 +196,8 @@ if !has_op && has_list {
             let mut preds: Vec<TermFp> = Vec::new();
 
             // ✅ First predicate: op with LHS and ONLY FIRST RHS ARG
-            let mut first_args = vec![vec![String::new(); MAX_PRED_LIST]; MAX_ARITY];
-            first_args[0][0] = lhs.to_string();
+            let mut first_args = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
+            first_args[0][0] = to_fp_value(lhs);
 
             // ✅ normalize `div` so splitter separates it
             let rhs_clean = rhs.replace("div", " div ");
@@ -209,12 +209,12 @@ if !has_op && has_list {
                 .unwrap()
                 .to_string();
 
-            first_args[1][0] = rhs_first.clone();
+            first_args[1][0] = to_fp_value(&rhs_first);
 
             preds.push(TermFp {
-                name: op_name.to_string(),
+                name: to_fp_value(op_name),
                 args: first_args,
-                fact_hashes: "5".to_string(),
+                fact_hashes: Fp::zero(),
             });
 
             // ✅ remaining operator predicates
@@ -231,20 +231,20 @@ if !has_op && has_list {
 
                 let next_name = next_op.trim();
 
-                let mut new_args = vec![vec![String::new(); MAX_PRED_LIST]; MAX_ARITY];
+                let mut new_args = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
 
                 if let Some(first) = new_rhs
                     .split([' ', '-', '+', '*', '=', '>', '<'])
                     .filter(|s| !s.is_empty())
                     .next()
                 {
-                    new_args[0][0] = first.to_string();
+                    new_args[0][0] = to_fp_value(first);
                 }
 
                 preds.push(TermFp {
-                    name: next_name.to_string(),
+                    name: to_fp_value(next_name),
                     args: new_args,
-                    fact_hashes: "5".to_string(),
+                    fact_hashes: Fp::zero(),
                 });
 
                 rest = new_rhs;
@@ -315,9 +315,9 @@ fn encode_proofnode_to_termfp(
             encode_str_to_termfp(&child.goal, facts)
         }
         _ => vec![TermFp {
-            name: "".to_string(),
-            args: vec![vec![String::new(); MAX_PRED_LIST]; MAX_ARITY],
-            fact_hashes:String::new(),
+            name: Fp::zero(),
+            args: vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY],
+            fact_hashes:Fp::zero(),
         }],
     }
 }
@@ -414,22 +414,19 @@ fn encode_str_to_termfp_og(input: &str, facts: &HashMap<String, Fp>) -> TermFp {
     }
 
     // ✅ Convert to correct 2D args matrix
-    let mut args_matrix = vec![vec![String::new(); MAX_PRED_LIST]; MAX_ARITY];
+    let mut args_matrix = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
     for (i, val) in flat_args.into_iter().enumerate() {
         if !val.is_empty() {
-            args_matrix[i][0] = val.to_owned();
+            args_matrix[i][0] = to_fp_value(val);
         }
     }
 
     // Name into Fp
     let name_fp = name_str;
 
-    // Append fact-based salt
-    let salt = "5".to_string();
-
     TermFp {
-        name: name_fp.to_owned(),
+        name: to_fp_value(name_fp),
         args: args_matrix,
-        fact_hashes: salt,
+        fact_hashes: Fp::zero(),
     }
 }

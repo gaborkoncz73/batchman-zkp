@@ -1,9 +1,9 @@
-/*mod reader;
+mod reader;
 
 use common::data::{RuleTemplateFile, RuleTemplateFileFp, UnificationInputFp};
 use common::unification_checker_circuit::UnificationCircuit;
 use common::io::read_fact_hashes::read_fact_hashes;
-use common::utils_2::off_circuit_poseidon::poseidon_hash_list_native;
+//use common::utils_2::off_circuit_poseidon::poseidon_hash_list_native;
 use reader::read_proofs_bytes;
 
 use std::{fs, path::Path};
@@ -29,14 +29,14 @@ fn main() -> Result<()> {
     println!("Verifying {} unification proofs", proofs.len());
 
     // Load Rules
-    let rules_text = fs::read_to_string("input/rules_template2.json")?;
+    let rules_text = fs::read_to_string("input/rules.json")?;
     let rules: RuleTemplateFile = serde_json::from_str(&rules_text)?;
 
     let rules_fp = RuleTemplateFileFp::from(&rules);
     //let flatten_rules_fp = RuleTemplateFileFp::to_flat_vec(&rules_fp);
     //let public_rules_hashes = poseidon_hash_list_native(&flatten_rules_fp);
     // Same params + vkgen
-    let params: Params<EqAffine> = Params::new(8);
+    let params: Params<EqAffine> = Params::new(15);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),
@@ -71,8 +71,4 @@ fn main() -> Result<()> {
     }
 
     Ok(())
-}*/
-
-pub fn main(){
-    
 }

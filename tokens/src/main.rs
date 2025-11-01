@@ -6,7 +6,6 @@ pub mod parser;
 use parser::prologlexer::prologLexer;
 use parser::prologparser::*;
 use parser::prologvisitor::prologVisitor;
-
 use serde::Serialize;
 
 // ------------------ Kimeneti JSON model ------------------
