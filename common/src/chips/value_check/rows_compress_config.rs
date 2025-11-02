@@ -4,6 +4,8 @@ use halo2_proofs::{
     pasta::Fp,
 };
 
+use crate::utils_2::common_helpers::MAX_CANDIDATES;
+
 #[derive(Clone, Debug)]
 pub struct RowsCompressConfig {
     pub val: Column<Advice>,     // input row elem (row_{i,j}[k])
@@ -36,20 +38,25 @@ impl RowsCompressChip {
         Self { cfg }
     }
 
+    /// compressed_active[k] = sum_i b_i * (sum_j r^j * row_{i,j}[k])
     pub fn assign_compressed_active(
         &self,
         mut layouter: impl Layouter<Fp>,
-        rows: &Vec<Vec<Vec<AssignedCell<Fp,Fp>>>>, // [num_clauses][num_rows][dim]
-        flags: &Vec<AssignedCell<Fp,Fp>>,          // [num_clauses]
+        rows: &Vec<Vec<Vec<AssignedCell<Fp,Fp>>>>, // [actual_clauses][num_rows][dim]
+        flags: &Vec<AssignedCell<Fp,Fp>>,          // [MAX_CANDIDATES] one-hot
         r: &AssignedCell<Fp,Fp>,
     ) -> Result<Vec<AssignedCell<Fp,Fp>>, Error> {
-
         let cfg = self.cfg.clone();
-        let num_clauses = rows.len();
-        let num_rows = rows[0].len();
-        let dim = rows[0][0].len();
 
-        // először előállítjuk a r^j hatványokat on-circuit
+        assert!(!rows.is_empty(), "rows must not be empty");
+        let actual_clauses = rows.len();
+        let num_rows       = rows[0].len();
+        let dim            = rows[0][0].len();
+
+        // opcionális, ha szeretnéd védeni a layoutot:
+        assert_eq!(flags.len(), MAX_CANDIDATES, "flags must be MAX_CANDIDATES long");
+
+        // r^j előállítása (j = 0..num_rows-1)
         let powers: Vec<AssignedCell<Fp, Fp>> = layouter.assign_region(
             || "compute powers of r",
             |mut region| {
@@ -69,29 +76,32 @@ impl RowsCompressChip {
             },
         )?;
 
-        // most kiszámoljuk a compressed_active[k]
+        // compressed_active kiszámítása úgy, hogy a flags hossza diktál,
+        // de a rows hozzájárulás 0, ha i >= actual_clauses.
         let compressed_active: Vec<AssignedCell<Fp, Fp>> =
             layouter.assign_region(|| "compute compressed_active", |mut region| {
-
-                let mut out = Vec::new();
+                let mut out = Vec::with_capacity(dim);
 
                 for k in 0..dim {
-                    // összegzés: sum_i b_i * (sum_j r^j * row_{i,j}[k])
                     let mut acc_val = Value::known(Fp::zero());
 
-                    for i in 0..num_clauses {
-                        let mut clause_val = Value::known(Fp::zero());
+                    // i a flags (MAX_CANDIDATES) szerint lépeget
+                    for i in 0..flags.len() {
+                        // clause_sum = 0, ha i kívül esik a rows-on
+                        let mut clause_sum = Value::known(Fp::zero());
 
-                        for j in 0..num_rows {
-                            let val = &rows[i][j][k];
-                            let pow = &powers[j];
-                            clause_val = clause_val + val.value().zip(pow.value())
-                                .map(|(v, p)| *v * *p);
+                        if i < actual_clauses {
+                            for j in 0..num_rows {
+                                let v   = rows[i][j][k].value();
+                                let p_j = powers[j].value();
+                                clause_sum = clause_sum.zip(v).zip(p_j).map(|((s, v), p)| s + *v * *p);
+                            }
                         }
-
-                        let flag = &flags[i];
-                        acc_val = acc_val + flag.value().zip(clause_val)
-                            .map(|(f, c)| *f * c);
+                        // acc += b_i * clause_sum
+                        acc_val = acc_val
+                            .zip(flags[i].value())
+                            .zip(clause_sum)
+                            .map(|((a, b), c)| a + *b * c);
                     }
 
                     let cell = region.assign_advice(
@@ -100,7 +110,6 @@ impl RowsCompressChip {
                         k,
                         || acc_val,
                     )?;
-
                     out.push(cell);
                 }
 
@@ -109,38 +118,56 @@ impl RowsCompressChip {
 
         Ok(compressed_active)
     }
-     pub fn assign_compressed_active_simple(
-        &self,
-        mut layouter: impl Layouter<Fp>,
-        rows:   &Vec<Vec<Vec<AssignedCell<Fp,Fp>>>>, // [num_clauses][num_rows][dim]
-        flags:  &Vec<AssignedCell<Fp,Fp>>,           // [num_clauses] one-hot
-    ) -> Result<Vec<AssignedCell<Fp,Fp>>, Error> {
-        let cfg = self.cfg.clone();
 
-        assert!(!rows.is_empty());
-        let num_clauses = rows.len();
-        let num_rows    = rows[0].len();
-        let dim         = rows[0][0].len();
-        assert_eq!(flags.len(), num_clauses);
+    /// compressed[k] = sum_i b_i * (sum_j row_{i,j}[k])  (r nélkül)
+   pub fn assign_compressed_active_simple(
+    &self,
+    mut layouter: impl Layouter<Fp>,
+    rows:   &Vec<Vec<Vec<AssignedCell<Fp,Fp>>>>, // [num_clauses'][num_rows][dim]
+    flags:  &Vec<AssignedCell<Fp,Fp>>,           // [MAX_CANDIDATES] one-hot
+) -> Result<Vec<AssignedCell<Fp,Fp>>, Error> {
+    let cfg = self.cfg.clone();
 
-        let compressed: Vec<AssignedCell<Fp,Fp>> = layouter.assign_region(
-            || "compressed (no r)",
+    assert!(!rows.is_empty(), "rows must not be empty");
+
+    let actual_clauses = rows.len();   // valódi klózok száma
+    let flag_count     = flags.len();  // MAX_CANDIDATES
+    let dim            = rows[0][0].len();
+
+    let compressed: Vec<AssignedCell<Fp,Fp>> =
+        layouter.assign_region(
+            || "compressed (safe, no r)",
             |mut region| {
                 let mut out = Vec::with_capacity(dim);
 
                 for k in 0..dim {
                     let mut acc_val = Value::known(Fp::zero());
 
-                    for i in 0..num_clauses {
+                    // i megy a flags szerint (mert ezekből pontosan egy 1)
+                    for i in 0..flag_count {
                         let mut clause_sum = Value::known(Fp::zero());
-                        for j in 0..num_rows {
-                            clause_sum = clause_sum.zip(rows[i][j][k].value())
-                                      .map(|(s, v)| s + *v);
+
+                        // Csak akkor adj hozzá rows-t, ha van ilyen klóz
+                        if i < actual_clauses {
+                            let rows_i   = &rows[i];
+                            let num_rows = rows_i.len();
+
+                            for j in 0..num_rows {
+                                // A dim mismatch itt is kezelve (ha rövidebb sor lenne)
+                                if k < rows_i[j].len() {
+                                    clause_sum = clause_sum
+                                        .zip(rows_i[j][k].value())
+                                        .map(|(s,v)| s + *v);
+                                }
+                            }
                         }
+                        // Ha nincs rows[i], clause_sum == 0 → nem zavar
+
+                        // b_i * clause_sum
                         acc_val = acc_val
                             .zip(flags[i].value())
                             .zip(clause_sum)
-                            .map(|((a, b), c)| a + *b * c);
+                            .map(|((a,b),c)| a + *b * c);
                     }
 
                     let cell = region.assign_advice(
@@ -151,11 +178,11 @@ impl RowsCompressChip {
                     )?;
                     out.push(cell);
                 }
-
                 Ok(out)
             }
         )?;
 
-        Ok(compressed)
-    }
+    Ok(compressed)
+}
+
 }

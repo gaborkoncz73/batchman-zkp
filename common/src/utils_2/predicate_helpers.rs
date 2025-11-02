@@ -8,7 +8,7 @@ use halo2_proofs::{
 use crate::{
     chips::finding_rule::body_subtree_chip::UnifCompareConfig,
     data::{PredicateTemplateFp, TermFp},
-    utils_2::common_helpers::{MAX_CANDIDATES, MAX_CHILDREN},
+    utils_2::common_helpers::{MAX_CANDIDATES, MAX_CHILDREN, MAX_PRED_LIST, MAX_PREDICATES_OVERALL},
 };
 
 
@@ -66,7 +66,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
                 }
 
                 // padding a sor végén
-                while row.len() < MAX_CHILDREN {
+                while row.len() < MAX_PRED_LIST {
                     let pn = region.assign_advice(
                         || "proof.goal.pad.name",
                         cfg.proof_pairs,
@@ -108,7 +108,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
                 }
 
                 // padding a sor végén
-                while row.len() < MAX_CHILDREN {
+                while row.len() < MAX_PRED_LIST {
                     let pn = region.assign_advice(
                         || "proof.sub.pad.name",
                         cfg.proof_pairs,
@@ -129,9 +129,9 @@ pub fn bind_proof_and_candidates_sig_pairs(
             }
 
             // ── (opcionális) teljes proof rows padding MAX_CHILDREN-ig ──────────────
-            while final_proof_pairs.len() < MAX_CHILDREN {
+            while final_proof_pairs.len() < MAX_PREDICATES_OVERALL {
                 let mut row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
-                for _ in 0..MAX_CHILDREN {
+                for _ in 0..MAX_PRED_LIST {
                     let pn = region.assign_advice(
                         || "proof.total.pad.name",
                         cfg.proof_pairs,
@@ -178,7 +178,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
                         head_row.push((hn, ha));
                         candidate_row_offset += 2;
 
-                        while head_row.len() < MAX_CHILDREN {
+                        while head_row.len() < MAX_PRED_LIST {
                             let pn = region.assign_advice(
                                 || "cand.head.pad.name",
                                 cfg.candidate_pairs,
@@ -222,7 +222,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
                         }
 
                         // OSZLOPOK (párok) paddingje a SOR VÉGÉN — UGYANÚGY, mint a proof-nál
-                        while r.len() < MAX_CHILDREN {
+                        while r.len() < MAX_PRED_LIST {
                             let pn = region.assign_advice(
                                 || "cand.child.pad.name",
                                 cfg.candidate_pairs,
@@ -246,7 +246,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
                     // ✅ MIUTÁN minden BODY sor bekerült: SOROK SZÁMÁNAK paddingje
                     while rows.len() < MAX_CHILDREN {
                         let mut empty_row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
-                        for _ in 0..MAX_CHILDREN {
+                        for _ in 0..MAX_PRED_LIST {
                             let pn = region.assign_advice(
                                 || "cand.rows.pad.name",
                                 cfg.candidate_pairs,
@@ -274,9 +274,9 @@ pub fn bind_proof_and_candidates_sig_pairs(
             while candidate_pairs_all.len() < MAX_CANDIDATES {
                 // üres jelölt: MAX_CHILDREN sor, soronként MAX_CHILDREN pár (mind 0)
                 let mut empty_rule: Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>> = Vec::new();
-                for _ in 0..MAX_CHILDREN {
+                for _ in 0..MAX_PREDICATES_OVERALL {
                     let mut row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
-                    for _ in 0..MAX_CHILDREN {
+                    for _ in 0..MAX_PRED_LIST {
                         let pn = region.assign_advice(
                             || "cand.full.pad.name",
                             cfg.candidate_pairs,
