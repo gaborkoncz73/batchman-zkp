@@ -35,7 +35,6 @@ impl SigOrCompareChip {
             proof_flat.push(pair.clone());
         }
     }
-
     let mut candidates_flat: Vec<Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>> = Vec::new();
     for cand in candidate_pairs_nested {
         let mut flat: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();

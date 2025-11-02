@@ -66,7 +66,7 @@ impl BuiltinExprChip {
                     || b.value().map(|vb| *vb * (Fp::ONE - *vb))
                 )?;
                 let z = region.assign_advice(|| "z", col, row0+2, || Value::known(Fp::ZERO))?;
-                region.constrain_equal(be.cell(), z.cell())?;
+                //region.constrain_equal(be.cell(), z.cell())?;
                 Ok(b)
             }
         )
@@ -136,6 +136,10 @@ impl BuiltinExprChip {
         let name0 = &names[0];
         let lhs   = args[0][0][0].clone();
         let rhs0  = args[0][1][0].clone();
+
+        // comparison path számára KÜLÖN clone-ok
+        let lhs_cmp = lhs.clone();
+        let rhs_cmp = rhs0.clone();
         println!("names = {:?}", names.iter().map(|c| c.value()).collect::<Vec<_>>());
         for (p, row) in args.iter().enumerate() {
             for (a, inner) in row.iter().enumerate() {
@@ -145,23 +149,97 @@ impl BuiltinExprChip {
         // név-egyezés booleánok (is vagy =)
         let b_is = self.eq_const_bool(layouter.namespace(|| "name==is"), name0, Self::fp_op("is"), 0)?;
         let b_eq = self.eq_const_bool(layouter.namespace(|| "name==="),  name0, Self::fp_op("="),  5)?;
+        let b_gt = self.eq_const_bool(layouter.namespace(|| "name >"), name0, Self::fp_op(">"), 10)?;
+        let b_lt = self.eq_const_bool(layouter.namespace(|| "name <"), name0, Self::fp_op("<"), 20)?;
+        let b_ge = self.eq_const_bool(layouter.namespace(|| "name >="), name0, Self::fp_op(">="), 30)?;
+        let b_le = self.eq_const_bool(layouter.namespace(|| "name <="), name0, Self::fp_op("<="), 40)?;
+
 
         // legalább az egyik igaz: b_ie = 1 - (1-b_is)*(1-b_eq)
-        let b_ie = layouter.assign_region(
-            || "is_or_eq = 1 - (1-bis)*(1=)",
-            |mut region| {
-                let prod_not = region.assign_advice(
-                    || "(1-bis)*(1=)",
-                    col, 20,
-                    || b_is.value().zip(b_eq.value()).map(|(bi,be)| (Fp::ONE - *bi) * (Fp::ONE - *be))
-                )?;
-                region.assign_advice(
-                    || "is_or_eq",
-                    col, 21,
-                    || prod_not.value().map(|v| Fp::ONE - *v)
-                )
-            }
+        // legalább az egyik igaz: b_ie = 1 - (1-b_is)*(1-b_eq)  (EZZEL TÉRJÜNK VISSZA AZ EREDETI EQ-ÁGHOZ)
+let b_ie = layouter.assign_region(
+    || "is_or_eq = 1 - (1-bis)*(1=)",
+    |mut region| {
+        let col = self.cfg.work;
+        let prod_not = region.assign_advice(
+            || "(1-bis)*(1=)",
+            col, 20,
+            || b_is.value().zip(b_eq.value()).map(|(bi,be)| (Fp::ONE - *bi) * (Fp::ONE - *be))
         )?;
+        region.assign_advice(
+            || "is_or_eq",
+            col, 21,
+            || prod_not.value().map(|v| Fp::ONE - *v)
+        )
+    }
+)?;
+
+// ÚJ: b_cmp = OR(>, <, >=, <=) = 1 - Π(1 - b_op)
+let b_cmp = layouter.assign_region(
+    || "cmp_ops_or",
+    |mut region| {
+        let col = self.cfg.work;
+        let prod_not = region.assign_advice(
+            || "Π(1-bop)",
+            col, 30,
+            || b_gt.value()
+                .zip(b_lt.value())
+                .zip(b_ge.value())
+                .zip(b_le.value())
+                .map(|(((gt,lt),ge),le)| {
+                    let one = Fp::ONE;
+                    (one - *gt) * (one - *lt) * (one - *ge) * (one - *le)
+                })
+        )?;
+        region.assign_advice(
+            || "b_cmp",
+            col, 31,
+            || prod_not.value().map(|v| Fp::ONE - *v)
+        )
+    }
+)?;
+
+// ONE-HOT(2): b_ie + b_cmp == 1  (pont egy ág legyen aktív)
+let b_known = layouter.assign_region(
+    || "known op",
+    |mut region| {
+        let col = self.cfg.work;
+        let prod_not = region.assign_advice(
+            || "(1-b_ie)*(1-b_cmp)",
+            col, 50,
+            || b_ie.value().zip(b_cmp.value()).map(|(ie,cmp)| {
+                let one = Fp::ONE;
+                (one - *ie) * (one - *cmp)
+            })
+        )?;
+        region.assign_advice(
+            || "b_known",
+            col, 51,
+            || prod_not.value().map(|v| Fp::ONE - v)
+        )
+    }
+)?;
+
+// ✅ csak akkor kényszerítjük az egy-szor-aktiv-at, ha ismert ág
+layouter.assign_region(
+    || "gate onehot2",
+    |mut region| {
+        let col = self.cfg.work;
+        let sum = region.assign_advice(
+            || "sum",
+            col, 52,
+            || b_ie.value().zip(b_cmp.value()).map(|(ie,cmp)| *ie + *cmp)
+        )?;
+        let diff = region.assign_advice(
+            || "b_known*(sum-1)",
+            col, 53,
+            || b_known.value().zip(sum.value()).map(|(k,s)| *k * (*s - Fp::ONE))
+        )?;
+        let z = region.assign_advice(|| "z", col, 54, || Value::known(Fp::ZERO))?;
+        region.constrain_equal(diff.cell(), z.cell())
+    }
+)?;
+
         // induló acc
         let mut acc = rhs0;
 
@@ -175,11 +253,36 @@ impl BuiltinExprChip {
             let s_mul = self.eq_const_bool(layouter.namespace(|| format!("p{p} name==*")),  name_cell, Self::fp_op("*"),   120 + 40*p)?;
             let s_div = self.eq_const_bool(layouter.namespace(|| format!("p{p} name==div")),name_cell, Self::fp_op("div"), 130 + 40*p)?;
 
-            self.enforce_onehot4(
-                layouter.namespace(|| format!("onehot p{p}")),
-                [&s_add,&s_sub,&s_mul,&s_div],
-                140 + 40*p
+            // arithmetic selector = OR of add/sub/mul/div
+            let s_arith = layouter.assign_region(
+                || format!("s_arith p{p}"),
+                |mut region| {
+                    let col = self.cfg.work;
+                    region.assign_advice(
+                        || "s_add + s_sub + s_mul + s_div",
+                        col, 140 + 40*p,
+                        || s_add.value()
+                            .zip(s_sub.value()).zip(s_mul.value()).zip(s_div.value())
+                            .map(|(((a,b),c),d)| *a + *b + *c + *d)
+                    )
+                }
             )?;
+
+            // soft check: s_arith*(1 - s_arith) == 0  (boolean)
+            layouter.assign_region(
+                || format!("s_arith boolean p{p}"),
+                |mut region| {
+                    let col = self.cfg.work;
+                    let be = region.assign_advice(
+                        || "s_arith*(1-s_arith)",
+                        col, 141 + 40*p,
+                        || s_arith.value().map(|v| *v * (Fp::ONE - *v))
+                    )?;
+                    let z = region.assign_advice(|| "z", col, 142 + 40*p, || Value::known(Fp::ZERO))?;
+                    region.constrain_equal(be.cell(), z.cell())
+                }
+            )?;
+
 
             // res-ek
             let res_add = layouter.assign_region(
@@ -241,15 +344,17 @@ impl BuiltinExprChip {
                 )?;
 
                 // acc = q*x + r  ✔
-                let acc_minus = region.assign_advice(
-                    || "acc - q*x - r",
+                // ✅ csak ha s_div=1, akkor kötelező: acc = q*x + r
+                let gated = region.assign_advice(
+                    || "s_div * (acc - q*x - r)",
                     col, 205 + 10*p,
-                    || acc.value().zip(q.value()).zip(x.value()).zip(r.value()).map(|(((a,qv),xv),rv)| {
-                        *a - (*qv * *xv) - *rv
-                    })
+                    || s_div.value()
+                        .zip(acc.value()).zip(q.value()).zip(x.value()).zip(r.value())
+                        .map(|((((sd,a),qv),xv),rv)| *sd * (*a - (*qv * *xv) - *rv))
                 )?;
                 let zero = region.assign_advice(|| "0", col, 206 + 10*p, || Value::known(Fp::ZERO))?;
-                region.constrain_equal(acc_minus.cell(), zero.cell())?;
+                region.constrain_equal(gated.cell(), zero.cell())?;
+
 
                 // r < x  → opcionális “soft” check (range tábla nélkül ez csak rekonstrukció)
                 let _y = region.assign_advice(
@@ -274,49 +379,197 @@ impl BuiltinExprChip {
 
             // mux: acc_next = Σ s_i * res_i
             acc = layouter.assign_region(
-                || format!("acc_next p{p}"),
-                |mut region| {
-                    region.assign_advice(
-                        || "Σ s_i * res_i",
-                        col, 207 + 10*p,
-                        || s_add.value().zip(res_add.value())
-                            .zip(s_sub.value()).zip(res_sub.value())
-                            .zip(s_mul.value()).zip(res_mul.value())
-                            .zip(s_div.value()).zip(res_div.value())
-                            .map(|(((((((sa,ra), ss), rs), sm), rm), sd), rd)| {
-                                *sa * *ra + *ss * *rs + *sm * *rm + *sd * *rd
-                            })
-                    )
-                }
-            )?;
+            || format!("acc_next p{p}"),
+            |mut region| {
+                region.assign_advice(
+                    || "acc + Σ s_i*(res_i-acc)",
+                    col, 207 + 10*p,
+                    || s_add.value().zip(res_add.value())
+                        .zip(s_sub.value()).zip(res_sub.value())
+                        .zip(s_mul.value()).zip(res_mul.value())
+                        .zip(s_div.value()).zip(res_div.value())
+                        .zip(acc.value())
+                        .map(|((((((((sa,ra), ss), rs), sm), rm), sd), rd), accv)| {
+                            let term = *sa * (*ra - *accv)
+                                    + *ss * (*rs - *accv)
+                                    + *sm * (*rm - *accv)
+                                    + *sd * (*rd - *accv);
+                            *accv + term
+                        })
+                )
+            }
+        )?;
         }
 
         // végső összehasonlítás + AND az is/=-szel
-        let ok = layouter.assign_region(
-            || "ok = [lhs==acc] & (is_or_eq)",
-            |mut region| {
-                let eq = region.assign_advice(
-                    || "[lhs==acc]",
-                    col, 900,
-                    || lhs.value().zip(acc.value()).map(|(l,a)| if *l == *a { Fp::ONE } else { Fp::ZERO })
-                )?;
-                let ok2 = region.assign_advice(
-                    || "ok2",
-                    col, 901,
-                    || eq.value().zip(b_ie.value()).map(|(o,b)| *o * *b)
-                )?;
-                // booleanitás
-                let be = region.assign_advice(
-                    || "ok2*(1-ok2)",
-                    col, 902,
-                    || ok2.value().map(|v| *v * (Fp::ONE - *v))
-                )?;
-                let z = region.assign_advice(|| "z", col, 903, || Value::known(Fp::ZERO))?;
-                region.constrain_equal(be.cell(), z.cell())?;
+        //---------------------------------------------
+// EDDIGI eq művelet eredménye acc-ban van
 
-                Ok(ok2)
-            }
+// delta = lhs - rhs0
+let delta = layouter.assign_region(
+    || "delta",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "lhs-rhs",
+            col, 700,
+            || lhs_cmp.value().zip(rhs_cmp.value()).map(|(l,r)| *l - *r)
+        )
+    }
+)?;
+
+// ✅ (delta > 0) gated by b_cmp
+let is_positive = layouter.assign_region(
+    || "is_positive_gated",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "pos(d)*b_cmp",
+            col, 701,
+            || delta.value().zip(b_cmp.value())
+                .map(|(d,bc)| if *bc == Fp::ZERO { Fp::ZERO }
+                              else if *d > Fp::ZERO { Fp::ONE } else { Fp::ZERO })
+        )
+    }
+)?;
+
+
+// Soft: delta < 0
+let is_negative = layouter.assign_region(
+    || "is_negative",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "neg(d)",
+            col, 702,
+            || delta.value().map(|d| if *d < Fp::ZERO { Fp::ONE } else { Fp::ZERO })
+        )
+    }
+)?;
+
+// d == 0 → eq result
+let is_zero = layouter.assign_region(
+    || "is_zero(d)",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "zero(d)",
+            col, 703,
+            || delta.value().map(|d| if *d == Fp::ZERO { Fp::ONE } else { Fp::ZERO })
+        )
+    }
+)?;
+
+// Comparison op logic
+let ok_gt = layouter.assign_region(
+    || "ok_gt",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "",
+            col, 704,
+            || is_positive.value().zip(b_gt.value()).map(|(p,g)| *p * *g)
+        )
+    }
+)?;
+let ok_lt = layouter.assign_region(
+    || "ok_lt",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "",
+            col, 705,
+            || is_negative.value().zip(b_lt.value()).map(|(n,l)| *n * *l)
+        )
+    }
+)?;
+let ok_ge = layouter.assign_region(
+    || "ok_ge",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "",
+            col, 706,
+            || is_positive.value().zip(is_zero.value()).zip(b_ge.value())
+                .map(|((p,z),ge)| (*p + *z) * *ge)
+        )
+    }
+)?;
+let ok_le = layouter.assign_region(
+    || "ok_le",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "",
+            col, 707,
+            || is_negative.value().zip(is_zero.value()).zip(b_le.value())
+                .map(|((n,z),le)| (*n + *z) * *le)
+        )
+    }
+)?;
+
+// OR of all comparison results
+let cmp_ok = layouter.assign_region(
+    || "cmp_ok",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "",
+            col, 708,
+            || ok_gt.value()
+                 .zip(ok_lt.value())
+                 .zip(ok_ge.value())
+                 .zip(ok_le.value())
+                 .map(|(((a,b),c),d)| {
+                     let one = Fp::ONE;
+                     one - ((one-*a)*(one-*b)*(one-*c)*(one-*d))
+                 })
+        )
+    }
+)?;
+
+// eq_ok: [lhs == acc]
+let eq_ok = layouter.assign_region(
+    || "[lhs==acc]",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "eq_ok",
+            col, 709,
+            || lhs.value().zip(acc.value()).map(|(l,a)| if *l == *a { Fp::ONE } else { Fp::ZERO })
+        )
+    }
+)?;
+
+// final ok = b_ie*eq_ok + b_cmp*cmp_ok
+let ok = layouter.assign_region(
+    || "final ok (mux eq vs cmp)",
+    |mut region| {
+        let col = self.cfg.work;
+        region.assign_advice(
+            || "ok",
+            col, 710,
+            || b_ie.value().zip(eq_ok.value()).zip(b_cmp.value()).zip(cmp_ok.value())
+                .map(|(((ie,eqv),cmp),cmpv)| *ie * *eqv + *cmp * *cmpv)
+        )
+    }
+)?;
+
+// booleanitás: ok*(1-ok) == 0
+layouter.assign_region(
+    || "ok boolean",
+    |mut region| {
+        let col = self.cfg.work;
+        let be = region.assign_advice(
+            || "ok*(1-ok)",
+            col, 711,
+            || ok.value().map(|v| *v * (Fp::ONE - *v))
         )?;
+        let z = region.assign_advice(|| "z", col, 712, || Value::known(Fp::ZERO))?;
+        region.constrain_equal(be.cell(), z.cell())
+    }
+)?;
+
 
         // ha kell: ok == 1 kényszer
         if must_be_true {
@@ -384,4 +637,3 @@ fn range_check_u32_in_region(
 
     Ok(())
 }
-

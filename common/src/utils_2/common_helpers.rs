@@ -12,7 +12,7 @@ pub const MAX_CANDIDATES: usize = MAX_PREDICATES_OVERALL * MAX_CLAUSES_PER_PREDI
 
 pub const MAX_ARITY: usize = 4;
 
-pub const MAX_FACTS_HASHES: usize = 17;
+pub const MAX_FACTS_HASHES: usize = 32;
 
 pub const MAX_CHILDREN: usize = 11;
 

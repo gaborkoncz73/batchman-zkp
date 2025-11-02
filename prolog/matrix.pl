@@ -14,7 +14,7 @@ savings_treshold('high',1000).
 % support_matrix(Rolling_class, savings_class, type, value)
 support_matrix('low', 'low', 'nominal', 500).
 support_matrix('low', 'mid', 'percent', 10).
-support_matrix('low', 'high', 'nominal', 500).
+support_matrix('low', 'high', 'nominal', 500).z
 support_matrix('mid', 'low', 'nominal', 500).
 support_matrix('mid', 'mid', 'nominal', 500).
 support_matrix('mid', 'high', 'nominal', 500).

@@ -45,7 +45,7 @@ fn main() -> Result<()> {
     // Building fact HashMap
     let facts = build_fact_map(&fact_configs);
 
-
+    println!("FACTS: {:?}", facts);
     // Processing the rules
     let rules_text = fs::read_to_string("input/rules.json")?;
 
@@ -58,9 +58,11 @@ fn main() -> Result<()> {
 
     // Processing the proof tree
     let proof_text = fs::read_to_string("input/proof_tree.json")?;
+    println!("TEXT: {:?}", proof_text);
+    
     let tree: Vec<data::ProofNode> = serde_json::from_str(&proof_text)?;
 
-
+    println!("tree: {:?}", tree);
     // Public input hashes
     let path = Path::new("output/fact_hashes.json");
     let public_facts_hashes: Vec<Fp> = read_fact_hashes(path)?;
@@ -117,6 +119,7 @@ fn prove_tree(
         
         // Constructing the Unification inputs from the goal node and the facts hashmap
         let unif_input_fp = unification_input_from_goal_and_facts(g, facts);
+        println!("UNIF INPUT: {:?}", unif_input_fp);
         // Circuit Fp with proper inputs
         let circuit = UnificationCircuit {
             rules: rules_fp.clone(),

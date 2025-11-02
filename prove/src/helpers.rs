@@ -415,6 +415,8 @@ fn encode_str_to_termfp_og(input: &str, facts: &HashMap<String, Fp>) -> TermFp {
     if name_str == "consumptionClass" && flat_args[1] == "low" {
         flat_args[0] = "_";
     }
+    println!("INPUT: {:?}", input);
+    println!("ARGS:: {:?}", flat_args);
     let reconstructed = format!("{}({})", name_str, flat_args.join(","));
 
     // ✅ Convert to correct 2D args matrix
@@ -424,8 +426,9 @@ fn encode_str_to_termfp_og(input: &str, facts: &HashMap<String, Fp>) -> TermFp {
             args_matrix[i][0] = to_fp_value(val);
         }
     }
-    
+    println!("REC: {:?}", reconstructed);
     let salt = facts.get(&reconstructed).copied().unwrap_or(Fp::zero());
+    println!("SALT: {:?}", salt);
     TermFp {
         name: to_fp_value(name_str),
         args: args_matrix,

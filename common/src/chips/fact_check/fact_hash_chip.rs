@@ -1,3 +1,4 @@
+use halo2_gadgets::utilities::FieldValue;
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Value},
     pasta::Fp,
@@ -91,6 +92,8 @@ pub fn assign(
     }
     tokens.push(goal_name_salt.clone());
 
+    println!("TOKENS: {:?}", tokens);
+
     let hashed = pos_chip.hash_list(
         layouter.namespace(|| "Poseidon(fact||salt)"),
         &tokens,
@@ -163,22 +166,49 @@ pub fn assign(
             }
 
             // flags: any_flag = 1 - Π(1 - flag_i)
-            let mut prod_not_flag_val = Value::known(Fp::ONE);
-            let mut prod_not_flag_cell = zero.clone();
-            for (i, b) in flags.iter().enumerate() {
-                prod_not_flag_val = prod_not_flag_val.zip(b.value())
-                    .map(|(acc, bi)| acc * (Fp::ONE - *bi));
-                prod_not_flag_cell = region.assign_advice(
-                    || format!("prod_not_flag[{i}]"),
-                    cfg.salt, MAX_FACTS_HASHES*2 + 10 + i,
-                    || prod_not_flag_val,
-                )?;
-            }
-            let any_flag_cell = region.assign_advice(
-                || "any_flag",
-                cfg.salt, MAX_FACTS_HASHES*2 + 100,
-                || prod_not_flag_cell.value().map(|p| Fp::ONE - *p),
-            )?;
+            let flag_vals: Vec<Value<Fp>> = flags.iter()
+    .map(|b| b.value().copied())
+    .collect();
+
+        // Compute prod_not_flag in memory
+        let mut prod_not_flag_val = Value::known(Fp::ONE);
+        for fv in flag_vals.iter() {
+            prod_not_flag_val = prod_not_flag_val.zip(*fv)
+                .map(|(acc, b)| acc * (Fp::ONE - b));
+        }
+
+        // Assign a single advice cell
+        let prod_not_flag_cell = region.assign_advice(
+            || "prod_not_flag_final",
+            cfg.salt,
+            MAX_CANDIDATES + MAX_FACTS_HASHES + 1,
+            || prod_not_flag_val,
+        )?;
+
+        // any_flag = 1 - prod_not_flag
+        let any_flag_cell = region.assign_advice(
+            || "any_flag",
+            cfg.salt,
+            MAX_CANDIDATES + MAX_FACTS_HASHES + 2,
+            || prod_not_flag_val.map(|v| Fp::ONE - v),
+        )?;
+
+        // Boolean constraint: any_flag ∈ {0,1}
+        let be = region.assign_advice(
+            || "af*(1-af)",
+            cfg.salt,
+            MAX_CANDIDATES + MAX_FACTS_HASHES + 3,
+            || any_flag_cell.value().map(|v| *v * (Fp::ONE - *v)),
+        )?;
+        let z = region.assign_advice(
+            || "0",
+            cfg.salt,
+            MAX_CANDIDATES + MAX_FACTS_HASHES + 4,
+            || Value::known(Fp::ZERO),
+        )?;
+        region.constrain_equal(be.cell(), z.cell())?;
+
+        
 
             // builtin_ok lokális másolat (hogy ebben a régióban is lásd)
             let builtin_ok_local = region.assign_advice(
@@ -195,6 +225,10 @@ pub fn assign(
                      .map(|(h,ps)| if *h == *ps { Fp::ONE } else { Fp::ZERO })
             )?;
 
+            println!("any_flag = {:?}", any_flag_cell.value());
+            println!("fact_ok_cell = {:?}", fact_ok_cell.value());
+            println!("builtin_ok = {:?}", builtin_ok_local.value());
+
             let or_abc = region.assign_advice(
                 || "or_abc",
                 cfg.fact, MAX_FACTS_HASHES*2 + 103,
@@ -210,20 +244,14 @@ pub fn assign(
             )?;
 
             // final_ok = is_fact * or_abc
-            let final_ok_cell = region.assign_advice(
-                || "final_ok",
-                cfg.fact, MAX_FACTS_HASHES*2 + 104,
-                || is_fact_local.value().zip(or_abc.value())
-                     .map(|(f, o)| *f * *o)
-            )?;
-
-            // final_ok == 1
-            let diff = region.assign_advice(
-                || "diff_final_ok",
-                cfg.salt, MAX_FACTS_HASHES*2 + 105,
-                || final_ok_cell.value().map(|v| *v - Fp::ONE),
-            )?;
-            region.constrain_equal(diff.cell(), zero.cell())?;
+            let gate = region.assign_advice(
+            || "gated_final_ok",
+            cfg.salt,
+            MAX_FACTS_HASHES*2 + 105,
+            || is_fact_local.value().zip(or_abc.value())
+                .map(|(f, o)| *f * (*o - Fp::ONE))
+        )?;
+        region.constrain_equal(gate.cell(), zero.cell())?;
 
             Ok(())
         }
