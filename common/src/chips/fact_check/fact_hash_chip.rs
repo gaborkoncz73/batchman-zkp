@@ -5,7 +5,7 @@ use halo2_proofs::{
 };
 use halo2curves::ff::Field;
 
-use crate::{chips::fact_check::poseidon_hash::{PoseidonHashChip, PoseidonHashConfig}, utils_2::common_helpers::{MAX_CANDIDATES, MAX_FACTS_HASHES, to_fp_value}};
+use crate::{chips::fact_check::{built_in_check_chip::{BuiltinExprChip, BuiltinExprConfig}, poseidon_hash::{PoseidonHashChip, PoseidonHashConfig}}, utils_2::common_helpers::{MAX_CANDIDATES, MAX_FACTS_HASHES, to_fp_value}};
 
 #[derive(Clone, Debug)]
 pub struct FactConfig {
@@ -17,6 +17,8 @@ pub struct FactConfig {
     pub hash_advice: Column<Advice>,
     pub is_fact: Column<Advice>,
     pub pos_cfg: PoseidonHashConfig,
+
+    pub builtin_cfg: BuiltinExprConfig,
 }
 
 #[derive(Clone, Debug)]
@@ -48,187 +50,187 @@ impl FactChip {
         meta.enable_equality(hash_advice);
         meta.enable_equality(is_fact);
 
+        meta.enable_equality(name);
+        meta.enable_equality(args);
+
         let pos_cfg = PoseidonHashChip::configure(meta);
-        FactConfig { name, args, fact, salt, hash_public, hash_advice, is_fact, pos_cfg }
+        let builtin_cfg = BuiltinExprChip::configure(meta); 
+        FactConfig { name, args, fact, salt, hash_public, hash_advice, is_fact, pos_cfg, builtin_cfg, }
     }
- pub fn assign(
-        &self,
-        mut layouter: impl Layouter<Fp>,
-        goal_name_cell: &[AssignedCell<Fp, Fp>],
-        goal_name_args_cells: &[Vec<Vec<AssignedCell<Fp, Fp>>>],
-        goal_name_salt: &AssignedCell<Fp, Fp>,
-        is_fact: &AssignedCell<Fp, Fp>,
-        flags:  &Vec<AssignedCell<Fp,Fp>>,   
-    ) -> Result<(), Error> {
-        let cfg = &self.config;
-        let pos_chip = PoseidonHashChip::construct(cfg.pos_cfg.clone());
-        let mut tokens: Vec<AssignedCell<Fp, Fp>> =
-        vec![goal_name_cell[0].clone()];
-        // goal_argument_cells[p][a][l]
-        if let Some(args_matrix) = goal_name_args_cells.get(0) {
-            for arg_row in args_matrix {
-                if let Some(first_arg_cell) = arg_row.get(0) {
-                    tokens.push(first_arg_cell.clone());
-                    
-                }
+pub fn assign(
+    &self,
+    mut layouter: impl Layouter<Fp>,
+    goal_name_cell: &[AssignedCell<Fp, Fp>],
+    goal_name_args_cells: &[Vec<Vec<AssignedCell<Fp, Fp>>>],
+    goal_name_salt: &AssignedCell<Fp, Fp>,
+    is_fact: &AssignedCell<Fp, Fp>,
+    flags:  &Vec<AssignedCell<Fp,Fp>>,
+) -> Result<(), Error> {
+    let cfg = &self.config;
+
+    // 1) Beépített kifejezéslánc ellenőrzése (külön chip, külön namespace!)
+    let builtin_chip = BuiltinExprChip::construct(cfg.builtin_cfg.clone());
+    let builtin_ok = builtin_chip.eval_chain_equal(
+        layouter.namespace(|| "builtin expr"),   // külön namespace
+        &goal_name_cell,                         // p lista
+        &goal_name_args_cells,                   // p -> a -> l
+        false,                                   // itt nem kényszerítjük ok==1-re
+    )?;
+    println!("builtin: {:?}", builtin_ok);
+    // 2) Hash-elés tokenláncról (név + minden arg[0] + salt)
+    let pos_chip = PoseidonHashChip::construct(cfg.pos_cfg.clone());
+
+    let mut tokens: Vec<AssignedCell<Fp, Fp>> = vec![goal_name_cell[0].clone()];
+
+    if let Some(args_matrix) = goal_name_args_cells.get(0) {
+        for arg_row in args_matrix {
+            if let Some(first_arg_cell) = arg_row.get(0) {
+                tokens.push(first_arg_cell.clone());
             }
         }
-        
-        // finally salt
-        tokens.push(goal_name_salt.clone());
-        let hashed = pos_chip.hash_list(
-            layouter.namespace(|| "Poseidon(fact||salt)"),
-            &tokens,
-        )?;
-        // 2️⃣ Membership check (gated by is_fact)
-        layouter.assign_region(
-            || "membership check (is_fact-gated)",
-            |mut region| {
-                // zero cell for equality constraints
-                let zero = region.assign_advice(
-                    || "zero",
-                    cfg.salt,
-                    1,
-                    || Value::known(Fp::ZERO),
-                )?;
-
-                // Local copy of is_fact for gating
-                let is_fact_local = region.assign_advice(
-                    || "is_fact local",
-                    cfg.is_fact,
-                    1,
-                    || is_fact.value().copied(),
-                )?;
-                region.constrain_equal(is_fact_local.cell(), is_fact.cell())?;
-
-                // Local copy of hashed
-                let hashed_local = region.assign_advice(
-                    || "hashed local",
-                    cfg.hash_advice,
-                    0,
-                    || hashed.value().copied(),
-                )?;
-                region.constrain_equal(hashed_local.cell(), hashed.cell())?;
-
-                // Σ(bit_i) accumulator
-                let mut sum_bits_val = Value::known(Fp::ZERO);
-                //let mut sum_bits_cell = zero.clone();
-
-                // Σ(bit_i * pub_i) accumulator
-                let mut pub_sel_val = Value::known(Fp::ZERO);
-                let mut pub_sel_cell = zero.clone();
-                 for i in 0..MAX_FACTS_HASHES {
-                    // 1. Public hash copy from instance
-                    let pub_local = region.assign_advice_from_instance(
-                        || format!("pub[{i}]"),
-                        cfg.hash_public,
-                        i,
-                        cfg.hash_advice,
-                        i + 1,
-                    )?;
-                    // 2. Compute bit_i = 1 if hashed==pub_local else 0 (as witness)
-                    let bit_i = region.assign_advice(
-                        || format!("bit[{i}]"),
-                        cfg.fact,
-                        i + 1,
-                        || hashed_local.value().zip(pub_local.value()).map(|(h, p)| {
-                            if *h == *p { Fp::ONE } else { Fp::ZERO }
-                        }),
-                    )?;
-
-                    // 3. Boolean constraint: is_fact * bit_i * (bit_i - 1) = 0
-                    let bool_expr = region.assign_advice(
-                        || format!("bool_expr[{i}]"),
-                        cfg.salt,
-                        i + 2,
-                        || is_fact.value().zip(bit_i.value()).map(|(f, b)| f * *b * (*b - Fp::ONE)),
-                    )?;
-                    region.constrain_equal(bool_expr.cell(), zero.cell())?;
-
-                    // Update Σbit_i
-                    sum_bits_val = sum_bits_val.zip(bit_i.value()).map(|(acc, b)| acc + *b);
-                    /*sum_bits_cell = region.assign_advice(
-                        || format!("sum_bits[{i}]"),
-                        cfg.fact,
-                        MAX_FACTS_HASHES + 1 + i,
-                        || sum_bits_val,
-                    )?;*/
-
-                    // Update Σ(bit_i * pub_i)
-                    pub_sel_val = pub_sel_val.zip(bit_i.value()).zip(pub_local.value()).map(|((acc, b), p)| acc + *b * *p);
-                    pub_sel_cell = region.assign_advice(
-                        || format!("pub_sel[{i}]"),
-                        cfg.hash_advice,
-                        MAX_FACTS_HASHES  + 1 + i,
-                        || pub_sel_val,
-                    )?;
-                }
-
-                // ✅ Compute product of NOT flags = Π (1 - flag[i])
-                let mut prod_not_flag_val = Value::known(Fp::ONE);
-                let mut prod_not_flag_cell = zero.clone();
-
-                for (i, b) in flags.iter().enumerate() {
-                    prod_not_flag_val = prod_not_flag_val.zip(b.value()).map(|(acc, bi)| {
-                        acc * (Fp::ONE - *bi)
-                    });
-
-                    prod_not_flag_cell = region.assign_advice(
-                        || format!("prod_not_flag[{i}]"),
-                        cfg.salt,
-                        i + MAX_CANDIDATES + MAX_FACTS_HASHES + 1, // ✅ just use unused rows
-                        || prod_not_flag_val,
-                    )?;
-                }
-
-                // ✅ any_flag = 1 - Π(1 - flag_i)  (1 ha volt legalább egy 1-es)
-                let any_flag_cell = region.assign_advice(
-                    || "any_flag",
-                    cfg.salt,
-                    MAX_CANDIDATES*2 + MAX_FACTS_HASHES + 1,
-                    || prod_not_flag_cell.value().map(|p| Fp::ONE - *p),
-                )?;
-
-                
-                // ✅ OR(logic): either hash matches OR rule_flags justify it
-                let final_ok_val = is_fact_local.value()
-                    .zip(any_flag_cell.value())
-                    .zip(hashed_local.value())
-                    .zip(pub_sel_cell.value())
-                    .map(|(((f, af), h), ps)| {
-                        // OK if:
-                        //   (f & af) == 1    (flag condition OK)
-                        //   OR
-                        //   (f & (h == ps))  (normal hashed membership OK)
-                        let flag_ok = *f * *af;
-                        let hash_ok = *f * (if h == ps { Fp::ONE } else { Fp::ZERO });
-                        flag_ok + hash_ok
-                    });
-
-                let final_ok_cell = region.assign_advice(
-                    || "final_ok",
-                    cfg.fact,
-                    210,
-                    || final_ok_val,
-                )?;
-
-                // ✅ must equal 1
-                let diff = region.assign_advice(
-                    || "diff_final_ok",
-                    cfg.salt,
-                    211,
-                    || final_ok_cell.value().map(|v| *v - Fp::ONE),
-                )?;
-                region.constrain_equal(diff.cell(), zero.cell())?;
-
-
-                Ok(())
-            },
-        )?;
-
-        Ok(())
     }
+    tokens.push(goal_name_salt.clone());
+
+    let hashed = pos_chip.hash_list(
+        layouter.namespace(|| "Poseidon(fact||salt)"),
+        &tokens,
+    )?;
+
+    // 3) Membership + flags + builtin kombináció EGY régióban
+    layouter.assign_region(
+        || "final decision (membership OR flags OR builtin) gated by is_fact",
+        |mut region| {
+            // zero
+            let zero = region.assign_advice(
+                || "zero",
+                cfg.salt, 1,
+                || Value::known(Fp::ZERO),
+            )?;
+
+            // is_fact lokális másolat + kötés
+            let is_fact_local = region.assign_advice(
+                || "is_fact local",
+                cfg.is_fact, 1,
+                || is_fact.value().copied(),
+            )?;
+            region.constrain_equal(is_fact_local.cell(), is_fact.cell())?;
+
+            // hashed lokális másolat + opcionális equality a külső 'hashed'-hez
+            let hashed_local = region.assign_advice(
+                || "hashed local",
+                cfg.hash_advice, 0,
+                || hashed.value().copied(),
+            )?;
+            region.constrain_equal(hashed_local.cell(), hashed.cell())?;
+
+            // publikushash-szelekció (Σ bit_i*pub_i), és Σbit_i tanúk
+            let mut pub_sel_val = Value::known(Fp::ZERO);
+            let mut pub_sel_cell = zero.clone();
+
+            for i in 0..MAX_FACTS_HASHES {
+                let pub_local = region.assign_advice_from_instance(
+                    || format!("pub[{i}]"),
+                    cfg.hash_public,
+                    i,
+                    cfg.hash_advice,
+                    i + 1,
+                )?;
+
+                let bit_i = region.assign_advice(
+                    || format!("bit[{i}]"),
+                    cfg.fact, i + 1,
+                    || hashed_local.value().zip(pub_local.value())
+                        .map(|(h,p)| if *h == *p { Fp::ONE } else { Fp::ZERO })
+                )?;
+                // bit_i booleanitás (kapuzva is_fact-tal)
+                let bool_expr = region.assign_advice(
+                    || format!("bit_bool[{i}]"),
+                    cfg.salt, i + 2,
+                    || is_fact_local.value().zip(bit_i.value())
+                         .map(|(f,b)| f * *b * (*b - Fp::ONE)),
+                )?;
+                region.constrain_equal(bool_expr.cell(), zero.cell())?;
+
+                pub_sel_val = pub_sel_val.zip(bit_i.value())
+                    .zip(pub_local.value())
+                    .map(|((acc,b),p)| acc + *b * *p);
+
+                pub_sel_cell = region.assign_advice(
+                    || format!("pub_sel[{i}]"),
+                    cfg.hash_advice, MAX_FACTS_HASHES + 1 + i,
+                    || pub_sel_val,
+                )?;
+            }
+
+            // flags: any_flag = 1 - Π(1 - flag_i)
+            let mut prod_not_flag_val = Value::known(Fp::ONE);
+            let mut prod_not_flag_cell = zero.clone();
+            for (i, b) in flags.iter().enumerate() {
+                prod_not_flag_val = prod_not_flag_val.zip(b.value())
+                    .map(|(acc, bi)| acc * (Fp::ONE - *bi));
+                prod_not_flag_cell = region.assign_advice(
+                    || format!("prod_not_flag[{i}]"),
+                    cfg.salt, MAX_FACTS_HASHES*2 + 10 + i,
+                    || prod_not_flag_val,
+                )?;
+            }
+            let any_flag_cell = region.assign_advice(
+                || "any_flag",
+                cfg.salt, MAX_FACTS_HASHES*2 + 100,
+                || prod_not_flag_cell.value().map(|p| Fp::ONE - *p),
+            )?;
+
+            // builtin_ok lokális másolat (hogy ebben a régióban is lásd)
+            let builtin_ok_local = region.assign_advice(
+                || "builtin_ok local",
+                cfg.fact, MAX_FACTS_HASHES*2 + 101,
+                || builtin_ok.value().copied(),
+            )?;
+
+            //  OR logika ZKP-biztosan: OR(a,b,c) = 1 - (1-a)(1-b)(1-c)
+            let fact_ok_cell = region.assign_advice(
+                || "fact_ok = [hashed==pub_sel]",
+                cfg.fact, MAX_FACTS_HASHES*2 + 102,
+                || hashed_local.value().zip(pub_sel_cell.value())
+                     .map(|(h,ps)| if *h == *ps { Fp::ONE } else { Fp::ZERO })
+            )?;
+
+            let or_abc = region.assign_advice(
+                || "or_abc",
+                cfg.fact, MAX_FACTS_HASHES*2 + 103,
+                || fact_ok_cell.value()
+                    .zip(any_flag_cell.value())
+                    .zip(builtin_ok_local.value())
+                    .map(|((a,b),c)| {
+                        let na = Fp::ONE - *a;
+                        let nb = Fp::ONE - *b;
+                        let nc = Fp::ONE - *c;
+                        Fp::ONE - (na * nb * nc)
+                    })
+            )?;
+
+            // final_ok = is_fact * or_abc
+            let final_ok_cell = region.assign_advice(
+                || "final_ok",
+                cfg.fact, MAX_FACTS_HASHES*2 + 104,
+                || is_fact_local.value().zip(or_abc.value())
+                     .map(|(f, o)| *f * *o)
+            )?;
+
+            // final_ok == 1
+            let diff = region.assign_advice(
+                || "diff_final_ok",
+                cfg.salt, MAX_FACTS_HASHES*2 + 105,
+                || final_ok_cell.value().map(|v| *v - Fp::ONE),
+            )?;
+            region.constrain_equal(diff.cell(), zero.cell())?;
+
+            Ok(())
+        }
+    )?;
+
+    Ok(())
+}
 
 
 }
-

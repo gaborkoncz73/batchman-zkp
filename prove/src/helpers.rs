@@ -432,3 +432,16 @@ fn encode_str_to_termfp_og(input: &str, facts: &HashMap<String, Fp>) -> TermFp {
         fact_hashes: salt,
     }
 }
+
+fn parse_int_to_fp(s: &str) -> Option<Fp> {
+    let t = s.trim();
+    if t.starts_with('-') {
+        t[1..].parse::<u64>().ok().map(|v| -Fp::from(v))
+    } else {
+        t.parse::<u64>().ok().map(Fp::from)
+    }
+}
+
+fn to_fp_value_numberfirst(s: &str) -> Fp {
+    parse_int_to_fp(s).unwrap_or_else(|| to_fp_value(s))
+}
