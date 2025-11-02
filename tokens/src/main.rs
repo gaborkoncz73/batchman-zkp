@@ -550,7 +550,7 @@ fn main() {
     let json = serde_json::to_string_pretty(&out).expect("json serialize");
 
     // JSON kiírás
-    let file_path = "parsed.json";
+    let file_path = "parsed2.json";
     std::fs::write(file_path, &json).expect("write failed");
     println!("✅ JSON saved to {file_path}");
 }

@@ -147,7 +147,7 @@ impl Circuit<Fp> for UnificationCircuit {
         &candidate_pairs_all,
         &is_fact_cell,
     )?;
-    /*let fact_hash_chip= FactChip::construct(cfg.fact_cfg.clone());
+    let fact_hash_chip= FactChip::construct(cfg.fact_cfg.clone());
 
     let mut flag_copy_cells: Vec<AssignedCell<Fp, Fp>> = Vec::new();
 
@@ -185,7 +185,7 @@ impl Circuit<Fp> for UnificationCircuit {
         &goal_name_salt_cell,
         &is_fact_local_for_fact_check,
         &flag_copy_cells,
-    )?;*/
+    )?;
 
 
     // Helper: determinisztikus flatten offsetek (head + children).

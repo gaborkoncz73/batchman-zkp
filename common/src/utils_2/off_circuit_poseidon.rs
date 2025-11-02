@@ -35,23 +35,14 @@ pub fn poseidon_hash_list_native(values: &[Fp]) -> Fp {
 /// - Fp hash identical to the chip’s Poseidon fold.
 pub fn fact_hash_native_salted(name: &str, args: &[&str], salt: &str) -> Fp {
     let mut tokens: Vec<Fp> = Vec::with_capacity(1 + args.len() + 1);
-    println!("TOK LEN: {}", tokens.len());
-for (i,t) in tokens.iter().enumerate() {
-    println!("{:02}: {:?}", i, t);
-}
-println!("ARGS LEN: {:?}", args.len());
     tokens.push(to_fp_value(name));
     for a in args {
         tokens.push(to_fp_value(a));
     }
     while tokens.len() < MAX_ARITY + 1{
-        tokens.push(Fp::zero());
+        tokens.push(Fp::one().neg());
     }
     tokens.push(to_fp_value(salt));
-    println!("TOK LEN: {}", tokens.len());
-for (i,t) in tokens.iter().enumerate() {
-    println!("{:02}: {:?}", i, t);
-}
 
     poseidon_hash_list_native(&tokens)
 }
