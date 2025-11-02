@@ -45,7 +45,6 @@ fn main() -> Result<()> {
     // Building fact HashMap
     let facts = build_fact_map(&fact_configs);
 
-    println!("FACTS: {:?}", facts);
     // Processing the rules
     let rules_text = fs::read_to_string("input/rules.json")?;
 
@@ -58,7 +57,6 @@ fn main() -> Result<()> {
 
     // Processing the proof tree
     let proof_text = fs::read_to_string("input/proof_tree.json")?;
-    println!("TEXT: {:?}", proof_text);
     
     let tree: Vec<data::ProofNode> = serde_json::from_str(&proof_text)?;
 
@@ -141,7 +139,7 @@ fn prove_tree(
         let proof = transcript.finalize();
 
         write_proof("unif", &proof)?;
-
+        println!("PRRRR: {:?}", to_fp_value("2000"));
         // Recursion
         g.subtree.par_iter()
             .try_for_each(|sub| prove_tree(rules_fp, sub, params, pk, facts, &public_inputs))?;

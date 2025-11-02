@@ -147,7 +147,6 @@ impl Circuit<Fp> for UnificationCircuit {
         &candidate_pairs_all,
         &is_fact_cell,
     )?;
-    println!("BBBBBBBBB: {:?}", b_flags);
     /*let fact_hash_chip= FactChip::construct(cfg.fact_cfg.clone());
 
     let mut flag_copy_cells: Vec<AssignedCell<Fp, Fp>> = Vec::new();

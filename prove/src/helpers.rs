@@ -48,11 +48,12 @@ if !has_op && has_list {
     // ✅ applySocialSupports special handling
 
     if name_str == "sumOfMonthlyConsumptions" && args_str.contains("[]"){
+        println!("NOWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWw");
         out_terms.push(encode_str_to_termfp_og(input, facts));
         return out_terms;
     }
     if name_str == "applySocialSupports" {
-        let mut matrix = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
+        let mut matrix = vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
 
         let parts = split_top_level_commas(args_str)
             .into_iter()
@@ -95,7 +96,7 @@ if !has_op && has_list {
     }
 
     if name_str == "monthlyConsumptions" {
-        let mut matrix = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
+        let mut matrix = vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
 
         // belső lista -> csak számok vesszőkkel (szögletes zárójelek nélkül)
         let list_inner = args_str
@@ -118,7 +119,7 @@ if !has_op && has_list {
     let args_vec: Vec<&str> = split_top_level_commas(args_str);
 
     let mut matrix: Vec<Vec<Fp>> =
-        vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
+        vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
 
     for (arg_i, arg) in args_vec.iter().enumerate() {
         let arg = arg.trim();
@@ -151,7 +152,7 @@ if !has_op && has_list {
             let inner = &arg[1..arg.len() - 1];  // levágjuk a []-t
 
             if inner.is_empty() {
-                matrix[arg_i][0] = Fp::zero();
+                matrix[arg_i][0] = Fp::one().neg();
                 continue;
             }
 
@@ -201,7 +202,7 @@ if !has_op && has_list {
             let mut preds: Vec<TermFp> = Vec::new();
 
             // ✅ First predicate: op with LHS and ONLY FIRST RHS ARG
-            let mut first_args = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
+            let mut first_args = vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
             first_args[0][0] = to_fp_value(lhs);
 
             // ✅ normalize `div` so splitter separates it
@@ -236,7 +237,7 @@ if !has_op && has_list {
 
                 let next_name = next_op.trim();
 
-                let mut new_args = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
+                let mut new_args = vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
 
                 if let Some(first) = new_rhs
                     .split([' ', '-', '+', '*', '=', '>', '<'])
@@ -321,7 +322,7 @@ fn encode_proofnode_to_termfp(
         }
         _ => vec![TermFp {
             name: Fp::zero(),
-            args: vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY],
+            args: vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY],
             fact_hashes:Fp::zero(),
         }],
     }
@@ -415,20 +416,16 @@ fn encode_str_to_termfp_og(input: &str, facts: &HashMap<String, Fp>) -> TermFp {
     if name_str == "consumptionClass" && flat_args[1] == "low" {
         flat_args[0] = "_";
     }
-    println!("INPUT: {:?}", input);
-    println!("ARGS:: {:?}", flat_args);
     let reconstructed = format!("{}({})", name_str, flat_args.join(","));
 
     // ✅ Convert to correct 2D args matrix
-    let mut args_matrix = vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY];
+    let mut args_matrix = vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
     for (i, val) in flat_args.clone().into_iter().enumerate() {
         if !val.is_empty() {
             args_matrix[i][0] = to_fp_value(val);
         }
     }
-    println!("REC: {:?}", reconstructed);
     let salt = facts.get(&reconstructed).copied().unwrap_or(Fp::zero());
-    println!("SALT: {:?}", salt);
     TermFp {
         name: to_fp_value(name_str),
         args: args_matrix,

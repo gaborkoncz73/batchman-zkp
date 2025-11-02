@@ -31,7 +31,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
     let measure_arity = |matrix: &Vec<Vec<Fp>>| -> Fp {
         let count = matrix
             .iter()
-            .take_while(|row| row.get(0).map(|v| *v != Fp::zero()).unwrap_or(false))
+            .take_while(|row| row.get(0).map(|v| *v != Fp::one().neg()).unwrap_or(false))
             .count() as u64;
         Fp::from(count)
     };
