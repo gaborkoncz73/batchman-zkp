@@ -36,7 +36,7 @@ fn main() -> Result<()> {
     //let flatten_rules_fp = RuleTemplateFileFp::to_flat_vec(&rules_fp);
     //let public_rules_hashes = poseidon_hash_list_native(&flatten_rules_fp);
     // Same params + vkgen
-    let params: Params<EqAffine> = Params::new(15);
+    let params: Params<EqAffine> = Params::new(16);
     let shape = UnificationCircuit {
         rules: rules_fp,
         unif: UnificationInputFp::default(),

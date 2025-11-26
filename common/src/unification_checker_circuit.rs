@@ -5,10 +5,10 @@ use halo2_proofs::{
 };
 use crate::{
     chips::{
-         fact_check::fact_hash_chip::{FactChip, FactConfig}, finding_rule::{body_subtree_chip::UnifCompareConfig, sig_check_chip::{SigCheckChip, SigCheckConfig}}, rlc_chip::RlcFixedChip, rules_check_chip::{RulesChip, RulesConfig}, value_check::{dot_chip::DotChip, rows_compress_config::{RowsCompressChip, RowsCompressConfig}, rule_rows_chip::{RuleRowsChip, RuleRowsConfig}}
+         fact_check::fact_hash_chip::{FactChip, FactConfig}, finding_rule::{body_subtree_chip::UnifCompareConfig, sig_check_chip::{SigCheckChip, SigCheckConfig}}, rlc_chip::RlcFixedChip, rules_check_chip::{RulesChip, RulesConfig}, value_check::{dot_chip::DotExistsChip, rows_compress_config::{RowsCompressChip, RowsCompressConfig}, rule_rows_chip::{RuleRowsChip, RuleRowsConfig}}
     },
-    data::{ClauseTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, TermSideFp, UnificationInputFp},
-    utils_2::{common_helpers::{MAX_ARITY, MAX_CHILDREN, MAX_PRED_LIST, to_fp_value}, consistency_helpers::bind_goal_name_args_inputs, predicate_helpers::bind_proof_and_candidates_sig_pairs},
+    data::{ClauseTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, TermRefFp, TermSideFp, UnificationInputFp},
+    utils_2::{common_helpers::{MAX_ARITY, MAX_CANDIDATES, MAX_CHILDREN, MAX_PRED_LIST, to_fp_value}, consistency_helpers::bind_goal_name_args_inputs, predicate_helpers::bind_proof_and_candidates_sig_pairs},
 };
 use halo2_proofs::circuit::Value;
 pub const PER_TERM: usize  = MAX_ARITY * MAX_PRED_LIST;
@@ -25,7 +25,7 @@ pub struct UnificationCircuit {
 
 #[derive(Clone, Debug)]
 pub struct UnifConfig {
-    pub dot_cfg: <DotChip as Chip<Fp>>::Config,
+    pub dot_cfg: <DotExistsChip as Chip<Fp>>::Config,
     //pub hash_cfg: PoseidonHashConfig,
     pub rlc_cfg: <RlcFixedChip as Chip<Fp>>::Config,
     pub unif_cmp_cfg: UnifCompareConfig,
@@ -59,7 +59,7 @@ impl Circuit<Fp> for UnificationCircuit {
         let alpha = {
             to_fp_value("rlc_alpha_v1")
         };
-        let dot_cfg = DotChip::configure(meta);
+        let dot_cfg = DotExistsChip::configure(meta);
         
         let rlc_cfg = RlcFixedChip::configure(meta, alpha);
         let unif_cmp_cfg: UnifCompareConfig = UnifCompareConfig::configure(meta);
@@ -181,7 +181,8 @@ impl Circuit<Fp> for UnificationCircuit {
             )
         },
     )?;
-    fact_hash_chip.assign(
+
+    let built_in_or_fact = fact_hash_chip.assign(
         layouter.namespace(|| "Fact membership"),
         &goal_name_cell,
         &goal_name_arg_cells,
@@ -191,101 +192,53 @@ impl Circuit<Fp> for UnificationCircuit {
     )?;
 
 
-    // Helper: determinisztikus flatten offsetek (head + children).
-    // Ezt a segítségeddel már tudod (pl. ClauseTemplate-ből):
     let rows_chip = RuleRowsChip::construct(cfg.rule_rows_cfg.clone());
     let mut all_clause_rows: Vec<Vec<Vec<AssignedCell<Fp, Fp>>>> = Vec::new();
 
     for (p_i, pred) in self.rules.predicates.iter().enumerate() {
         for (c_i, clause) in pred.clauses.iter().enumerate() {
-
             let eqs_fp_4d = clause_equalities_4d_tuples_fp(clause);
-
             let rows_ij = rows_chip.assign_rule_rows_fp_4d(
                 layouter.namespace(|| format!("rows pred{}_clause{}", p_i, c_i)),
                 &eqs_fp_4d,
                 MAX_DOT_DIM,
             )?;
-            all_clause_rows.push(rows_ij); 
-            // shape: [clause_idx][row_idx][k]
+            all_clause_rows.push(rows_ij); // [row][k]
         }
     }
-    let compress_chip = RowsCompressChip::construct(cfg.rows_compress_chip.clone());
-    let compressed_vec: Vec<AssignedCell<Fp,Fp>> = compress_chip.assign_compressed_active_simple(
-        layouter.namespace(|| "compress active clause rows (no r)"),
-        &all_clause_rows,  // [clause][row][k]
-        &b_flags,          // one-hot flags a SigCheck-ből
-    )?;
 
-    // 1) build w from actual input
-    let w_fp = build_witness_w_fp(
-        &self.unif.goal_name,
-        &self.unif.subtree_goals,
-    );
+// 2) minden klózhoz külön c_i (flag NÉLKÜL!)
+let compress_chip = RowsCompressChip::construct(cfg.rows_compress_chip.clone());
+let compressed_c_vecs: Vec<Vec<AssignedCell<Fp,Fp>>> =
+    compress_chip.assign_compressed_all(
+        layouter.namespace(|| "compress all"),
+        &all_clause_rows,
+        &b_flags,
+        MAX_CANDIDATES,
+        MAX_DOT_DIM,
+    )?;              // -> [clause][k]
 
-    // 2) assign w cells
-    let w_cells = assign_w_cells(
-        &mut layouter,
-        &cfg.rows_compress_chip,
-        &w_fp,
-    )?;
-    let flag_cell = layouter.assign_region(
-        || "dot flag assign",
-        |mut region| {
-            region.assign_advice(
-                || "flag constant (numeric mode)",
-                cfg.dot_cfg.adv_flag,
-                0,
-                || Value::known(Fp::zero()),  // boolean enforcement kikapcsolva
-            )
-        },
-    )?;
-    // 4) Dot check: <w, compressed> == 0
-    let dot_chip = DotChip::construct(cfg.dot_cfg.clone());
-    dot_chip.assign_dot_check(
-        layouter.namespace(|| "dot(w, compressed) == 0"),
-        &w_cells,
-        &compressed_vec,
-        &flag_cell,
-        &is_fact_cell,
-    )?;
+// 3) w beírása (ahogy eddig)
+let w_fp = build_witness_w_fp(&self.unif.goal_name, &self.unif.subtree_goals);
+let w_cells = assign_w_cells(&mut layouter, &cfg.rows_compress_chip, &w_fp)?;
+
+// 4) „létezik i” dot check a b_flags-szel
+let dot_exists_chip = DotExistsChip { cfg: cfg.dot_cfg /* ha külön config kell, hívd külön configure-rel */ };
+// Ha a DotExistsChip-nek külön configure kellett (ajánlott), kezeld úgy, mint a többi chipet: 
+// let dot_exists_cfg = DotExistsChip::configure(meta); ... itt DotExistsChip::construct(dot_exists_cfg)
+
+dot_exists_chip.assign_exists_dot_zero(
+    layouter.namespace(|| "exists i: dot(w, c_i)=0 with y_i<=b_i and sum y_i=1"),
+    &w_cells,
+    &compressed_c_vecs,
+    &b_flags,         // ezek a SigCheck-ből jöttek
+    &built_in_or_fact,    // 0: rule → aktív; 1: fact → mindez gate-elve
+)?;
             
     Ok(())
     }
 }
 
-
-/*pub fn clause_equalities_as_index_tuples_fp(
-    clause: &ClauseTemplateFp,
-) -> Vec<(Fp, Fp, Fp, Fp)> {
-    clause.equalities.iter().map(|eq| {
-        (
-            eq.left.node,  // Fp
-            eq.left.arg,   // Fp
-            eq.right.node, // Fp
-            eq.right.arg,  // Fp
-        )
-    }).collect()
-}
-
-pub fn offsets_for_clause_fp(pred: &PredicateTemplateFp, clause: &ClauseTemplateFp) -> Vec<Fp> {
-    let mut offsets = Vec::new();
-    let mut cur = Fp::zero();
-
-    // Head offset (0)
-    offsets.push(cur);
-
-    // head arity (a predikátumé)
-    cur += pred.arity;
-
-    // gyermek node-ok
-    for ch in &clause.children {
-        offsets.push(cur);
-        cur += ch.arity;
-    }
-
-    offsets
-}*/
 
 pub fn clause_equalities_4d_tuples_fp(
     clause: &ClauseTemplateFp,
@@ -314,45 +267,30 @@ pub fn build_witness_w_fp(
     goal_terms: &[TermFp],         // len ≤ MAX_PRED_LIST
     subtree_terms: &[Vec<TermFp>], // len ≤ MAX_CHILDREN, mindegyik len ≤ MAX_PRED_LIST
 ) -> Vec<Fp> {
-    let mut w = vec![Fp::zero(); MAX_NODES * PER_NODE + 1]; // +1 homogén 1-nek a végére
+    let mut w = Vec::new(); // +1 homogén 1-nek a végére
 
     // node 0: goal
     for p in 0..MAX_PRED_LIST {
         let term_opt = goal_terms.get(p);
         let flat = term_opt.map(flatten_term_args).unwrap_or_else(|| vec![Fp::zero(); PER_TERM]);
 
-        for a in 0..MAX_ARITY {
-            for l in 0..MAX_PRED_LIST {
-                let val = flat[a * MAX_PRED_LIST + l];
-                if let Some(idx) = linear_idx_4d(0, p, a, l) {
-                    w[idx] = val;
-                }
-            }
-        }
+        w.extend(flat);
     }
 
     // node 1..MAX_CHILDREN: subtree
     for n in 0..MAX_CHILDREN {
-        let node_idx = 1 + n;
         let row_terms = subtree_terms.get(n); // Option<&Vec<TermFp>>
 
         for p in 0..MAX_PRED_LIST {
             let term_opt = row_terms.and_then(|row| row.get(p));
             let flat = term_opt.map(flatten_term_args).unwrap_or_else(|| vec![Fp::zero(); PER_TERM]);
 
-            for a in 0..MAX_ARITY {
-                for l in 0..MAX_PRED_LIST {
-                    let val = flat[a * MAX_PRED_LIST + l];
-                    if let Some(idx) = linear_idx_4d(node_idx, p, a, l) {
-                        w[idx] = val;
-                    }
-                }
-            }
+            w.extend(flat);           
         }
     }
 
     // homogén 1 a legvégén
-    w[MAX_NODES * PER_NODE] = Fp::one();
+    w.push(Fp::one());
 
     w
 }
@@ -383,7 +321,7 @@ fn assign_w_cells(
 }
 
 pub fn flatten_term_args(t: &TermFp) -> Vec<Fp> {
-    let mut flat = Vec::with_capacity(MAX_ARITY * MAX_PRED_LIST);
+    let mut flat = Vec::new();
 
     for arg_i in 0..MAX_ARITY {
         for list_i in 0..MAX_PRED_LIST {
@@ -399,24 +337,3 @@ pub fn flatten_term_args(t: &TermFp) -> Vec<Fp> {
 
     flat
 }
-
-#[inline]
-fn linear_idx_4d(
-    node_idx: usize,
-    pred_idx: usize,
-    arg_idx: usize,
-    list_idx: usize,
-) -> Option<usize> {
-    if node_idx >= MAX_NODES { return None; }
-    if pred_idx >= MAX_PRED_LIST { return None; }
-    if arg_idx >= MAX_ARITY { return None; }
-    if list_idx >= MAX_PRED_LIST { return None; }
-
-    Some(
-        node_idx * PER_NODE
-        + pred_idx * PER_TERM
-        + arg_idx * MAX_PRED_LIST
-        + list_idx
-    )
-}
-

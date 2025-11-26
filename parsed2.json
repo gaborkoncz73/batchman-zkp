@@ -24,48 +24,6 @@
               "left": {
                 "children_node_list": 0,
                 "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 0,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 2,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 2,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 2,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 0,
-                "predicate": 0,
                 "arg": 3,
                 "list_index": 0
               },
@@ -87,6 +45,48 @@
                 "children_node_list": 2,
                 "predicate": 0,
                 "arg": 2,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 2,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
                 "list_index": 0
               }
             },
@@ -132,20 +132,6 @@
               "left": {
                 "children_node_list": 0,
                 "predicate": 0,
-                "arg": 1,
-                "list_index": 3
-              },
-              "right": {
-                "children_node_list": 2,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 0,
-                "predicate": 0,
                 "arg": 2,
                 "list_index": 0
               },
@@ -161,12 +147,12 @@
                 "children_node_list": 0,
                 "predicate": 0,
                 "arg": 1,
-                "list_index": 1
+                "list_index": 2
               },
               "right": {
                 "children_node_list": 1,
                 "predicate": 0,
-                "arg": 1,
+                "arg": 2,
                 "list_index": 0
               }
             },
@@ -189,12 +175,26 @@
                 "children_node_list": 0,
                 "predicate": 0,
                 "arg": 1,
-                "list_index": 2
+                "list_index": 3
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 1
               },
               "right": {
                 "children_node_list": 1,
                 "predicate": 0,
-                "arg": 2,
+                "arg": 1,
                 "list_index": 0
               }
             },
@@ -257,6 +257,20 @@
               "left": {
                 "children_node_list": 0,
                 "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 1,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
                 "arg": 2,
                 "list_index": 0
               },
@@ -278,20 +292,6 @@
                 "children_node_list": 1,
                 "predicate": 0,
                 "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 0,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 1,
                 "list_index": 0
               }
             },
@@ -442,20 +442,6 @@
               "left": {
                 "children_node_list": 0,
                 "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 3,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 0,
-                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
@@ -477,6 +463,20 @@
                 "children_node_list": 2,
                 "predicate": 0,
                 "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 0,
                 "list_index": 0
               }
             },
@@ -526,20 +526,6 @@
               "left": {
                 "children_node_list": 0,
                 "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 3,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 0,
-                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
@@ -561,6 +547,20 @@
                 "children_node_list": 2,
                 "predicate": 0,
                 "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 0,
                 "list_index": 0
               }
             },
@@ -700,20 +700,6 @@
           "equalities": [
             {
               "left": {
-                "children_node_list": 2,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 3,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
                 "children_node_list": 4,
                 "predicate": 0,
                 "arg": 0,
@@ -723,20 +709,6 @@
                 "children_node_list": 6,
                 "predicate": 0,
                 "arg": 1,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 8,
-                "predicate": 0,
-                "arg": 3,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 10,
-                "predicate": 0,
-                "arg": 0,
                 "list_index": 0
               }
             },
@@ -756,20 +728,6 @@
             },
             {
               "left": {
-                "children_node_list": 0,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 10,
-                "predicate": 0,
-                "arg": 2,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
                 "children_node_list": 3,
                 "predicate": 0,
                 "arg": 1,
@@ -793,6 +751,20 @@
                 "children_node_list": 6,
                 "predicate": 0,
                 "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 5,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 8,
+                "predicate": 0,
+                "arg": 2,
                 "list_index": 0
               }
             },
@@ -812,6 +784,34 @@
             },
             {
               "left": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 3,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 8,
+                "predicate": 0,
+                "arg": 3,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 10,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
                 "children_node_list": 6,
                 "predicate": 0,
                 "arg": 2,
@@ -826,20 +826,6 @@
             },
             {
               "left": {
-                "children_node_list": 5,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 8,
-                "predicate": 0,
-                "arg": 2,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
                 "children_node_list": 1,
                 "predicate": 0,
                 "arg": 0,
@@ -849,6 +835,20 @@
                 "children_node_list": 2,
                 "predicate": 0,
                 "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 10,
+                "predicate": 0,
+                "arg": 2,
                 "list_index": 0
               }
             }
@@ -895,56 +895,6 @@
       ]
     },
     {
-      "name": "monthlyConsumptions",
-      "arity": 1,
-      "clauses": [
-        {
-          "children": [
-            [
-              {
-                "name": "=",
-                "arity": 2
-              }
-            ]
-          ],
-          "equalities": [
-            {
-              "left": {
-                "children_node_list": 0,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              },
-              "right": "2001"
-            },
-            {
-              "left": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 1
-              },
-              "right": "[2001,2001,2001,2001,2001,2000,2000,2000,2000,2000,2000]"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "name": "priceBase",
       "arity": 1,
       "clauses": [
@@ -976,7 +926,7 @@
           "equalities": [
             {
               "left": {
-                "children_node_list": 2,
+                "children_node_list": 0,
                 "predicate": 0,
                 "arg": 0,
                 "list_index": 0
@@ -984,7 +934,7 @@
               "right": {
                 "children_node_list": 3,
                 "predicate": 0,
-                "arg": 1,
+                "arg": 0,
                 "list_index": 0
               }
             },
@@ -1004,7 +954,7 @@
             },
             {
               "left": {
-                "children_node_list": 0,
+                "children_node_list": 2,
                 "predicate": 0,
                 "arg": 0,
                 "list_index": 0
@@ -1012,7 +962,7 @@
               "right": {
                 "children_node_list": 3,
                 "predicate": 0,
-                "arg": 0,
+                "arg": 1,
                 "list_index": 0
               }
             },
@@ -1128,27 +1078,13 @@
               "left": {
                 "children_node_list": 0,
                 "predicate": 0,
-                "arg": 2,
+                "arg": 0,
                 "list_index": 0
               },
               "right": {
-                "children_node_list": 4,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
                 "children_node_list": 2,
                 "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 3,
-                "predicate": 0,
-                "arg": 0,
+                "arg": 1,
                 "list_index": 0
               }
             },
@@ -1184,13 +1120,27 @@
               "left": {
                 "children_node_list": 0,
                 "predicate": 0,
+                "arg": 2,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 4,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 2,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               },
               "right": {
-                "children_node_list": 2,
+                "children_node_list": 3,
                 "predicate": 0,
-                "arg": 1,
+                "arg": 0,
                 "list_index": 0
               }
             },
@@ -1248,14 +1198,14 @@
           "equalities": [
             {
               "left": {
-                "children_node_list": 0,
+                "children_node_list": 2,
                 "predicate": 0,
-                "arg": 1,
+                "arg": 0,
                 "list_index": 0
               },
               "right": {
-                "children_node_list": 2,
-                "predicate": 1,
+                "children_node_list": 3,
+                "predicate": 0,
                 "arg": 0,
                 "list_index": 0
               }
@@ -1264,12 +1214,12 @@
               "left": {
                 "children_node_list": 0,
                 "predicate": 0,
-                "arg": 2,
+                "arg": 1,
                 "list_index": 0
               },
               "right": {
-                "children_node_list": 4,
-                "predicate": 0,
+                "children_node_list": 2,
+                "predicate": 1,
                 "arg": 0,
                 "list_index": 0
               }
@@ -1290,13 +1240,13 @@
             },
             {
               "left": {
-                "children_node_list": 2,
+                "children_node_list": 0,
                 "predicate": 0,
-                "arg": 0,
+                "arg": 2,
                 "list_index": 0
               },
               "right": {
-                "children_node_list": 3,
+                "children_node_list": 4,
                 "predicate": 0,
                 "arg": 0,
                 "list_index": 0
@@ -1372,40 +1322,12 @@
               "left": {
                 "children_node_list": 0,
                 "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 2,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 0,
-                "predicate": 0,
                 "arg": 2,
                 "list_index": 0
               },
               "right": {
                 "children_node_list": 4,
                 "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 0,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 2,
-                "predicate": 1,
                 "arg": 0,
                 "list_index": 0
               }
@@ -1420,6 +1342,34 @@
               "right": {
                 "children_node_list": 3,
                 "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 0,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
+                "predicate": 1,
                 "arg": 0,
                 "list_index": 0
               }
@@ -1496,74 +1446,6 @@
       ]
     },
     {
-      "name": "socialCreds",
-      "arity": 1,
-      "clauses": [
-        {
-          "children": [
-            [
-              {
-                "name": "=",
-                "arity": 2
-              }
-            ]
-          ],
-          "equalities": [
-            {
-              "left": {
-                "children_node_list": 0,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              },
-              "right": "'ChangedWorkcapacityCredential'"
-            },
-            {
-              "left": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 1
-              },
-              "right": "nominal"
-            },
-            {
-              "left": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 2
-              },
-              "right": "10000"
-            },
-            {
-              "left": {
-                "children_node_list": 1,
-                "predicate": 0,
-                "arg": 1,
-                "list_index": 3
-              },
-              "right": "[]"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "name": "sumOfMonthlyConsumptions",
       "arity": 2,
       "clauses": [
@@ -1591,27 +1473,13 @@
               "left": {
                 "children_node_list": 0,
                 "predicate": 0,
-                "arg": 1,
-                "list_index": 0
+                "arg": 0,
+                "list_index": 1
               },
               "right": {
-                "children_node_list": 2,
-                "predicate": 0,
-                "arg": 0,
-                "list_index": 0
-              }
-            },
-            {
-              "left": {
                 "children_node_list": 1,
                 "predicate": 0,
-                "arg": 1,
-                "list_index": 0
-              },
-              "right": {
-                "children_node_list": 2,
-                "predicate": 0,
-                "arg": 1,
+                "arg": 0,
                 "list_index": 0
               }
             },
@@ -1631,13 +1499,27 @@
             },
             {
               "left": {
-                "children_node_list": 0,
+                "children_node_list": 1,
                 "predicate": 0,
-                "arg": 0,
-                "list_index": 1
+                "arg": 1,
+                "list_index": 0
               },
               "right": {
-                "children_node_list": 1,
+                "children_node_list": 2,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              }
+            },
+            {
+              "left": {
+                "children_node_list": 0,
+                "predicate": 0,
+                "arg": 1,
+                "list_index": 0
+              },
+              "right": {
+                "children_node_list": 2,
                 "predicate": 0,
                 "arg": 0,
                 "list_index": 0

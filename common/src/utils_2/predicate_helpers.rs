@@ -131,7 +131,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
             // ── (opcionális) teljes proof rows padding MAX_CHILDREN-ig ──────────────
             while final_proof_pairs.len() < MAX_PREDICATES_OVERALL {
                 let mut row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
-                for _ in 0..MAX_PRED_LIST {
+                for _ in 0..MAX_CHILDREN {
                     let pn = region.assign_advice(
                         || "proof.total.pad.name",
                         cfg.proof_pairs,
@@ -244,7 +244,7 @@ pub fn bind_proof_and_candidates_sig_pairs(
                     }
 
                     // ✅ MIUTÁN minden BODY sor bekerült: SOROK SZÁMÁNAK paddingje
-                    while rows.len() < MAX_CHILDREN {
+                    while rows.len() < MAX_PREDICATES_OVERALL {
                         let mut empty_row: Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)> = Vec::new();
                         for _ in 0..MAX_PRED_LIST {
                             let pn = region.assign_advice(

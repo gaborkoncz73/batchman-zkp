@@ -1,170 +1,164 @@
+use halo2_gadgets::utilities::FieldValue;
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Region, Value},
     pasta::Fp,
-    plonk::{Advice, Column, ConstraintSystem, Error, Expression, Fixed},
-    poly::Rotation,
+    plonk::{Advice, Column, ConstraintSystem, Error, Expression},
 };
+use halo2curves::ff::Field;
 
 #[derive(Clone, Debug)]
-pub struct DotConfig {
-    pub adv_w: Column<Advice>,      // w[i]
-    pub adv_c: Column<Advice>,      // c[i]
-    pub adv_acc: Column<Advice>,    // running accumulator
-    pub adv_flag: Column<Advice>,   // boolean-enforcement flag (0/1)
-    pub adv_fact: Column<Advice>,   // is_fact flag (0 = rule, 1 = fact) — gates all checks
-    pub fixed_q: Column<Fixed>,     // selector
-    pub fixed_last: Column<Fixed>,  // last-row flag
-    pub fixed_first: Column<Fixed>, // first-row flag
+pub struct DotExistsConfig {
+    pub adv_w:    Column<Advice>,
+    pub adv_c:    Column<Advice>,
+    pub adv_dot:  Column<Advice>,
+
+    pub adv_b:    Column<Advice>,
+    pub adv_z:    Column<Advice>,
+    pub adv_fact: Column<Advice>,
+
+    pub adv_prod: Column<Advice>,
+    pub adv_final: Column<Advice>,    // (1 - fact) * prod  MUST be 0
 }
 
 #[derive(Clone, Debug)]
-pub struct DotChip {
-    config: DotConfig,
+pub struct DotExistsChip {
+    pub cfg: DotExistsConfig,
 }
 
-impl Chip<Fp> for DotChip {
-    type Config = DotConfig;
+impl Chip<Fp> for DotExistsChip {
+    type Config = DotExistsConfig;
     type Loaded = ();
-    fn config(&self) -> &Self::Config { &self.config }
+    fn config(&self) -> &Self::Config { &self.cfg }
     fn loaded(&self) -> &Self::Loaded { &() }
 }
 
-impl DotChip {
-    pub fn construct(config: DotConfig) -> Self { Self { config } }
+impl DotExistsChip {
+    pub fn configure(meta: &mut ConstraintSystem<Fp>) -> DotExistsConfig {
+        let adv_w     = meta.advice_column();
+        let adv_c     = meta.advice_column();
+        let adv_dot   = meta.advice_column();
 
-    pub fn configure(meta: &mut ConstraintSystem<Fp>) -> DotConfig {
-        let adv_w      = meta.advice_column();
-        let adv_c      = meta.advice_column();
-        let adv_acc    = meta.advice_column();
-        let adv_flag   = meta.advice_column();
-        let adv_fact   = meta.advice_column();
-        let fixed_q    = meta.fixed_column();
-        let fixed_last = meta.fixed_column();
-        let fixed_first= meta.fixed_column();
+        let adv_b     = meta.advice_column();
+        let adv_z     = meta.advice_column();
+        let adv_fact  = meta.advice_column();
+        
+        let adv_prod  = meta.advice_column();
+        let adv_final = meta.advice_column();
 
-        meta.enable_equality(adv_w);
-        meta.enable_equality(adv_c);
-        meta.enable_equality(adv_acc);
-        meta.enable_equality(adv_flag);
-        meta.enable_equality(adv_fact);
+        for col in [adv_w, adv_c, adv_dot, adv_b, adv_z, adv_fact, adv_prod, adv_final] {
+            meta.enable_equality(col);
+        }
 
-        // (1) Accumulation: acc = (is_first ? w*c : acc_prev + w*c), gated by (1 - is_fact)
-        meta.create_gate("dot accumulation (gated)", |meta| {
-            let q        = meta.query_fixed(fixed_q);
-            let is_first = meta.query_fixed(fixed_first);
-            let w        = meta.query_advice(adv_w, Rotation::cur());
-            let c        = meta.query_advice(adv_c, Rotation::cur());
-            let acc      = meta.query_advice(adv_acc, Rotation::cur());
-            let acc_prev = meta.query_advice(adv_acc, Rotation::prev());
-            let fact     = meta.query_advice(adv_fact, Rotation::cur());
-            let en       = Expression::Constant(Fp::one()) - fact; // enable when not fact
+        // ⚠️ NINCS create_gate !!!
+        // EZ EGY GATE-MENTES KIALAKÍTÁS
 
-            vec![
-                en * q * (acc - (acc_prev * (Expression::Constant(Fp::one()) - is_first) + w * c))
-            ]
-        });
-
-        // (2) Optional booleanity on w for non-last rows, gated by (1 - is_fact) and flag
-        meta.create_gate("boolean w (gated)", |meta| {
-            let q      = meta.query_fixed(fixed_q);
-            let is_last= meta.query_fixed(fixed_last);
-            let w      = meta.query_advice(adv_w, Rotation::cur());
-            let flag   = meta.query_advice(adv_flag, Rotation::cur());
-            let fact   = meta.query_advice(adv_fact, Rotation::cur());
-            let en     = (Expression::Constant(Fp::one()) - fact)
-                        * (Expression::Constant(Fp::one()) - is_last);
-
-            vec![
-                en * q * flag * w.clone() * (w - Expression::Constant(Fp::one()))
-            ]
-        });
-
-        // (3) Last row: enforce acc_last=0, gated by (1 - is_fact)
-        meta.create_gate("last row checks (gated)", |meta| {
-            let q      = meta.query_fixed(fixed_q);
-            let is_last= meta.query_fixed(fixed_last);
-            //let w_last = meta.query_advice(adv_w, Rotation::cur());
-            let acc_l  = meta.query_advice(adv_acc, Rotation::cur());
-            let fact   = meta.query_advice(adv_fact, Rotation::cur());
-            let en     = (Expression::Constant(Fp::one()) - fact) * is_last;
-
-            vec![
-                en * q * acc_l,
-            ]
-        });
-
-        DotConfig { adv_w, adv_c, adv_acc, adv_flag, adv_fact, fixed_q, fixed_last, fixed_first }
+        DotExistsConfig {
+            adv_w, adv_c, adv_dot, adv_b, adv_z, adv_fact, adv_prod, adv_final
+        }
     }
 
-    /// on-circuit dot-product: ⟨w,c⟩ == 0 when is_fact = 0; fully disabled when is_fact = 1.
-    pub fn assign_dot_check(
+    pub fn assign_exists_dot_zero(
         &self,
         mut layouter: impl Layouter<Fp>,
-        w_vec: &[AssignedCell<Fp, Fp>],
-        c_vec: &[AssignedCell<Fp, Fp>],
-        flag_cell: &AssignedCell<Fp, Fp>, // 0/1, controls boolean constraint on w
-        fact_cell: &AssignedCell<Fp, Fp>, // 0 for rule, 1 for fact (disables all checks)
+        w_vec: &[AssignedCell<Fp,Fp>],
+        c_list: &Vec<Vec<AssignedCell<Fp,Fp>>>,
+        b_flags: &Vec<AssignedCell<Fp,Fp>>,
+        fact_cell: &AssignedCell<Fp,Fp>,
     ) -> Result<(), Error> {
-        assert_eq!(w_vec.len(), c_vec.len());
-        let n = w_vec.len();
-        let cfg = self.config();
+
+        let cfg = self.cfg.clone();
+        let dim = w_vec.len();
 
         layouter.assign_region(
-            || "dot-product (gated by is_fact)",
-            |mut region: Region<'_, Fp>| {
-                let mut acc_val: Value<Fp> = Value::known(Fp::zero());
+            || "dot(z*b) with final enforcement",
+            |mut region| {
+                let mut row = 0;
+                let mut prod_val = Value::known(Fp::one());   
 
-                for i in 0..n {
-                    // Fixed selectors
-                    region.assign_fixed(|| "q",     cfg.fixed_q,     i, || Value::known(Fp::one()))?;
-                    region.assign_fixed(|| "first", cfg.fixed_first, i, || Value::known(if i == 0 { Fp::one() } else { Fp::zero() }))?;
-                    region.assign_fixed(|| "last",  cfg.fixed_last,  i, || Value::known(if i + 1 == n { Fp::one() } else { Fp::zero() }))?;
+                for (i, c_i) in c_list.iter().enumerate() {
 
-                    // Values
-                    let wi = w_vec[i].value();
-                    let ci = c_vec[i].value();
+                    // compute dot_i
+                    let mut acc = Value::known(Fp::zero());
+                    for k in 0..dim {
+                        acc = acc.zip(w_vec[k].value()).zip(c_i[k].value())
+                            .map(|((acc, w), c)| acc + (*w * *c));
 
-                    // Running accumulation
-                    acc_val = if i == 0 {
-                        wi.zip(ci).map(|(w, c)| *w * *c)
-                    } else {
-                        acc_val.zip(wi).zip(ci).map(|((a, w), c)| a + *w * *c)
-                    };
+                        region.assign_advice(|| "w", cfg.adv_w, row, || w_vec[k].value().copied())?;
+                        region.assign_advice(|| "c", cfg.adv_c, row, || c_i[k].value().copied())?;
+                        row += 1;
+                    }
 
-                    // Assign w, c, acc
-                    let w_local = region.assign_advice(|| "w",   cfg.adv_w,   i, || wi.copied())?;
-                    let c_local = region.assign_advice(|| "c",   cfg.adv_c,   i, || ci.copied())?;
-                    let a_local = region.assign_advice(|| "acc", cfg.adv_acc, i, || acc_val)?;
-
-                    // Copy in flag and fact, and constrain-equal to the originals
-                    let flag_local = region.assign_advice(
-                        || "flag (copy)",
-                        cfg.adv_flag,
-                        i,
-                        || flag_cell.value().copied(),
+                    let dot_cell = region.assign_advice(
+                        || format!("dot[{i}]"),
+                        cfg.adv_dot,
+                        row,
+                        || acc
                     )?;
-                    region.constrain_equal(flag_local.cell(), flag_cell.cell())?;
 
+                    let b_local = region.assign_advice(
+                        || format!("b[{i}]"),
+                        cfg.adv_b,
+                        row,
+                        || b_flags[i].value().copied()
+                    )?;
+                    region.constrain_equal(b_local.cell(), b_flags[i].cell())?;
+
+                    // z[i] = 1 if dot_i == 0
+                    let z_val = dot_cell.value().map(|d|
+                        if bool::from(d.is_zero()) {Fp::one()} else {Fp::zero()}
+                    );
+                    let z_cell = region.assign_advice(
+                        || format!("z[{i}]"),
+                        cfg.adv_z,
+                        row,
+                        || z_val
+                    )?;
+
+                    // multiply into product: prod *= (1 - z*b)
+                    let zb_val = z_cell.value().zip(b_local.value())
+                        .map(|(z,b)| *z * *b);
+
+                    prod_val = prod_val.zip(zb_val)
+                        .map(|(p,zb)| p * (Fp::one() - zb));
+
+                    // also forward fact for this row
                     let fact_local = region.assign_advice(
-                        || "fact (copy)",
+                        || "fact",
                         cfg.adv_fact,
-                        i,
-                        || fact_cell.value().copied(),
+                        row,
+                        || fact_cell.value().copied()
                     )?;
                     region.constrain_equal(fact_local.cell(), fact_cell.cell())?;
 
-                     //Optional debug:
-                     /*if i + 1 == n {
-                         println!("DOT last row: acc={:?}, w_last={:?}, is_fact={:?}",
-                             acc_val, w_vec.last().unwrap().value(), fact_cell.value());
-                     }*/
-
-                    // silence unused locals in release builds
-                    let _ = (w_local, c_local, a_local);
+                    row += 1;
                 }
 
+                // store final product
+                let prod_cell = region.assign_advice(
+                    || "prod_final",
+                    cfg.adv_prod,
+                    row,
+                    || prod_val
+                )?;
+
+                // compute final_check = (1 - fact) * prod
+                let final_check_val = prod_val.zip(fact_cell.value())
+                    .map(|(p,f)| (Fp::one() - *f) * p);
+
+                let final_cell = region.assign_advice(
+                    || "final_check",
+                    cfg.adv_final,
+                    row,
+                    || final_check_val
+                )?;
+                println!("FINAL: {:?}", final_cell.value());
+                // ENFORCEMENT HERE:
+                region.constrain_constant(final_cell.cell(), Fp::zero())?;
+
                 Ok(())
-            },
-        )
+            }
+        )?;
+
+        Ok(())
     }
 }

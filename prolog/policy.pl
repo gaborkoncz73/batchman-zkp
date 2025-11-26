@@ -1,7 +1,6 @@
 % policy.pl 
 :- module(policy,[
     % list all preds    
-    monthlyConsumptions/1,
     sumOfMonthlyConsumptions/2,
     rollingConsumption/2,
     consumptionClass/2,
@@ -9,7 +8,6 @@
     priceBase/1,
     applySupport/4,
     applySavingsSupport/4,
-    socialCreds/1,
     applySocialSupports/3,
     endPrice/1,
     inputPriceOk/0
@@ -27,7 +25,7 @@
 
 % monthlyConsumptions(MonthlyConsumptions) :- findall((Amount), monthly_consumption(_,Amount), MonthlyConsumptions).
 % monthlyConsumptions(MonthlyConsumptions) :- MonthlyConsumptions = [(1,2001),(2,2001),(3,2001),(4,2001),(5,2001),(6,2001),(7,2000),(8,2000),(9,2000),(10,2000),(11,2000),(12,2000)].
-monthlyConsumptions(MonthlyConsumptions) :- MonthlyConsumptions = [2001,2001,2001,2001,2001,2001,2000,2000,2000,2000,2000,2000].
+
 
 sumOfMonthlyConsumptions([Amount|Tail],Sum) :- sumOfMonthlyConsumptions(Tail,SumOfTail), Sum is SumOfTail + Amount.
 sumOfMonthlyConsumptions([],0).
@@ -81,7 +79,7 @@ applySavingsSupport(ApplySavingsSupportInput, ApplySavingsSupportSavingsClass, A
     applySupport(ApplySavingsSupportInput, ApplySavingsSupportType, ApplySavingsSupportValue, ApplySavingsSupportOutput).
 
 % === 6. Apply social standing based support ===
-socialCreds(Creds):- Creds = [('ChangedWorkcapacityCredential',nominal,10000)].
+
 % socialCreds(Creds) :- findall((CredType,SupportType,SupportValue), social_suport(CredType,SupportType,SupportValue), Creds).
 
 applySocialSupports(Input,[(_,SupportType,SupportValue)|CredsTail],Result):-
@@ -92,8 +90,10 @@ applySocialSupports(Input,[], Input).
 endPrice(Price):-
     monthlyConsumptions(MonthlyConsumptions),
     sumOfMonthlyConsumptions(MonthlyConsumptions,Sum),
+
     rollingConsumption(Sum,RollingConsumptionVar),
     currentConsumption(Consumption),
+    
     consumptionClass(RollingConsumptionVar,ConsumptionClassVar),
     savingsClass(RollingConsumptionVar,Consumption,SavingsClass),
     priceBase(PriceBase),

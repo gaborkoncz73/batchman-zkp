@@ -14,6 +14,6 @@ common = { workspace = true }
 
 
 regex = { workspace = true, features = ["std", "unicode-perl"] }
-antlr4rust = "0.5.2"
+antlr4rust = { path = "../../antlr4/runtime/Rust" }
 lazy_static = "1.4"
 once_cell = "1.19"       # replaces lazy_static

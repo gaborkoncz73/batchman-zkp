@@ -44,7 +44,6 @@ fn main() -> Result<()> {
 
     // Building fact HashMap
     let facts = build_fact_map(&fact_configs);
-
     // Processing the rules
     let rules_text = fs::read_to_string("input/rules.json")?;
 
@@ -60,7 +59,6 @@ fn main() -> Result<()> {
     
     let tree: Vec<data::ProofNode> = serde_json::from_str(&proof_text)?;
 
-    println!("tree: {:?}", tree);
     // Public input hashes
     let path = Path::new("output/fact_hashes.json");
     let public_facts_hashes: Vec<Fp> = read_fact_hashes(path)?;
@@ -82,7 +80,7 @@ fn main() -> Result<()> {
     );
     
     // Params + keygen
-    let params: Params<EqAffine> = Params::new(15);
+    let params: Params<EqAffine> = Params::new(16);
     let shape = UnificationCircuit {
         rules: rules_fp.clone(),
         unif: UnificationInputFp::default(),
@@ -96,9 +94,16 @@ fn main() -> Result<()> {
     // Clearing the unif_proofs.json
     remove_proofs_file("unif_proofs.json")?;
 
-    // Starting the proving from the root
-    tree.iter()
-        .try_for_each(|node|prove_tree(&rules_fp, node, &params,  &pk, &facts, &public_inputs))?;
+    let pool = rayon::ThreadPoolBuilder::new()
+    .num_threads(9)
+    .build()
+    .unwrap();
+
+    pool.install(|| {
+        let _ = tree.iter()
+         .try_for_each(|node|prove_tree(&rules_fp, node, &params,  &pk, &facts, &public_inputs));
+    });
+
 
     println!("All unification goals proof saved!");
     Ok(())
@@ -114,10 +119,10 @@ fn prove_tree(
     public_inputs: &[&[&[Fp]]],
 ) -> Result<()> {
     if let data::ProofNode::GoalNode(g) = node {
-        
         // Constructing the Unification inputs from the goal node and the facts hashmap
         let unif_input_fp = unification_input_from_goal_and_facts(g, facts);
-        println!("UNIF INPUT: {:?}", unif_input_fp);
+
+        //println!("UNIF: {:?}", unif_input_fp);
         // Circuit Fp with proper inputs
         let circuit = UnificationCircuit {
             rules: rules_fp.clone(),
@@ -139,7 +144,6 @@ fn prove_tree(
         let proof = transcript.finalize();
 
         write_proof("unif", &proof)?;
-        println!("PRRRR: {:?}", to_fp_value("2000"));
         // Recursion
         g.subtree.par_iter()
             .try_for_each(|sub| prove_tree(rules_fp, sub, params, pk, facts, &public_inputs))?;

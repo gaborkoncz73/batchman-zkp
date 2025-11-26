@@ -66,7 +66,7 @@ pub fn assign(
     goal_name_salt: &AssignedCell<Fp, Fp>,
     is_fact: &AssignedCell<Fp, Fp>,
     flags:  &Vec<AssignedCell<Fp,Fp>>,
-) -> Result<(), Error> {
+) -> Result<AssignedCell<Fp,Fp>, Error> {
     let cfg = &self.config;
 
     // 1) Beépített kifejezéslánc ellenőrzése (külön chip, külön namespace!)
@@ -77,7 +77,7 @@ pub fn assign(
         &goal_name_args_cells,                   // p -> a -> l
         false,                                   // itt nem kényszerítjük ok==1-re
     )?;
-    println!("builtin: {:?}", builtin_ok);
+
     // 2) Hash-elés tokenláncról (név + minden arg[0] + salt)
     let pos_chip = PoseidonHashChip::construct(cfg.pos_cfg.clone());
 
@@ -85,22 +85,19 @@ pub fn assign(
 
     if let Some(args_matrix) = goal_name_args_cells.get(0) {
         for arg_row in args_matrix {
-            if let Some(first_arg_cell) = arg_row.get(0) {
-                tokens.push(first_arg_cell.clone());
+            for cell in arg_row {
+                tokens.push(cell.clone());
             }
         }
     }
+    
     tokens.push(goal_name_salt.clone());
-
-    println!("TOKENS: {:?}", tokens);
-
     let hashed = pos_chip.hash_list(
         layouter.namespace(|| "Poseidon(fact||salt)"),
         &tokens,
     )?;
-
     // 3) Membership + flags + builtin kombináció EGY régióban
-    layouter.assign_region(
+    let result_cell = layouter.assign_region(
         || "final decision (membership OR flags OR builtin) gated by is_fact",
         |mut region| {
             // zero
@@ -225,10 +222,6 @@ pub fn assign(
                      .map(|(h,ps)| if *h == *ps { Fp::ONE } else { Fp::ZERO })
             )?;
 
-            println!("any_flag = {:?}", any_flag_cell.value());
-            println!("fact_ok_cell = {:?}", fact_ok_cell.value());
-            println!("builtin_ok = {:?}", builtin_ok_local.value());
-
             let or_abc = region.assign_advice(
                 || "or_abc",
                 cfg.fact, MAX_FACTS_HASHES*2 + 103,
@@ -243,6 +236,12 @@ pub fn assign(
                     })
             )?;
 
+            println!("IS FACT?: {:?}", is_fact_local.value());
+            println!("FACT OKAY?: {:?}", fact_ok_cell.value());
+            println!("BUILT IN?: {:?}", builtin_ok.value());
+            println!("ANY FLAG?: {:?}", any_flag_cell.value());
+
+
             // final_ok = is_fact * or_abc
             let gate = region.assign_advice(
             || "gated_final_ok",
@@ -253,11 +252,19 @@ pub fn assign(
         )?;
         region.constrain_equal(gate.cell(), zero.cell())?;
 
-            Ok(())
+        let final_return_cell = region.assign_advice(
+            || "final_return",
+            cfg.fact,
+            MAX_FACTS_HASHES*2 + 200,
+            || builtin_ok_local.value().zip(fact_ok_cell.value())
+                .map(|(b,f)| if *b == Fp::ONE || *f == Fp::ONE { Fp::ONE } else { Fp::ZERO })
+        )?;
+
+            Ok(final_return_cell)
         }
     )?;
 
-    Ok(())
+    Ok(result_cell)
 }
 
 

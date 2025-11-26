@@ -19,3 +19,5 @@ currentConsumption(1400).
 currentPrice(747,'HUF').
 
 inputPayment(931220).
+
+socialCreds([('ChangedWorkcapacityCredential',nominal,10000)]).

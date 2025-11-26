@@ -3,7 +3,7 @@ use halo2_gadgets::poseidon::primitives::{
 };
 use halo2_proofs::pasta::Fp;
 
-use crate::utils_2::common_helpers::{MAX_ARITY, to_fp_value};
+use crate::utils_2::common_helpers::{MAX_ARITY, MAX_PRED_LIST, to_fp_value};
 
 
 #[inline]
@@ -33,17 +33,37 @@ pub fn poseidon_hash_list_native(values: &[Fp]) -> Fp {
 ///
 /// Output:
 /// - Fp hash identical to the chip’s Poseidon fold.
-pub fn fact_hash_native_salted(name: &str, args: &[&str], salt: &str) -> Fp {
-    let mut tokens: Vec<Fp> = Vec::with_capacity(1 + args.len() + 1);
+pub fn fact_hash_native_salted(name: &str, args: &[&[&str]], salt: &str) -> Fp {
+    let mut tokens: Vec<Fp> = Vec::with_capacity(1 + MAX_PRED_LIST*MAX_ARITY + 1);
+
     tokens.push(to_fp_value(name));
-    for a in args {
-        tokens.push(to_fp_value(a));
+    let mut used_lists = 0usize;
+    for arg_list in args.iter().take(MAX_ARITY) {
+        let mut filled = 0usize;
+
+        // elemek (legfeljebb MAX_ARITY)
+        for element in (*arg_list).iter().take(MAX_PRED_LIST) {
+            tokens.push(to_fp_value(element));
+            filled += 1;
+        }
+        // per-lista padding
+        while filled < MAX_PRED_LIST {
+            tokens.push(Fp::one().neg());
+            filled += 1;
+        }
+        
+        used_lists += 1;
     }
-    while tokens.len() < MAX_ARITY + 1{
-        tokens.push(Fp::one().neg());
+
+    // 3) hiányzó blokkok paddinggel (MAX_PRED_LIST-ig)
+    while used_lists < MAX_ARITY {
+        for _ in 0..MAX_PRED_LIST {
+            tokens.push(Fp::one().neg());
+        }
+        used_lists += 1;
     }
     tokens.push(to_fp_value(salt));
-
+    println!("TOKENS: {:?}", tokens);
     poseidon_hash_list_native(&tokens)
 }
 

@@ -2,7 +2,7 @@ use std::usize;
 
 use halo2_proofs::pasta::Fp;
 
-pub const MAX_PRED_LIST:usize = 3;
+pub const MAX_PRED_LIST:usize = 4;
 
 pub const MAX_CLAUSES_PER_PREDICATE: usize = 4;
 
@@ -12,7 +12,7 @@ pub const MAX_CANDIDATES: usize = MAX_PREDICATES_OVERALL * MAX_CLAUSES_PER_PREDI
 
 pub const MAX_ARITY: usize = 4;
 
-pub const MAX_FACTS_HASHES: usize = 32;
+pub const MAX_FACTS_HASHES: usize = 33;
 
 pub const MAX_CHILDREN: usize = 11;
 

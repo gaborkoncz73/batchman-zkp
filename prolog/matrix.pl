@@ -1,6 +1,6 @@
 % matrix.pl
 % Tresholds
-:- module(policy_matrix, [rolling_treshold/2, savings_treshold/2, support_matrix/4, social_suport/3]).
+:- module(policy_matrix, [rolling_treshold/2, savings_treshold/2, support_matrix/4, social_suport/3, socialCreds/1, monthlyConsumptions/1]).
 
 rolling_treshold('low', 0).
 rolling_treshold('mid', 3000).
@@ -14,7 +14,7 @@ savings_treshold('high',1000).
 % support_matrix(Rolling_class, savings_class, type, value)
 support_matrix('low', 'low', 'nominal', 500).
 support_matrix('low', 'mid', 'percent', 10).
-support_matrix('low', 'high', 'nominal', 500).z
+support_matrix('low', 'high', 'nominal', 500).
 support_matrix('mid', 'low', 'nominal', 500).
 support_matrix('mid', 'mid', 'nominal', 500).
 support_matrix('mid', 'high', 'nominal', 500).
@@ -24,3 +24,6 @@ support_matrix('high', 'high', 'nominal', 500).
 
 % Social Suports: social_suport(credType,type,value)
 social_suport('ChangedWorkcapacityCredential','nominal',10000).
+
+socialCreds([('ChangedWorkcapacityCredential',nominal,10000)]).
+monthlyConsumptions([2001,2001,2001,2001,2001,2001,2000,2000,2000,2000,2000,2000]).

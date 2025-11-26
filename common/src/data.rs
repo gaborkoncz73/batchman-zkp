@@ -202,6 +202,6 @@ pub struct TermRefFp {
 #[derive(Debug, Deserialize)]
 pub struct FactEntry {
     pub predicate: String,
-    pub args: Vec<String>, // minden arg stringként jön a YAML-ből
+    pub args: Vec<Vec<String>>, // minden arg stringként jön a YAML-ből
     pub salt: String,
 }

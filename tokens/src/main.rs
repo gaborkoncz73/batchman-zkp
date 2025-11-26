@@ -7,6 +7,7 @@ use parser::prologlexer::prologLexer;
 use parser::prologparser::*;
 use parser::prologvisitor::prologVisitor;
 use serde::Serialize;
+use anyhow::*;
 
 // ------------------ Kimeneti JSON model ------------------
 
@@ -380,6 +381,21 @@ fn to_output(clauses: Vec<Clause>) -> OutRoot {
         }
     }
 
+    fn is_literal_atom(t: &Term) -> bool {
+        match t {
+            Term::Atom(s) => {
+                let c = s.chars().next().unwrap_or('_');
+                // true ha:
+                // 'low' 'mid' 'high'
+                // 'HUF' 'none'
+                // 23 120 500 stb.
+                c.is_lowercase() || c.is_ascii_digit() || c=='\''
+            }
+            _ => false
+        }
+    }
+
+
     for cl in clauses {
         // --- Head
         let (hname, hargs) = match &cl.head {
@@ -410,6 +426,15 @@ fn to_output(clauses: Vec<Clause>) -> OutRoot {
 
             match t {
                 Term::Predicate { name, args } if builtin_ops.contains(name.as_str()) => {
+                    if name == "=" {
+                        if is_literal_atom(&args[0]) && is_literal_atom(&args[1]) {
+                            // két literál atom ⇒ NE kerüljön children-be
+                            // de az equalities-be bekerül
+                            flatten_arg_collect(&args[0], l, 0, 0, &mut var_pos, &mut atom_pos);
+                            flatten_arg_collect(&args[1], l, 0, 0, &mut var_pos, &mut atom_pos);
+                            continue;   // 🔥 ez átugorja children push-olást
+                        }
+                    }
                     // Builtin: első op 2-operandusú, majd RHS inorder lánc opjai 1-operandusúak
                     let first_name = name.clone();
                     let (left, right) = if args.len() == 2 {
