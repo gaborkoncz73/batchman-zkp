@@ -369,9 +369,11 @@ fn to_output(clauses: Vec<Clause>) -> OutRoot {
                 }
             }
             Term::Var(v) => {
-                if v != "_" {
-                    var_pos.entry(v.clone()).or_default().push(Occ4 { l, p, a, li: 0 });
+                // minden '_' és '_Valami' wildcard → IGNORE
+                if v == "_" || v.starts_with("_") {
+                    return;
                 }
+                var_pos.entry(v.clone()).or_default().push(Occ4 { l, p, a, li: 0 });
             }
             Term::Atom(s) => {
                 atom_pos.push((Occ4 { l, p, a, li: 0 }, s.clone()));
@@ -380,21 +382,6 @@ fn to_output(clauses: Vec<Clause>) -> OutRoot {
             _ => {}
         }
     }
-
-    fn is_literal_atom(t: &Term) -> bool {
-        match t {
-            Term::Atom(s) => {
-                let c = s.chars().next().unwrap_or('_');
-                // true ha:
-                // 'low' 'mid' 'high'
-                // 'HUF' 'none'
-                // 23 120 500 stb.
-                c.is_lowercase() || c.is_ascii_digit() || c=='\''
-            }
-            _ => false
-        }
-    }
-
 
     for cl in clauses {
         // --- Head
@@ -409,6 +396,17 @@ fn to_output(clauses: Vec<Clause>) -> OutRoot {
         // Equalities gyűjtők
         let mut var_pos: HashMap<String, Vec<Occ4>> = HashMap::new();
         let mut atom_pos: Vec<(Occ4, String)> = vec![];
+
+        // Default clause detektálás (pl consumptionClass default)
+        let mut is_default_clause = false;
+        if cl.body.len() == 1 {
+            if let Term::Predicate { name, args:_ } = &cl.body[0] {
+                if name == "=" {
+                    // consumptionClass(_RollingConsumptionVar,Class):- Class='low'.
+                    is_default_clause = true;
+                }
+            }
+        }
 
         // LOGIKAI head (l=0): head argumentumok előfordulásai
         for (ai, a) in hargs.iter().enumerate() {
@@ -425,16 +423,34 @@ fn to_output(clauses: Vec<Clause>) -> OutRoot {
             let mut this_list: Vec<ChildPred> = vec![];
 
             match t {
+                Term::Predicate { name, args } if name.as_str() == "=" => {
+        let left_str = term_as_string(&args[0]);
+        let right_str = term_as_string(&args[1]);
+
+        // ------------------------------
+        // Ha a két oldal tökéletesen azonos atom → implicit match
+        // → NEM kell gyermek node ("=" nem kerül children-be)
+        // ------------------------------
+        if is_default_clause || (left_str == right_str && !is_var_name(&left_str)) {
+            flatten_arg_collect(&args[0],  l, 0, 0, &mut var_pos, &mut atom_pos);
+            flatten_arg_collect(&args[1],  l, 0, 0, &mut var_pos, &mut atom_pos);
+            // NINCS push this_list
+            continue;
+        }
+
+        // ------------------------------
+        // Ha a két oldal nem atom–atom egyenlőség
+        // VAGY explicit levezetett egyenlőség (pl mid=mid savingsClass végén)
+        // → KELL child "="
+        // ------------------------------
+        this_list.push(ChildPred { name: name.clone(), arity: 2 });
+        flatten_arg_collect(&args[0], l, 0, 0, &mut var_pos, &mut atom_pos);
+        flatten_arg_collect(&args[1], l, 0, 1, &mut var_pos, &mut atom_pos);
+        children_lists.push(this_list);
+        continue;
+    }
+
                 Term::Predicate { name, args } if builtin_ops.contains(name.as_str()) => {
-                    if name == "=" {
-                        if is_literal_atom(&args[0]) && is_literal_atom(&args[1]) {
-                            // két literál atom ⇒ NE kerüljön children-be
-                            // de az equalities-be bekerül
-                            flatten_arg_collect(&args[0], l, 0, 0, &mut var_pos, &mut atom_pos);
-                            flatten_arg_collect(&args[1], l, 0, 0, &mut var_pos, &mut atom_pos);
-                            continue;   // 🔥 ez átugorja children push-olást
-                        }
-                    }
                     // Builtin: első op 2-operandusú, majd RHS inorder lánc opjai 1-operandusúak
                     let first_name = name.clone();
                     let (left, right) = if args.len() == 2 {
@@ -494,6 +510,46 @@ fn to_output(clauses: Vec<Clause>) -> OutRoot {
 
         // --- Equalities összeállítása (változók láncolása + literálok)
         let mut equalities: Vec<Equality> = vec![];
+       if is_default_clause {
+    // csak head-ben levő egyenlőségek megtartása
+
+    let mut filtered_equalities = vec![];
+
+    for occs in var_pos.values() {
+        if occs.len() > 1 {
+            let base = occs[0];
+            if base.l == 0 {  // HEAD-ben volt
+                for &o in occs.iter().skip(1) {
+                    if o.l == 0 {  // ő is HEAD-ben
+                        add_ref_eq(&mut filtered_equalities, &mut HashSet::new(), base, o);
+                    }
+                }
+            }
+        }
+    }
+
+   for (o, lit) in &atom_pos {
+        if !lit.starts_with("_") {
+            add_atom_eq(&mut filtered_equalities, &mut HashSet::new(), *o, lit.clone());
+        }
+    }
+
+    let out_clause = OutClause {
+        children: vec![],                    // default: nincs subtree
+        equalities: filtered_equalities,     // csak HEAD equalities
+    };
+
+    map.entry((hname.clone(), harity))
+        .and_modify(|op| op.clauses.push(out_clause.clone()))
+        .or_insert_with(|| OutPredicate {
+            name: hname,
+            arity: harity,
+            clauses: vec![out_clause],
+        });
+
+    continue;
+}
+
         let mut seen_refs: HashSet<(NodeArgRef4, NodeArgRef4)> = HashSet::new();
         let mut seen_atoms: HashSet<(NodeArgRef4, String)> = HashSet::new();
 
@@ -534,7 +590,9 @@ fn to_output(clauses: Vec<Clause>) -> OutRoot {
         }
         // Literál kötés
         for (o, lit) in atom_pos {
-            add_atom_eq(&mut equalities, &mut seen_atoms, o, lit);
+            if !lit.starts_with("_") {
+                add_atom_eq(&mut equalities, &mut seen_atoms, o, lit);
+            }
         }
 
         let out_clause = OutClause {
