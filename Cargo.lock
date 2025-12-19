@@ -24,6 +24,8 @@ dependencies = [
 [[package]]
 name = "antlr4rust"
 version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "093d520274bfff7278d776f7ea12981a0a0a6f96db90964658e0f38fc6e9a6a6"
 dependencies = [
  "better_any",
  "bit-set",

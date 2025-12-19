@@ -1,0 +1,212 @@
+- predicate: rolling_treshold
+  args:
+    - [low]
+    - [0]
+  salt: 15414
+
+- predicate: rolling_treshold
+  args:
+    - [mid]
+    - [3000]
+  salt: 154134
+
+- predicate: rolling_treshold
+  args:
+    - [high]
+    - [7000]
+  salt: 154141
+
+- predicate: savings_treshold
+  args:
+    - [low]
+    - [250]
+  salt: 15
+
+- predicate: savings_treshold
+  args:
+    - [mid]
+    - [500]
+  salt: 152
+
+- predicate: savings_treshold
+  args:
+    - [high]
+    - [1000]
+  salt: 14
+
+- predicate: support_matrix
+  args:
+    - [low]
+    - [low]
+    - [nominal]
+    - [500]
+  salt: 10
+
+- predicate: support_matrix
+  args:
+    - [low]
+    - [mid]
+    - [percent]
+    - [10]
+  salt: 11
+
+- predicate: support_matrix
+  args:
+    - [low]
+    - [high]
+    - [nominal]
+    - [500]
+  salt: 19
+
+- predicate: support_matrix
+  args:
+    - [mid]
+    - [low]
+    - [nominal]
+    - [500]
+  salt: 9
+
+- predicate: support_matrix
+  args:
+    - [mid]
+    - [mid]
+    - [nominal]
+    - [500]
+  salt: 8
+
+- predicate: support_matrix
+  args:
+    - [mid]
+    - [high]
+    - [nominal]
+    - [500]
+  salt: 7
+
+- predicate: support_matrix
+  args:
+    - [high]
+    - [low]
+    - [nominal]
+    - [500]
+  salt: 6
+
+- predicate: support_matrix
+  args:
+    - [high]
+    - [mid]
+    - [nominal]
+    - [500]
+  salt: 5
+
+- predicate: support_matrix
+  args:
+    - [high]
+    - [high]
+    - [nominal]
+    - [500]
+  salt: 4
+
+- predicate: social_suport
+  args:
+    - [ChangedWorkcapacityCredential]
+    - [nominal]
+    - [10000]
+  salt: 2
+
+- predicate: monthly_consumption
+  args:
+    - [1]
+    - [2001]
+  salt: 150
+
+- predicate: monthly_consumption
+  args:
+    - [2]
+    - [2001]
+  salt: 151
+
+- predicate: monthly_consumption
+  args:
+    - [3]
+    - [2001]
+  salt: 152
+
+- predicate: monthly_consumption
+  args:
+    - [4]
+    - [2001]
+  salt: 153
+
+- predicate: monthly_consumption
+  args:
+    - [5]
+    - [2001]
+  salt: 154
+
+- predicate: monthly_consumption
+  args:
+    - [6]
+    - [2001]
+  salt: 155
+
+- predicate: monthly_consumption
+  args:
+    - [7]
+    - [2000]
+  salt: 156
+
+- predicate: monthly_consumption
+  args:
+    - [8]
+    - [2000]
+  salt: 157
+
+- predicate: monthly_consumption
+  args:
+    - [9]
+    - [2000]
+  salt: 158
+
+- predicate: monthly_consumption
+  args:
+    - [10]
+    - [2000]
+  salt: 159
+
+- predicate: monthly_consumption
+  args:
+    - [11]
+    - [2000]
+  salt: 160
+
+- predicate: monthly_consumption
+  args:
+    - [12]
+    - [2000]
+  salt: 161
+
+- predicate: currentConsumption
+  args:
+    - [1400]
+  salt: 162
+
+- predicate: currentPrice
+  args:
+    - [747]
+    - ["'HUF'"]
+  salt: 163
+
+- predicate: inputPayment
+  args:
+    - [931220]
+  salt: 164
+
+- predicate: socialCreds
+  args: 
+    - ["'ChangedWorkcapacityCredential'", nominal, 10000]
+  salt: 15461
+
+- predicate: monthlyConsumptions
+  args:
+    - ["2001,2001,2001,2001,2001,2001,2000,2000,2000,2000,2000,2000"]
+  salt: 15632

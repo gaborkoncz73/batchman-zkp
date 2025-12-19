@@ -21,8 +21,8 @@ write_kb :-
 
 write_proof :-
     prove(endPrice(931220), [Tree]),
-    open('proof_tree.json', write, Stream),           % fájl megnyitása írásra
-    json_write_dict(Stream, Tree, [width(100), serialize_unknown(true)]),
+    open('input/proof_tree.json', write, Stream),           % fájl megnyitása írásra
+    json_write_dict(Stream, [Tree], [width(100), serialize_unknown(true)]),
     close(Stream),                                    % fájl lezárása
     halt.
 

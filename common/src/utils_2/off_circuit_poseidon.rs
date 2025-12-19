@@ -63,7 +63,6 @@ pub fn fact_hash_native_salted(name: &str, args: &[&[&str]], salt: &str) -> Fp {
         used_lists += 1;
     }
     tokens.push(to_fp_value(salt));
-    println!("TOKENS: {:?}", tokens);
     poseidon_hash_list_native(&tokens)
 }
 

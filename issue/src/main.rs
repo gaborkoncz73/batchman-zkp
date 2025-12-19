@@ -10,7 +10,7 @@ use common::{
 use halo2curves::ff::{Field, PrimeField};
 
 fn main() -> Result<()> {
-    let config_file = "input/facts.yaml";
+    let config_file = "issue/src/facts.yaml";
     let file_content = fs::read_to_string(config_file)?;
     let fact_configs: Vec<FactEntry> = serde_yaml::from_str(&file_content)?;
 
@@ -38,7 +38,7 @@ fn main() -> Result<()> {
     }
     
     // Write JSON file
-    let out_path = Path::new("output/fact_hashes.json");
+    let out_path = Path::new("input/fact_hashes.json");
     fs::create_dir_all(out_path.parent().unwrap())?;
     let json = serde_json::to_string_pretty(&fact_hashes)?;
     fs::write(out_path, json)?;

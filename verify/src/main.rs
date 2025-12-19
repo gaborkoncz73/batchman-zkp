@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     // Load proofs
     let proofs: Vec<Vec<u8>> = read_proofs_bytes("unif")?;
     // Load public hashes
-    let path = Path::new("output/fact_hashes.json");
+    let path = Path::new("input/fact_hashes.json");
     let public_hashes = read_fact_hashes(path)?;
 
     // Debug (12 bytes/proof)

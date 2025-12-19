@@ -8,6 +8,8 @@ use parser::prologparser::*;
 use parser::prologvisitor::prologVisitor;
 use serde::Serialize;
 use anyhow::*;
+use std::fs;
+use std::path::Path;
 
 // ------------------ Kimeneti JSON model ------------------
 
@@ -632,8 +634,13 @@ fn main() {
     let out = to_output(builder.clauses);
     let json = serde_json::to_string_pretty(&out).expect("json serialize");
 
+    let dir = Path::new("input");
+    let file_path = dir.join("rules.json");
+
+    fs::create_dir_all(dir).expect("failed to create input directory");
+
     // JSON kiírás
-    let file_path = "parsed2.json";
-    std::fs::write(file_path, &json).expect("write failed");
-    println!("✅ JSON saved to {file_path}");
+    fs::write(&file_path, &json).expect("write failed");
+
+    println!("JSON saved to {}", file_path.display());
 }

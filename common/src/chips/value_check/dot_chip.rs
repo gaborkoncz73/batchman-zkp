@@ -151,7 +151,7 @@ impl DotExistsChip {
                     row,
                     || final_check_val
                 )?;
-                println!("FINAL: {:?}", final_cell.value());
+                //println!("FINAL: {:?}", final_cell.value());
                 // ENFORCEMENT HERE:
                 region.constrain_constant(final_cell.cell(), Fp::zero())?;
 

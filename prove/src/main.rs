@@ -36,7 +36,7 @@ use crate::writer::remove_proofs_file;
 
 fn main() -> Result<()> {
     // Fact struct
-    let config_file = "input/facts.yaml";
+    let config_file = "issue/src/facts.yaml";
     let file_content = fs::read_to_string(config_file)
         .expect("Failed to read the YAML file.");
     let fact_configs: Vec<FactEntry> = serde_yaml::from_str(&file_content)
@@ -60,7 +60,7 @@ fn main() -> Result<()> {
     let tree: Vec<data::ProofNode> = serde_json::from_str(&proof_text)?;
 
     // Public input hashes
-    let path = Path::new("output/fact_hashes.json");
+    let path = Path::new("input/fact_hashes.json");
     let public_facts_hashes: Vec<Fp> = read_fact_hashes(path)?;
     //let public_rules_hashes = poseidon_hash_list_native(&rules_vec_fp);
 

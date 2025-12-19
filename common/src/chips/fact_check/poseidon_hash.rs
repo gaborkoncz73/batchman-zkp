@@ -116,7 +116,45 @@ impl PoseidonHashChip {
 
     // Return the final accumulated hash
     Ok(acc)
-}
+    }
+    pub fn hash_nested_pairs(
+        &self,
+        mut layouter: impl Layouter<Fp>,
+        proof_pairs_nested: &[Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>],
+    ) -> Result<AssignedCell<Fp, Fp>, Error> {
+
+        // acc = 0
+        let mut acc = layouter.assign_region(
+            || "initial acc",
+            |mut region| {
+                region.assign_advice(
+                    || "acc = 0",
+                    self.cfg.input_col,
+                    0,
+                    || Value::known(Fp::ZERO),
+                )
+            },
+        )?;
+
+        for (i, inner) in proof_pairs_nested.iter().enumerate() {
+            for (j, (a, b)) in inner.iter().enumerate() {
+                // acc = H([acc, a])
+                acc = self.hash2(
+                    layouter.namespace(|| format!("hash pair[{i}][{j}] step a")),
+                    [acc.clone(), a.clone()],
+                )?;
+
+                // acc = H([acc, b])
+                acc = self.hash2(
+                    layouter.namespace(|| format!("hash pair[{i}][{j}] step b")),
+                    [acc.clone(), b.clone()],
+                )?;
+            }
+        }
+
+        Ok(acc)
+    }
+    
 
     // Hash → publikusan megadott hash-érték ellenőrzése
     /*pub fn verify_hash_commitment(

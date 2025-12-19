@@ -236,10 +236,10 @@ pub fn assign(
                     })
             )?;
 
-            println!("IS FACT?: {:?}", is_fact_local.value());
-            println!("FACT OKAY?: {:?}", fact_ok_cell.value());
-            println!("BUILT IN?: {:?}", builtin_ok.value());
-            println!("ANY FLAG?: {:?}", any_flag_cell.value());
+            //println!("IS FACT?: {:?}", is_fact_local.value());
+            //println!("FACT OKAY?: {:?}", fact_ok_cell.value());
+            //println!("BUILT IN?: {:?}", builtin_ok.value());
+            //println!("ANY FLAG?: {:?}", any_flag_cell.value());
 
 
             // final_ok = is_fact * or_abc
