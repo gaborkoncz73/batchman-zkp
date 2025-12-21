@@ -404,7 +404,7 @@ fn encode_str_to_termfp_og(input: &str, facts: &HashMap<String, Fp>) -> TermFp {
         ""
     };
     
-    let mut flat_args: Vec<&str> = args_str
+    let flat_args: Vec<&str> = args_str
         .split(',')
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())

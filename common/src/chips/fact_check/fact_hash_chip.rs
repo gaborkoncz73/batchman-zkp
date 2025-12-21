@@ -1,4 +1,3 @@
-use halo2_gadgets::utilities::FieldValue;
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Value},
     pasta::Fp,
@@ -6,7 +5,7 @@ use halo2_proofs::{
 };
 use halo2curves::ff::Field;
 
-use crate::{chips::fact_check::{built_in_check_chip::{BuiltinExprChip, BuiltinExprConfig}, poseidon_hash::{PoseidonHashChip, PoseidonHashConfig}}, utils_2::common_helpers::{MAX_CANDIDATES, MAX_FACTS_HASHES, to_fp_value}};
+use crate::{chips::fact_check::{built_in_check_chip::{BuiltinExprChip, BuiltinExprConfig}, poseidon_hash::{PoseidonHashChip, PoseidonHashConfig}}, utils_2::common_helpers::{MAX_CANDIDATES, MAX_FACTS_HASHES}};
 
 #[derive(Clone, Debug)]
 pub struct FactConfig {
@@ -175,7 +174,7 @@ pub fn assign(
         }
 
         // Assign a single advice cell
-        let prod_not_flag_cell = region.assign_advice(
+        let _prod_not_flag_cell = region.assign_advice(
             || "prod_not_flag_final",
             cfg.salt,
             MAX_CANDIDATES + MAX_FACTS_HASHES + 1,

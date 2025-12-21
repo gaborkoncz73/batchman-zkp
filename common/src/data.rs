@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use halo2_proofs::pasta::Fp;
-use crate::utils_2::common_helpers::{MAX_ARITY, MAX_CHILDREN, MAX_CLAUSES_PER_PREDICATE, MAX_EQUALITIES, MAX_PRED_LIST, MAX_PREDICATES_OVERALL, to_fp_value};
+use crate::utils_2::common_helpers::{MAX_ARITY, MAX_PRED_LIST, to_fp_value};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RuleTemplateFile {

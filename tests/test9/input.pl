@@ -1,0 +1,15 @@
+% Facts
+tr1(alice, bob).
+tr2(alice, bob).
+tr3(alice, bob).
+tr4(alice, bob).
+tr5(alice, bob).
+tr6(alice, bob).
+tr7(alice, bob).
+tr8(alice, bob).
+tr9(alice, bob).
+tr10(alice, bob).
+tr11(alice, bob).
+tr12(alice, bob).
+tr13(alice, bob).
+tr14(alice, bob).

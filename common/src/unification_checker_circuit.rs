@@ -5,9 +5,9 @@ use halo2_proofs::{
 };
 use crate::{
     chips::{
-         fact_check::fact_hash_chip::{FactChip, FactConfig}, finding_rule::{body_subtree_chip::UnifCompareConfig, sig_check_chip::{SigCheckChip, SigCheckConfig}}, rlc_chip::RlcFixedChip, rules_check_chip::{RulesChip, RulesConfig}, value_check::{dot_chip::DotExistsChip, rows_compress_config::{RowsCompressChip, RowsCompressConfig}, rule_rows_chip::{RuleRowsChip, RuleRowsConfig}}
+         fact_check::fact_hash_chip::{FactChip, FactConfig}, finding_rule::{body_subtree_chip::UnifCompareConfig, sig_check_chip::{SigCheckChip, SigCheckConfig}}, rlc_chip::RlcFixedChip, value_check::{dot_chip::DotExistsChip, rows_compress_config::{RowsCompressChip, RowsCompressConfig}, rule_rows_chip::{RuleRowsChip, RuleRowsConfig}}
     },
-    data::{ClauseTemplateFp, PredicateTemplateFp, RuleTemplateFileFp, TermFp, TermRefFp, TermSideFp, UnificationInputFp},
+    data::{ClauseTemplateFp, RuleTemplateFileFp, TermFp, TermSideFp, UnificationInputFp},
     utils_2::{common_helpers::{MAX_ARITY, MAX_CANDIDATES, MAX_CHILDREN, MAX_PRED_LIST, to_fp_value}, consistency_helpers::bind_goal_name_args_inputs, predicate_helpers::bind_proof_and_candidates_sig_pairs},
 };
 use halo2_proofs::circuit::Value;

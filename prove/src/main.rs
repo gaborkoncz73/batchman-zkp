@@ -1,15 +1,13 @@
 mod writer;
 pub mod helpers;
 
-use std::fs::File;
-use std::io::Write;
+
 use std::path::Path;
 use std::{collections::HashMap, fs};
 use std::sync::Arc;
 use anyhow::Result;
-use common::data::{GoalEntry, ProofNode, RuleTemplateFileFp, TermFp};
+use common::data::{RuleTemplateFileFp};
 use common::unification_checker_circuit::UnificationCircuit;
-use common::utils_2::common_helpers::to_fp_value;
 //use common::utils_2::off_circuit_poseidon::poseidon_hash_list_native;
 use rand_core::OsRng;
 use rayon::prelude::*;
@@ -27,8 +25,6 @@ use common::io::read_fact_hashes::read_fact_hashes;
 use data::FactEntry;
 use helpers::{build_fact_map, unification_input_from_goal_and_facts};
 
-use serde::Serialize;
-use serde_json::to_string_pretty;
 use writer::{write_proof};
 
 //use crate::helpers::{encode_str_to_termfp, unification_input_from_goal_and_facts};
@@ -36,7 +32,35 @@ use crate::writer::remove_proofs_file;
 
 fn main() -> Result<()> {
     // Fact struct
+    
+    //let config_file = "issue/src/facts.yaml";
+
+    //Testing
+    
+    //Test1
+    //let config_file = "issue/src/facts1.yaml";
+
+    //Test2
+    //let config_file = "issue/src/facts2.yaml";
+
+    //Test3
+    //let config_file = "issue/src/facts3.yaml";
+    
+    //Test4
+    //let config_file = "issue/src/facts4.yaml";
+    
+    //Test5
+    //let config_file = "issue/src/facts5.yaml";
+
+    //Test6
+    //let config_file = "issue/src/facts6.yaml";
+
+    //Test7
+    //let config_file = "issue/src/facts7.yaml";
+    
+    //Test8
     let config_file = "issue/src/facts.yaml";
+
     let file_content = fs::read_to_string(config_file)
         .expect("Failed to read the YAML file.");
     let fact_configs: Vec<FactEntry> = serde_yaml::from_str(&file_content)
@@ -80,7 +104,13 @@ fn main() -> Result<()> {
     );
     
     // Params + keygen
+    //let params: Params<EqAffine> = Params::new(16);
+
+    //Testing
+
+    //for tests
     let params: Params<EqAffine> = Params::new(16);
+    
     let shape = UnificationCircuit {
         rules: rules_fp.clone(),
         unif: UnificationInputFp::default(),
@@ -99,11 +129,13 @@ fn main() -> Result<()> {
     .build()
     .unwrap();
 
-    pool.install(|| {
+    /*pool.install(|| {
         let _ = tree.iter()
          .try_for_each(|node|prove_tree(&rules_fp, node, &params,  &pk, &facts, &public_inputs));
-    });
+    });*/
 
+    tree.iter()
+         .try_for_each(|node|prove_tree(&rules_fp, node, &params,  &pk, &facts, &public_inputs))?;
 
     println!("All unification goals proof saved!");
     Ok(())

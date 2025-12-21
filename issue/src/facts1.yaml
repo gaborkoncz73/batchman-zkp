@@ -1,0 +1,5 @@
+- predicate: parent
+  args:
+    - [alice]
+    - [bob]
+  salt: 100

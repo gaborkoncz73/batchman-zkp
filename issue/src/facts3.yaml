@@ -1,0 +1,29 @@
+- predicate: parent
+  args:
+    - [alice]
+    - [bob]
+  salt: 100
+
+- predicate: parent
+  args:
+    - [bob]
+    - [laura]
+  salt: 200
+
+- predicate: parent
+  args:
+    - [laura]
+    - [jack]
+  salt: 300
+
+- predicate: parent
+  args:
+    - [jack]
+    - [peter]
+  salt: 400
+
+- predicate: parent
+  args:
+    - [peter]
+    - [dora]
+  salt: 500

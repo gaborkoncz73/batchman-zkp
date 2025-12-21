@@ -34,7 +34,7 @@ impl RowsCompressChip {
     &self,
     mut layouter: impl Layouter<Fp>,
     rows: &Vec<Vec<Vec<AssignedCell<Fp,Fp>>>>, // [actual_clauses][rows][dim]
-    flags: &Vec<AssignedCell<Fp,Fp>>,          // [MAX_CANDIDATES]
+    _flags: &Vec<AssignedCell<Fp,Fp>>,          // [MAX_CANDIDATES]
     max_candidates: usize,
     dim: usize,
 ) -> Result<Vec<Vec<AssignedCell<Fp,Fp>>>, Error> {

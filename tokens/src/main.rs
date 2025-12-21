@@ -7,7 +7,6 @@ use parser::prologlexer::prologLexer;
 use parser::prologparser::*;
 use parser::prologvisitor::prologVisitor;
 use serde::Serialize;
-use anyhow::*;
 use std::fs;
 use std::path::Path;
 
@@ -73,12 +72,12 @@ enum Term {
 }
 
 impl Term {
-    fn arity(&self) -> usize {
+    /*fn arity(&self) -> usize {
         match self {
             Term::Predicate { args, .. } => args.len(),
             _ => 0,
         }
-    }
+    }*/
 }
 
 // ------------------ Clause gyűjtő ------------------
@@ -229,7 +228,7 @@ fn term_as_string(t: &Term) -> String {
         }
         Term::ListCell { head, tail } => {
             let mut elems = vec![term_as_string(head)];
-            let mut cur = (*tail.clone());
+            let mut cur = *tail.clone();
             let mut guard = 0usize;
             while let Term::ListCell { head: h, tail: t2 } = cur.clone() {
                 elems.push(term_as_string(&h));
@@ -617,6 +616,31 @@ fn to_output(clauses: Vec<Clause>) -> OutRoot {
 fn main() {
     // Prolog forrás
     let input = std::fs::read_to_string("./prolog/policy.pl").expect("read failed");
+    //Testing
+
+    //Test1
+    //let input = std::fs::read_to_string("./tests/test1/policy.pl").expect("read failed");
+
+    //Test2
+    //let input = std::fs::read_to_string("./tests/test2/policy.pl").expect("read failed");
+
+    //Test3
+    //let input = std::fs::read_to_string("./tests/test3/policy.pl").expect("read failed");
+
+    //Test4
+    //let input = std::fs::read_to_string("./tests/test4/policy.pl").expect("read failed");
+
+    //Test5
+    //let input = std::fs::read_to_string("./tests/test5/policy.pl").expect("read failed");
+
+    //Test6
+    //let input = std::fs::read_to_string("./tests/test6/policy.pl").expect("read failed");
+
+    //Test7
+    //let input = std::fs::read_to_string("./tests/test7/policy.pl").expect("read failed");
+
+    //Test8
+    //let input = std::fs::read_to_string("./tests/test18/policy.pl").expect("read failed");
 
     // ANTLR: lex + parse
     let input_stream = InputStream::new(input.as_str());

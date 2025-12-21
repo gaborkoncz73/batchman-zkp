@@ -3,7 +3,7 @@ use halo2_proofs::{
     pasta::Fp,
     plonk::Error,
 };
-use crate::{chips::finding_rule::sig_rlc_chip::SigRlcChip, utils_2::common_helpers::to_fp_value};
+use crate::{chips::finding_rule::sig_rlc_chip::SigRlcChip};
 use crate::chips::finding_rule::sig_check_chip::SigCheckConfig;
 
 #[derive(Clone, Debug)]
@@ -50,7 +50,7 @@ impl SigOrCompareChip {
         layouter.namespace(|| "sig RLC(proof)"),
         &proof_flat,
     )?;
-    
+    //println!("proof val: {:?}", proof_rlc.value());
     // candidate RLC-k és match flag-ek (b_i)
     let mut b_flags: Vec<AssignedCell<Fp, Fp>> = Vec::new();
 
@@ -59,6 +59,7 @@ impl SigOrCompareChip {
             layouter.namespace(|| format!("sig RLC(cand {i})")),
             cand,
         )?;
+        //println!("cand val: {:?}", cand_rlc.value());
         // Boolean match flag = 1 if proof_rlc == cand_rlc else 0
         let b_i = layouter.assign_region(
             || format!("match flag for candidate {i}"),

@@ -60,12 +60,12 @@ impl BuiltinExprChip {
                     col, row0,
                     || x.value().map(|vx| if *vx == c { Fp::ONE } else { Fp::ZERO })
                 )?;
-                let be = region.assign_advice(
+                /*let be = region.assign_advice(
                     || "b*(1-b)",
                     col, row0+1,
                     || b.value().map(|vb| *vb * (Fp::ONE - *vb))
                 )?;
-                let z = region.assign_advice(|| "z", col, row0+2, || Value::known(Fp::ZERO))?;
+                let z = region.assign_advice(|| "z", col, row0+2, || Value::known(Fp::ZERO))?;*/
                 //region.constrain_equal(be.cell(), z.cell())?;
                 Ok(b)
             }
@@ -73,7 +73,7 @@ impl BuiltinExprChip {
     }
 
     /// s_add + s_sub + s_mul + s_div = 1  és mind boolean
-    fn enforce_onehot4(
+    /*fn enforce_onehot4(
         &self,
         mut layouter: impl Layouter<Fp>,
         s: [&AssignedCell<Fp,Fp>;4],
@@ -108,7 +108,7 @@ impl BuiltinExprChip {
                 region.constrain_equal(diff.cell(), z.cell())
             }
         )
-    }
+    }*/
 
     /// Fő API: kiértékeli a láncot és visszaad egy boolean `ok` cellát.
     ///
@@ -593,7 +593,7 @@ fn fp_to_u128(x: Fp) -> u128 {
     b.copy_from_slice(&repr.as_ref()[0..16]);
     u128::from_le_bytes(b)
 }
-
+/*
 /// Soft 32-bit range-check (u32)
 fn range_check_u32_in_region(
     region: &mut halo2_proofs::circuit::Region<'_, Fp>,
@@ -630,4 +630,4 @@ fn range_check_u32_in_region(
     region.constrain_equal(v.cell(), recon.cell())?;
 
     Ok(())
-}
+}*/

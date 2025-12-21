@@ -1,8 +1,7 @@
-use halo2_gadgets::utilities::FieldValue;
 use halo2_proofs::{
-    circuit::{AssignedCell, Chip, Layouter, Region, Value},
+    circuit::{AssignedCell, Chip, Layouter, Value},
     pasta::Fp,
-    plonk::{Advice, Column, ConstraintSystem, Error, Expression},
+    plonk::{Advice, Column, ConstraintSystem, Error},
 };
 use halo2curves::ff::Field;
 
@@ -134,7 +133,7 @@ impl DotExistsChip {
                 }
 
                 // store final product
-                let prod_cell = region.assign_advice(
+                let _prod_cell = region.assign_advice(
                     || "prod_final",
                     cfg.adv_prod,
                     row,

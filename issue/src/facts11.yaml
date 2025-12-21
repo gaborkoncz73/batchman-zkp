@@ -1,0 +1,143 @@
+- predicate: tr1
+  args:
+    - [alice]
+    - [bob]
+  salt: 100
+
+- predicate: tr2
+  args:
+    - [alice]
+    - [bob]
+  salt: 200
+
+- predicate: tr3
+  args:
+    - [alice]
+    - [bob]
+  salt: 300
+
+- predicate: tr4
+  args:
+    - [alice]
+    - [bob]
+  salt: 400
+
+- predicate: tr5
+  args:
+    - [alice]
+    - [bob]
+  salt: 500
+
+- predicate: tr6
+  args:
+    - [alice]
+    - [bob]
+  salt: 600
+
+- predicate: tr7
+  args:
+    - [alice]
+    - [bob]
+  salt: 700
+
+- predicate: tr8
+  args:
+    - [alice]
+    - [bob]
+  salt: 800
+
+- predicate: tr9
+  args:
+    - [alice]
+    - [bob]
+  salt: 900
+
+- predicate: tr10
+  args:
+    - [alice]
+    - [bob]
+  salt: 1000
+
+- predicate: tr11
+  args:
+    - [alice]
+    - [bob]
+  salt: 1100
+
+- predicate: tr12
+  args:
+    - [alice]
+    - [bob]
+  salt: 1200
+
+- predicate: tr13
+  args:
+    - [alice]
+    - [bob]
+  salt: 1300
+
+- predicate: tr14
+  args:
+    - [alice]
+    - [bob]
+  salt: 1400
+
+- predicate: tr15
+  args:
+    - [alice]
+    - [bob]
+  salt: 1500
+
+- predicate: tr16
+  args:
+    - [alice]
+    - [bob]
+  salt: 1600
+
+- predicate: tr17
+  args:
+    - [alice]
+    - [bob]
+  salt: 1700
+
+- predicate: tr18
+  args:
+    - [alice]
+    - [bob]
+  salt: 1800
+
+- predicate: tr19
+  args:
+    - [alice]
+    - [bob]
+  salt: 1900
+
+- predicate: tr20
+  args:
+    - [alice]
+    - [bob]
+  salt: 2000
+
+- predicate: tr21
+  args:
+    - [alice]
+    - [bob]
+  salt: 2100
+
+- predicate: tr22
+  args:
+    - [alice]
+    - [bob]
+  salt: 2200
+
+- predicate: tr23
+  args:
+    - [alice]
+    - [bob]
+  salt: 2300
+
+- predicate: tr24
+  args:
+    - [alice]
+    - [bob]
+  salt: 2400

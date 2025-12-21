@@ -1,0 +1,424 @@
+- predicate: tx_check1
+  args:
+    - [alice]
+    - [dora]
+  salt: 100
+
+- predicate: tx_check2
+  args:
+    - [alice]
+    - [dora]
+  salt: 200
+
+- predicate: tx_check3
+  args:
+    - [alice]
+    - [dora]
+  salt: 300
+
+- predicate: tx_check4
+  args:
+    - [alice]
+    - [dora]
+  salt: 400
+
+- predicate: tx_check5
+  args:
+    - [alice]
+    - [dora]
+  salt: 500
+
+- predicate: tx_check6
+  args:
+    - [alice]
+    - [dora]
+  salt: 600
+
+- predicate: tx_check7
+  args:
+    - [alice]
+    - [dora]
+  salt: 700
+
+- predicate: tx_check8
+  args:
+    - [alice]
+    - [dora]
+  salt: 800
+
+- predicate: tx_check9
+  args:
+    - [alice]
+    - [dora]
+  salt: 900
+
+- predicate: tx_check10
+  args:
+    - [alice]
+    - [dora]
+  salt: 1000
+
+- predicate: tx_check11
+  args:
+    - [alice]
+    - [dora]
+  salt: 1100
+
+- predicate: tx_check12
+  args:
+    - [alice]
+    - [dora]
+  salt: 1200
+
+- predicate: tx_check13
+  args:
+    - [alice]
+    - [dora]
+    - [a,b]
+  salt: 1300
+
+- predicate: tx_check1
+  args:
+    - [bob]
+    - [dora]
+  salt: 1400
+
+- predicate: tx_check2
+  args:
+    - [bob]
+    - [dora]
+  salt: 1500
+
+- predicate: tx_check3
+  args:
+    - [bob]
+    - [dora]
+  salt: 1600
+
+- predicate: tx_check4
+  args:
+    - [bob]
+    - [dora]
+  salt: 1700
+
+- predicate: tx_check5
+  args:
+    - [bob]
+    - [dora]
+  salt: 1800
+
+- predicate: tx_check6
+  args:
+    - [bob]
+    - [dora]
+  salt: 1900
+
+- predicate: tx_check7
+  args:
+    - [bob]
+    - [dora]
+  salt: 2000
+
+- predicate: tx_check8
+  args:
+    - [bob]
+    - [dora]
+  salt: 2100
+
+- predicate: tx_check9
+  args:
+    - [bob]
+    - [dora]
+  salt: 2200
+
+- predicate: tx_check10
+  args:
+    - [bob]
+    - [dora]
+  salt: 2300
+
+- predicate: tx_check11
+  args:
+    - [bob]
+    - [dora]
+  salt: 2400
+
+- predicate: tx_check12
+  args:
+    - [bob]
+    - [dora]
+  salt: 2500
+
+- predicate: tx_check13
+  args:
+    - [bob]
+    - [dora]
+    - [a,b]
+  salt: 2600
+
+- predicate: tx_check1
+  args:
+    - [laura]
+    - [dora]
+  salt: 2700
+
+- predicate: tx_check2
+  args:
+    - [laura]
+    - [dora]
+  salt: 2800
+
+- predicate: tx_check3
+  args:
+    - [laura]
+    - [dora]
+  salt: 2900
+
+- predicate: tx_check4
+  args:
+    - [laura]
+    - [dora]
+  salt: 3000
+
+- predicate: tx_check5
+  args:
+    - [laura]
+    - [dora]
+  salt: 3100
+
+- predicate: tx_check6
+  args:
+    - [laura]
+    - [dora]
+  salt: 3200
+
+- predicate: tx_check7
+  args:
+    - [laura]
+    - [dora]
+  salt: 3300
+
+- predicate: tx_check8
+  args:
+    - [laura]
+    - [dora]
+  salt: 3400
+
+- predicate: tx_check9
+  args:
+    - [laura]
+    - [dora]
+  salt: 3500
+
+- predicate: tx_check10
+  args:
+    - [laura]
+    - [dora]
+  salt: 3600
+
+- predicate: tx_check11
+  args:
+    - [laura]
+    - [dora]
+  salt: 3700
+
+- predicate: tx_check12
+  args:
+    - [laura]
+    - [dora]
+  salt: 3800
+
+- predicate: tx_check13
+  args:
+    - [laura]
+    - [dora]
+    - [a,b]
+  salt: 3900
+
+- predicate: tx_check1
+  args:
+    - [jack]
+    - [dora]
+  salt: 4000
+
+- predicate: tx_check2
+  args:
+    - [jack]
+    - [dora]
+  salt: 4100
+
+- predicate: tx_check3
+  args:
+    - [jack]
+    - [dora]
+  salt: 4200
+
+- predicate: tx_check4
+  args:
+    - [jack]
+    - [dora]
+  salt: 4300
+
+- predicate: tx_check5
+  args:
+    - [jack]
+    - [dora]
+  salt: 4400
+
+- predicate: tx_check6
+  args:
+    - [jack]
+    - [dora]
+  salt: 4500
+
+- predicate: tx_check7
+  args:
+    - [jack]
+    - [dora]
+  salt: 4600
+
+- predicate: tx_check8
+  args:
+    - [jack]
+    - [dora]
+  salt: 4700
+
+- predicate: tx_check9
+  args:
+    - [jack]
+    - [dora]
+  salt: 4800
+
+- predicate: tx_check10
+  args:
+    - [jack]
+    - [dora]
+  salt: 4900
+
+- predicate: tx_check11
+  args:
+    - [jack]
+    - [dora]
+  salt: 5000
+
+- predicate: tx_check12
+  args:
+    - [jack]
+    - [dora]
+  salt: 5100
+
+- predicate: tx_check13
+  args:
+    - [jack]
+    - [dora]
+    - [a,b]
+  salt: 5200
+
+- predicate: tx_check1
+  args:
+    - [peter]
+    - [dora]
+  salt: 5300
+
+- predicate: tx_check2
+  args:
+    - [peter]
+    - [dora]
+  salt: 5400
+
+- predicate: tx_check3
+  args:
+    - [peter]
+    - [dora]
+  salt: 5500
+
+- predicate: tx_check4
+  args:
+    - [peter]
+    - [dora]
+  salt: 5600
+
+- predicate: tx_check5
+  args:
+    - [peter]
+    - [dora]
+  salt: 5700
+
+- predicate: tx_check6
+  args:
+    - [peter]
+    - [dora]
+  salt: 5800
+
+- predicate: tx_check7
+  args:
+    - [peter]
+    - [dora]
+  salt: 5900
+
+- predicate: tx_check8
+  args:
+    - [peter]
+    - [dora]
+  salt: 6000
+
+- predicate: tx_check9
+  args:
+    - [peter]
+    - [dora]
+  salt: 6100
+
+- predicate: tx_check10
+  args:
+    - [peter]
+    - [dora]
+  salt: 6200
+
+- predicate: tx_check11
+  args:
+    - [peter]
+    - [dora]
+  salt: 6300
+
+- predicate: tx_check12
+  args:
+    - [peter]
+    - [dora]
+  salt: 6400
+
+- predicate: tx_check13
+  args:
+    - [peter]
+    - [dora]
+    - [a,b]
+  salt: 6500
+
+- predicate: parent
+  args:
+    - [alice]
+    - [bob]
+  salt: 6600
+
+- predicate: parent
+  args:
+    - [bob]
+    - [laura]
+  salt: 6700
+
+- predicate: parent
+  args:
+    - [laura]
+    - [jack]
+  salt: 6800
+
+- predicate: parent
+  args:
+    - [jack]
+    - [peter]
+  salt: 6900
+
+- predicate: parent
+  args:
+    - [peter]
+    - [dora]
+  salt: 7000

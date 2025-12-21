@@ -1,0 +1,83 @@
+- predicate: parent
+  args:
+    - [alice]
+    - [bob]
+  salt: 100
+
+- predicate: parent
+  args:
+    - [bob]
+    - [laura]
+  salt: 200
+
+- predicate: parent
+  args:
+    - [laura]
+    - [jack]
+  salt: 300
+
+- predicate: parent
+  args:
+    - [jack]
+    - [peter]
+  salt: 400
+
+- predicate: parent
+  args:
+    - [peter]
+    - [dora]
+  salt: 500
+
+- predicate: parent
+  args:
+    - [dora]
+    - [emma]
+  salt: 600
+
+- predicate: parent
+  args:
+    - [emma]
+    - [frank]
+  salt: 700
+
+- predicate: parent
+  args:
+    - [frank]
+    - [george]
+  salt: 800
+
+- predicate: parent
+  args:
+    - [george]
+    - [helen]
+  salt: 900
+
+- predicate: parent
+  args:
+    - [helen]
+    - [irene]
+  salt: 1000
+
+- predicate: parent
+  args:
+    - [irene]
+    - [john]
+  salt: 1100
+
+- predicate: parent
+  args:
+    - [john]
+    - [kate]
+  salt: 1200
+
+- predicate: parent
+  args:
+    - [kate]
+    - [leo]
+  salt: 1300
+
+- predicate: parent
+  args:
+    - [leo]
+    - [maria]
+  salt: 1400

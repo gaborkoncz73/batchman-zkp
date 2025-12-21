@@ -1,0 +1,17 @@
+- predicate: tr1
+  args:
+    - [alice]
+    - [bob]
+  salt: 100
+
+- predicate: tr2
+  args:
+    - [alice]
+    - [bob]
+  salt: 200
+
+- predicate: tr3
+  args:
+    - [alice]
+    - [bob]
+  salt: 300

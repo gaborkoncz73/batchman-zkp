@@ -1,0 +1,15 @@
+% Facts
+parent(alice, bob).
+parent(bob, laura).
+parent(laura, jack).
+parent(jack, peter).
+parent(peter, dora).
+parent(dora, emma).
+parent(emma, frank).
+parent(frank, george).
+parent(george, helen).
+parent(helen, irene).
+parent(irene, john).
+parent(john, kate).
+parent(kate, leo).
+parent(leo, maria).
