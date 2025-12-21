@@ -21,6 +21,4 @@ transactions_completed(X,Y) :-
     tr20(X,Y),
     tr21(X,Y),
     tr22(X,Y),
-    tr23(X,Y),
-    tr24(X,Y),
-    tr25(X,Y).
+    tr23(X,Y).

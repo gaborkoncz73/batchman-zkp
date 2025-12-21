@@ -11,14 +11,4 @@ transactions_completed(X,Y) :-
     tr10(X,Y),
     tr11(X,Y),
     tr12(X,Y),
-    tr13(X,Y),
-    tr14(X,Y),
-    tr15(X,Y),
-    tr16(X,Y),
-    tr17(X,Y),
-    tr18(X,Y),
-    tr19(X,Y),
-    tr20(X,Y),
-    tr21(X,Y),
-    tr22(X,Y),
-    tr23(X,Y).
+    tr13(X,Y).

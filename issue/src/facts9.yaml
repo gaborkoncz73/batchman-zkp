@@ -69,15 +69,3 @@
     - [alice]
     - [bob]
   salt: 1200
-
-- predicate: tr13
-  args:
-    - [alice]
-    - [bob]
-  salt: 1300
-
-- predicate: tr14
-  args:
-    - [alice]
-    - [bob]
-  salt: 1400

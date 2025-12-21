@@ -9,6 +9,4 @@ transactions_completed(X,Y) :-
     tr8(X,Y),
     tr9(X,Y),
     tr10(X,Y),
-    tr11(X,Y),
-    tr12(X,Y),
-    tr13(X,Y).
+    tr11(X,Y).

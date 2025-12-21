@@ -8,7 +8,7 @@
 
 % run the proof for ancestor(x,y)
 run_proof(Tree) :-
-    Goal = transactions_completed(alice, bob),
+    Goal = ancestor(alice, charlie),
     prove(Goal, Tree).
 
 % export proof tree as JSON

@@ -22,5 +22,3 @@ tr20(alice, bob).
 tr21(alice, bob).
 tr22(alice, bob).
 tr23(alice, bob).
-tr24(alice, bob).
-tr25(alice, bob).

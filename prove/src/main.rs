@@ -33,32 +33,7 @@ use crate::writer::remove_proofs_file;
 fn main() -> Result<()> {
     // Fact struct
     
-    //let config_file = "issue/src/facts.yaml";
-
-    //Testing
-    
-    //Test1
-    //let config_file = "issue/src/facts1.yaml";
-
-    //Test2
-    //let config_file = "issue/src/facts2.yaml";
-
-    //Test3
-    //let config_file = "issue/src/facts3.yaml";
-    
-    //Test4
-    //let config_file = "issue/src/facts4.yaml";
-    
-    //Test5
-    //let config_file = "issue/src/facts5.yaml";
-
-    //Test6
-    //let config_file = "issue/src/facts6.yaml";
-
-    //Test7
-    //let config_file = "issue/src/facts7.yaml";
-    
-    //Test8
+    // facts.yaml is the MNB case study factsX X = the test we want
     let config_file = "issue/src/facts.yaml";
 
     let file_content = fs::read_to_string(config_file)

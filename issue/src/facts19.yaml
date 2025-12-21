@@ -74,6 +74,7 @@
   args:
     - [alice]
     - [dora]
+    - [a,b,c]
   salt: 1300
 
 - predicate: tx_check1
@@ -152,6 +153,7 @@
   args:
     - [bob]
     - [dora]
+    - [a,b,c]
   salt: 2600
 
 - predicate: tx_check1
@@ -230,6 +232,7 @@
   args:
     - [laura]
     - [dora]
+    - [a,b,c]
   salt: 3900
 
 - predicate: tx_check1
@@ -308,6 +311,7 @@
   args:
     - [jack]
     - [dora]
+    - [a,b,c]
   salt: 5200
 
 - predicate: tx_check1
@@ -386,6 +390,7 @@
   args:
     - [peter]
     - [dora]
+    - [a,b,c]
   salt: 6500
 
 - predicate: parent

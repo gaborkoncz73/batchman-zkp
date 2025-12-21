@@ -1,1 +1,2 @@
-transactions_completed(X,Y) :- tr1(X,Y), tr2(X,Y), tr3(X,Y).
+ancestor(X,Y) :- parent(X,Y).
+ancestor(X,Y) :- parent(X,Z), ancestor(Z,Y).

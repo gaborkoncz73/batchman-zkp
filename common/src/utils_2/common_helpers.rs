@@ -12,16 +12,16 @@ pub const MAX_EQUALITIES: usize = 6;
 pub const MAX_RULE_COMPONENTS: usize = 30;
 pub const MAX_CHILDREN: usize = 10;
 
-//for tests
-/*pub const MAX_PRED_LIST:usize = 3;
+//These have to be parameterized for the given policy or for the tests
+/*pub const MAX_PRED_LIST:usize = 1;
 pub const MAX_CLAUSES_PER_PREDICATE: usize = 2;
 
 pub const MAX_PREDICATES_OVERALL: usize = 1;
-pub const MAX_ARITY: usize = 3;
-pub const MAX_FACTS_HASHES: usize = 70;
+pub const MAX_ARITY: usize = 2;
+pub const MAX_FACTS_HASHES: usize = 59; 
 pub const MAX_EQUALITIES: usize = 6;
 
-pub const MAX_CHILDREN: usize = 15;
+pub const MAX_CHILDREN: usize = 2;
 pub const MAX_RULE_COMPONENTS: usize = 30;*/
 
 

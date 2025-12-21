@@ -11,5 +11,3 @@ tr9(alice, bob).
 tr10(alice, bob).
 tr11(alice, bob).
 tr12(alice, bob).
-tr13(alice, bob).
-tr14(alice, bob).

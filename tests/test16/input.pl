@@ -1,54 +1,101 @@
-% input.pl
-
-% 5 parent edges => depth 6 for query deepwide(alice, dora)
-parent(alice, bob).
-parent(bob, laura).
-parent(laura, jack).
-parent(jack, peter).
-parent(peter, dora).
-
-% 13 independent checks (meaningful "transaction validation" style).
-% We assert them for each X on the chain with the same target Y=dora.
-
-% --- alice -> dora checks ---
-tx_check1(alice,dora).   % identity_verified
-tx_check2(alice,dora).   % balance_sufficient
-tx_check3(alice,dora).   % limit_not_exceeded
-tx_check4(alice,dora).   % aml_cleared
-tx_check5(alice,dora).   % fraud_check_passed
-tx_check6(alice,dora).   % sanctions_cleared
-tx_check7(alice,dora).   % geo_restriction_ok
-tx_check8(alice,dora).   % velocity_check_ok
-tx_check9(alice,dora).   % device_fingerprint_ok
-tx_check10(alice,dora).  % session_valid
-tx_check11(alice,dora).  % policy_version_ok
-tx_check12(alice,dora).  % consent_recorded
-tx_check13(alice,dora,[(a,b)]).  % audit_log_ok
-
-% --- bob -> dora checks ---
-tx_check1(bob,dora).  tx_check2(bob,dora).  tx_check3(bob,dora).
-tx_check4(bob,dora).  tx_check5(bob,dora).  tx_check6(bob,dora).
-tx_check7(bob,dora).  tx_check8(bob,dora).  tx_check9(bob,dora).
-tx_check10(bob,dora). tx_check11(bob,dora). tx_check12(bob,dora).
-tx_check13(bob,dora,[(a,b)]).
-
-% --- laura -> dora checks ---
-tx_check1(laura,dora).  tx_check2(laura,dora).  tx_check3(laura,dora).
-tx_check4(laura,dora).  tx_check5(laura,dora).  tx_check6(laura,dora).
-tx_check7(laura,dora).  tx_check8(laura,dora).  tx_check9(laura,dora).
-tx_check10(laura,dora). tx_check11(laura,dora). tx_check12(laura,dora).
-tx_check13(laura,dora,[(a,b)]).
-
-% --- jack -> dora checks ---
-tx_check1(jack,dora).  tx_check2(jack,dora).  tx_check3(jack,dora).
-tx_check4(jack,dora).  tx_check5(jack,dora).  tx_check6(jack,dora).
-tx_check7(jack,dora).  tx_check8(jack,dora).  tx_check9(jack,dora).
-tx_check10(jack,dora). tx_check11(jack,dora). tx_check12(jack,dora).
-tx_check13(jack,dora,[(a,b)]).
-
-% --- peter -> dora checks ---
-tx_check1(peter,dora).  tx_check2(peter,dora).  tx_check3(peter,dora).
-tx_check4(peter,dora).  tx_check5(peter,dora).  tx_check6(peter,dora).
-tx_check7(peter,dora).  tx_check8(peter,dora).  tx_check9(peter,dora).
-tx_check10(peter,dora). tx_check11(peter,dora). tx_check12(peter,dora).
-tx_check13(peter,dora,[(a,b)]).
+% Facts
+tr1(alice, bob).
+tr2(alice, bob).
+tr3(alice, bob).
+tr4(alice, bob).
+tr5(alice, bob).
+tr6(alice, bob).
+tr7(alice, bob).
+tr8(alice, bob).
+tr9(alice, bob).
+tr10(alice, bob).
+tr11(alice, bob).
+tr12(alice, bob).
+tr13(alice, bob).
+tr14(alice, bob).
+tr15(alice, bob).
+tr16(alice, bob).
+tr17(alice, bob).
+tr18(alice, bob).
+tr19(alice, bob).
+tr20(alice, bob).
+tr21(alice, bob).
+tr22(alice, bob).
+tr23(alice, bob).
+tr24(alice, bob).
+tr25(alice, bob).
+tr26(alice, bob).
+tr27(alice, bob).
+tr28(alice, bob).
+tr29(alice, bob).
+tr30(alice, bob).
+tr31(alice, bob).
+tr32(alice, bob).
+tr33(alice, bob).
+tr34(alice, bob).
+tr35(alice, bob).
+tr36(alice, bob).
+tr37(alice, bob).
+tr38(alice, bob).
+tr39(alice, bob).
+tr40(alice, bob).
+tr41(alice, bob).
+tr42(alice, bob).
+tr43(alice, bob).
+tr44(alice, bob).
+tr45(alice, bob).
+tr46(alice, bob).
+tr47(alice, bob).
+tr48(alice, bob).
+tr49(alice, bob).
+tr50(alice, bob).
+tr51(alice, bob).
+tr52(alice, bob).
+tr53(alice, bob).
+tr54(alice, bob).
+tr55(alice, bob).
+tr56(alice, bob).
+tr57(alice, bob).
+tr58(alice, bob).
+tr59(alice, bob).
+tr60(alice, bob).
+tr61(alice, bob).
+tr62(alice, bob).
+tr63(alice, bob).
+tr64(alice, bob).
+tr65(alice, bob).
+tr66(alice, bob).
+tr67(alice, bob).
+tr68(alice, bob).
+tr69(alice, bob).
+tr70(alice, bob).
+tr71(alice, bob).
+tr72(alice, bob).
+tr73(alice, bob).
+tr74(alice, bob).
+tr75(alice, bob).
+tr76(alice, bob).
+tr77(alice, bob).
+tr78(alice, bob).
+tr79(alice, bob).
+tr80(alice, bob).
+tr81(alice, bob).
+tr82(alice, bob).
+tr83(alice, bob).
+tr84(alice, bob).
+tr85(alice, bob).
+tr86(alice, bob).
+tr87(alice, bob).
+tr88(alice, bob).
+tr89(alice, bob).
+tr90(alice, bob).
+tr91(alice, bob).
+tr92(alice, bob).
+tr93(alice, bob).
+tr94(alice, bob).
+tr95(alice, bob).
+tr96(alice, bob).
+tr97(alice, bob).
+tr98(alice, bob).
+tr99(alice, bob).
+tr100(alice, bob).

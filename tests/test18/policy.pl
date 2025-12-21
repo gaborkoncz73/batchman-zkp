@@ -18,7 +18,7 @@ deepwide(X, Y) :-
     tx_check10(X,Y),
     tx_check11(X,Y),
     tx_check12(X,Y),
-    tx_check13(X,Y,[(a,b,c,d)]).
+    tx_check13(X,Y,[(a,b)]).
 
 deepwide(X, Y) :-
     parent(X, Z),
@@ -34,5 +34,5 @@ deepwide(X, Y) :-
     tx_check10(X,Y),
     tx_check11(X,Y),
     tx_check12(X,Y),
-    tx_check13(X,Y,[(a,b,c,d)]),
+    tx_check13(X,Y,[(a,b)]),
     deepwide(Z, Y).

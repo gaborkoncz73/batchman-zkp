@@ -12,13 +12,3 @@ tr10(alice, bob).
 tr11(alice, bob).
 tr12(alice, bob).
 tr13(alice, bob).
-tr14(alice, bob).
-tr15(alice, bob).
-tr16(alice, bob).
-tr17(alice, bob).
-tr18(alice, bob).
-tr19(alice, bob).
-tr20(alice, bob).
-tr21(alice, bob).
-tr22(alice, bob).
-tr23(alice, bob).

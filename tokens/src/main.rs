@@ -618,29 +618,8 @@ fn main() {
     let input = std::fs::read_to_string("./prolog/policy.pl").expect("read failed");
     //Testing
 
-    //Test1
+    // After tests/testX X = the test we want
     //let input = std::fs::read_to_string("./tests/test1/policy.pl").expect("read failed");
-
-    //Test2
-    //let input = std::fs::read_to_string("./tests/test2/policy.pl").expect("read failed");
-
-    //Test3
-    //let input = std::fs::read_to_string("./tests/test3/policy.pl").expect("read failed");
-
-    //Test4
-    //let input = std::fs::read_to_string("./tests/test4/policy.pl").expect("read failed");
-
-    //Test5
-    //let input = std::fs::read_to_string("./tests/test5/policy.pl").expect("read failed");
-
-    //Test6
-    //let input = std::fs::read_to_string("./tests/test6/policy.pl").expect("read failed");
-
-    //Test7
-    //let input = std::fs::read_to_string("./tests/test7/policy.pl").expect("read failed");
-
-    //Test8
-    //let input = std::fs::read_to_string("./tests/test18/policy.pl").expect("read failed");
 
     // ANTLR: lex + parse
     let input_stream = InputStream::new(input.as_str());

@@ -1,17 +1,179 @@
-- predicate: tr1
+- predicate: parent
   args:
     - [alice]
     - [bob]
   salt: 100
 
-- predicate: tr2
+- predicate: parent
   args:
-    - [alice]
     - [bob]
+    - [laura]
   salt: 200
 
-- predicate: tr3
+- predicate: parent
   args:
-    - [alice]
-    - [bob]
+    - [laura]
+    - [jack]
   salt: 300
+
+- predicate: parent
+  args:
+    - [jack]
+    - [peter]
+  salt: 400
+
+- predicate: parent
+  args:
+    - [peter]
+    - [dora]
+  salt: 500
+
+- predicate: parent
+  args:
+    - [dora]
+    - [emma]
+  salt: 600
+
+- predicate: parent
+  args:
+    - [emma]
+    - [frank]
+  salt: 700
+
+- predicate: parent
+  args:
+    - [frank]
+    - [george]
+  salt: 800
+
+- predicate: parent
+  args:
+    - [george]
+    - [helen]
+  salt: 900
+
+- predicate: parent
+  args:
+    - [helen]
+    - [irene]
+  salt: 1000
+
+- predicate: parent
+  args:
+    - [irene]
+    - [john]
+  salt: 1100
+
+- predicate: parent
+  args:
+    - [john]
+    - [kate]
+  salt: 1200
+
+- predicate: parent
+  args:
+    - [kate]
+    - [leo]
+  salt: 1300
+
+- predicate: parent
+  args:
+    - [leo]
+    - [maria]
+  salt: 1400
+
+- predicate: parent
+  args:
+    - [maria]
+    - [nathan]
+  salt: 1500
+
+- predicate: parent
+  args:
+    - [nathan]
+    - [olivia]
+  salt: 1600
+
+- predicate: parent
+  args:
+    - [olivia]
+    - [paul]
+  salt: 1700
+
+- predicate: parent
+  args:
+    - [paul]
+    - [quinn]
+  salt: 1800
+
+- predicate: parent
+  args:
+    - [quinn]
+    - [rachel]
+  salt: 1900
+
+- predicate: parent
+  args:
+    - [rachel]
+    - [sam]
+  salt: 2000
+
+- predicate: parent
+  args:
+    - [sam]
+    - [tina]
+  salt: 2100
+
+- predicate: parent
+  args:
+    - [tina]
+    - [ursula]
+  salt: 2200
+
+- predicate: parent
+  args:
+    - [ursula]
+    - [victor]
+  salt: 2300
+
+- predicate: parent
+  args:
+    - [victor]
+    - [wendy]
+  salt: 2400
+
+- predicate: parent
+  args:
+    - [wendy]
+    - [xavier]
+  salt: 2500
+
+- predicate: parent
+  args:
+    - [xavier]
+    - [yvonne]
+  salt: 2600
+
+- predicate: parent
+  args:
+    - [yvonne]
+    - [zach]
+  salt: 2700
+
+- predicate: parent
+  args:
+    - [zach]
+    - [adam]
+  salt: 2800
+
+- predicate: parent
+  args:
+    - [adam]
+    - [bella]
+  salt: 2900
+
+- predicate: parent
+  args:
+    - [bella]
+    - [charlie]
+  salt: 3000
