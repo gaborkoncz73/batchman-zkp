@@ -5,9 +5,7 @@ use antlr4rust::tree::ParseTreeListener;
 
 // A complete Visitor for a parse tree produced by prologParser.
 
-pub trait prologBaseListener<'input>:
-    ParseTreeListener<'input, prologParserContextType> {
-
+pub trait prologBaseListener<'input>: ParseTreeListener<'input, prologParserContextType> {
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
@@ -19,6 +17,16 @@ pub trait prologBaseListener<'input>:
      */
     fn exit_p_text(&mut self, _ctx: &P_textContext<'input>) {}
 
+    /**
+     * Enter a parse tree produced by \{@link prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn enter_source_item(&mut self, _ctx: &Source_itemContext<'input>) {}
+    /**
+     * Exit a parse tree produced by \{@link  prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn exit_source_item(&mut self, _ctx: &Source_itemContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
@@ -31,7 +39,6 @@ pub trait prologBaseListener<'input>:
      */
     fn exit_directive(&mut self, _ctx: &DirectiveContext<'input>) {}
 
-
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
@@ -43,42 +50,16 @@ pub trait prologBaseListener<'input>:
      */
     fn exit_clause(&mut self, _ctx: &ClauseContext<'input>) {}
 
-
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_fact(&mut self, _ctx: &FactContext<'input>) {}
+    fn enter_callable(&mut self, _ctx: &CallableContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_fact(&mut self, _ctx: &FactContext<'input>) {}
-
-
-    /**
-     * Enter a parse tree produced by \{@link prologBaseParser#s}.
-     * @param ctx the parse tree
-     */
-    fn enter_rule_(&mut self, _ctx: &Rule_Context<'input>) {}
-    /**
-     * Exit a parse tree produced by \{@link  prologBaseParser#s}.
-     * @param ctx the parse tree
-     */
-    fn exit_rule_(&mut self, _ctx: &Rule_Context<'input>) {}
-
-
-    /**
-     * Enter a parse tree produced by \{@link prologBaseParser#s}.
-     * @param ctx the parse tree
-     */
-    fn enter_head(&mut self, _ctx: &HeadContext<'input>) {}
-    /**
-     * Exit a parse tree produced by \{@link  prologBaseParser#s}.
-     * @param ctx the parse tree
-     */
-    fn exit_head(&mut self, _ctx: &HeadContext<'input>) {}
-
+    fn exit_callable(&mut self, _ctx: &CallableContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
@@ -91,258 +72,313 @@ pub trait prologBaseListener<'input>:
      */
     fn exit_body(&mut self, _ctx: &BodyContext<'input>) {}
 
+    /**
+     * Enter a parse tree produced by \{@link prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn enter_disjunction(&mut self, _ctx: &DisjunctionContext<'input>) {}
+    /**
+     * Exit a parse tree produced by \{@link  prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn exit_disjunction(&mut self, _ctx: &DisjunctionContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_termlist(&mut self, _ctx: &TermlistContext<'input>) {}
+    fn enter_if_then(&mut self, _ctx: &If_thenContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_termlist(&mut self, _ctx: &TermlistContext<'input>) {}
-
+    fn exit_if_then(&mut self, _ctx: &If_thenContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_atom_term(&mut self, _ctx: &Atom_termContext<'input>) {}
+    fn enter_conjunction(&mut self, _ctx: &ConjunctionContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_atom_term(&mut self, _ctx: &Atom_termContext<'input>) {}
-
+    fn exit_conjunction(&mut self, _ctx: &ConjunctionContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_binary_operator(&mut self, _ctx: &Binary_operatorContext<'input>) {}
+    fn enter_term999(&mut self, _ctx: &Term999Context<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_binary_operator(&mut self, _ctx: &Binary_operatorContext<'input>) {}
-
+    fn exit_term999(&mut self, _ctx: &Term999Context<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_unary_operator(&mut self, _ctx: &Unary_operatorContext<'input>) {}
+    fn enter_relation_expr(&mut self, _ctx: &Relation_exprContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_unary_operator(&mut self, _ctx: &Unary_operatorContext<'input>) {}
-
+    fn exit_relation_expr(&mut self, _ctx: &Relation_exprContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_braced_term(&mut self, _ctx: &Braced_termContext<'input>) {}
+    fn enter_relation_op(&mut self, _ctx: &Relation_opContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_braced_term(&mut self, _ctx: &Braced_termContext<'input>) {}
-
+    fn exit_relation_op(&mut self, _ctx: &Relation_opContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_list_term(&mut self, _ctx: &List_termContext<'input>) {}
+    fn enter_qualified_expr(&mut self, _ctx: &Qualified_exprContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_list_term(&mut self, _ctx: &List_termContext<'input>) {}
-
+    fn exit_qualified_expr(&mut self, _ctx: &Qualified_exprContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_variable(&mut self, _ctx: &VariableContext<'input>) {}
+    fn enter_additive_expr(&mut self, _ctx: &Additive_exprContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_variable(&mut self, _ctx: &VariableContext<'input>) {}
-
+    fn exit_additive_expr(&mut self, _ctx: &Additive_exprContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_float(&mut self, _ctx: &FloatContext<'input>) {}
+    fn enter_multiplicative_expr(&mut self, _ctx: &Multiplicative_exprContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_float(&mut self, _ctx: &FloatContext<'input>) {}
-
+    fn exit_multiplicative_expr(&mut self, _ctx: &Multiplicative_exprContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_compound_term(&mut self, _ctx: &Compound_termContext<'input>) {}
+    fn enter_power_expr(&mut self, _ctx: &Power_exprContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_compound_term(&mut self, _ctx: &Compound_termContext<'input>) {}
-
+    fn exit_power_expr(&mut self, _ctx: &Power_exprContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_integer_term(&mut self, _ctx: &Integer_termContext<'input>) {}
+    fn enter_unary_expr(&mut self, _ctx: &Unary_exprContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_integer_term(&mut self, _ctx: &Integer_termContext<'input>) {}
-
+    fn exit_unary_expr(&mut self, _ctx: &Unary_exprContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_curly_bracketed_term(&mut self, _ctx: &Curly_bracketed_termContext<'input>) {}
+    fn enter_argument_list(&mut self, _ctx: &Argument_listContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_curly_bracketed_term(&mut self, _ctx: &Curly_bracketed_termContext<'input>) {}
-
+    fn exit_argument_list(&mut self, _ctx: &Argument_listContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_operator_(&mut self, _ctx: &Operator_Context<'input>) {}
+    fn enter_compoundterm(&mut self, _ctx: &CompoundTermContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_operator_(&mut self, _ctx: &Operator_Context<'input>) {}
-
+    fn exit_compoundterm(&mut self, _ctx: &CompoundTermContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_empty_list(&mut self, _ctx: &Empty_listContext<'input>) {}
+    fn enter_variableterm(&mut self, _ctx: &VariableTermContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_empty_list(&mut self, _ctx: &Empty_listContext<'input>) {}
-
+    fn exit_variableterm(&mut self, _ctx: &VariableTermContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_empty_braces(&mut self, _ctx: &Empty_bracesContext<'input>) {}
+    fn enter_integerterm(&mut self, _ctx: &IntegerTermContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_empty_braces(&mut self, _ctx: &Empty_bracesContext<'input>) {}
-
+    fn exit_integerterm(&mut self, _ctx: &IntegerTermContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_name(&mut self, _ctx: &NameContext<'input>) {}
+    fn enter_floatterm(&mut self, _ctx: &FloatTermContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_name(&mut self, _ctx: &NameContext<'input>) {}
-
+    fn exit_floatterm(&mut self, _ctx: &FloatTermContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_graphic(&mut self, _ctx: &GraphicContext<'input>) {}
+    fn enter_atomterm(&mut self, _ctx: &AtomTermContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_graphic(&mut self, _ctx: &GraphicContext<'input>) {}
-
+    fn exit_atomterm(&mut self, _ctx: &AtomTermContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_quoted_string(&mut self, _ctx: &Quoted_stringContext<'input>) {}
+    fn enter_stringterm(&mut self, _ctx: &StringTermContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_quoted_string(&mut self, _ctx: &Quoted_stringContext<'input>) {}
-
+    fn exit_stringterm(&mut self, _ctx: &StringTermContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_dq_string(&mut self, _ctx: &Dq_stringContext<'input>) {}
+    fn enter_backstringterm(&mut self, _ctx: &BackStringTermContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_dq_string(&mut self, _ctx: &Dq_stringContext<'input>) {}
-
+    fn exit_backstringterm(&mut self, _ctx: &BackStringTermContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_backq_string(&mut self, _ctx: &Backq_stringContext<'input>) {}
+    fn enter_listterm(&mut self, _ctx: &ListTermContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_backq_string(&mut self, _ctx: &Backq_stringContext<'input>) {}
-
+    fn exit_listterm(&mut self, _ctx: &ListTermContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_semicolon(&mut self, _ctx: &SemicolonContext<'input>) {}
+    fn enter_parenthesizedterm(&mut self, _ctx: &ParenthesizedTermContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_semicolon(&mut self, _ctx: &SemicolonContext<'input>) {}
-
+    fn exit_parenthesizedterm(&mut self, _ctx: &ParenthesizedTermContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn enter_cut(&mut self, _ctx: &CutContext<'input>) {}
+    fn enter_bracedterm(&mut self, _ctx: &BracedTermContext<'input>) {}
     /**
      * Exit a parse tree produced by \{@link  prologBaseParser#s}.
      * @param ctx the parse tree
      */
-    fn exit_cut(&mut self, _ctx: &CutContext<'input>) {}
+    fn exit_bracedterm(&mut self, _ctx: &BracedTermContext<'input>) {}
 
+    /**
+     * Enter a parse tree produced by \{@link prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn enter_cutterm(&mut self, _ctx: &CutTermContext<'input>) {}
+    /**
+     * Exit a parse tree produced by \{@link  prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn exit_cutterm(&mut self, _ctx: &CutTermContext<'input>) {}
+
+    /**
+     * Enter a parse tree produced by \{@link prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn enter_emptylist(&mut self, _ctx: &EmptyListContext<'input>) {}
+    /**
+     * Exit a parse tree produced by \{@link  prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn exit_emptylist(&mut self, _ctx: &EmptyListContext<'input>) {}
+
+    /**
+     * Enter a parse tree produced by \{@link prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn enter_properlist(&mut self, _ctx: &ProperListContext<'input>) {}
+    /**
+     * Exit a parse tree produced by \{@link  prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn exit_properlist(&mut self, _ctx: &ProperListContext<'input>) {}
+
+    /**
+     * Enter a parse tree produced by \{@link prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn enter_improperlist(&mut self, _ctx: &ImproperListContext<'input>) {}
+    /**
+     * Exit a parse tree produced by \{@link  prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn exit_improperlist(&mut self, _ctx: &ImproperListContext<'input>) {}
+
+    /**
+     * Enter a parse tree produced by \{@link prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn enter_list_items(&mut self, _ctx: &List_itemsContext<'input>) {}
+    /**
+     * Exit a parse tree produced by \{@link  prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn exit_list_items(&mut self, _ctx: &List_itemsContext<'input>) {}
+
+    /**
+     * Enter a parse tree produced by \{@link prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn enter_atom(&mut self, _ctx: &AtomContext<'input>) {}
+    /**
+     * Exit a parse tree produced by \{@link  prologBaseParser#s}.
+     * @param ctx the parse tree
+     */
+    fn exit_atom(&mut self, _ctx: &AtomContext<'input>) {}
 
     /**
      * Enter a parse tree produced by \{@link prologBaseParser#s}.
@@ -354,6 +390,4 @@ pub trait prologBaseListener<'input>:
      * @param ctx the parse tree
      */
     fn exit_integer(&mut self, _ctx: &IntegerContext<'input>) {}
-
-
 }

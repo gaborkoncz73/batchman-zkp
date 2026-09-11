@@ -1,16 +1,12 @@
-use halo2_gadgets::poseidon::primitives::{
-    Hash as PoseidonHash, P128Pow5T3, ConstantLength,
-};
+use halo2_gadgets::poseidon::primitives::{ConstantLength, Hash as PoseidonHash, P128Pow5T3};
 use halo2_proofs::pasta::Fp;
 
 use crate::utils_2::common_helpers::{MAX_ARITY, MAX_PRED_LIST, to_fp_value};
 
-
 #[inline]
 fn poseidon_hash2_native(a: Fp, b: Fp) -> Fp {
     // This matches: Hash::<Fp, _, P128Pow5T3, ConstantLength<2>, 3, 2> in-circuit
-    PoseidonHash::<Fp, P128Pow5T3, ConstantLength<2>, 3, 2>::init()
-                .hash([a, b])
+    PoseidonHash::<Fp, P128Pow5T3, ConstantLength<2>, 3, 2>::init().hash([a, b])
 }
 
 // Native version of the chip’s `hash_list` folding:
@@ -24,7 +20,8 @@ pub fn poseidon_hash_list_native(values: &[Fp]) -> Fp {
     acc
 }
 
-/// Public function: hash(name, args, salt) exactly like the chip.
+/// Public function: hash(name, arity, fixed-width args, salt) exactly like the
+/// Step-5 external-fact circuit path.
 ///
 /// Inputs:
 /// - `name`: predicate/fact name (e.g. "parent")
@@ -34,9 +31,10 @@ pub fn poseidon_hash_list_native(values: &[Fp]) -> Fp {
 /// Output:
 /// - Fp hash identical to the chip’s Poseidon fold.
 pub fn fact_hash_native_salted(name: &str, args: &[&[&str]], salt: &str) -> Fp {
-    let mut tokens: Vec<Fp> = Vec::with_capacity(1 + MAX_PRED_LIST*MAX_ARITY + 1);
+    let mut tokens: Vec<Fp> = Vec::with_capacity(2 + MAX_PRED_LIST * MAX_ARITY + 1);
 
     tokens.push(to_fp_value(name));
+    tokens.push(Fp::from(args.len() as u64));
     let mut used_lists = 0usize;
     for arg_list in args.iter().take(MAX_ARITY) {
         let mut filled = 0usize;
@@ -51,7 +49,7 @@ pub fn fact_hash_native_salted(name: &str, args: &[&[&str]], salt: &str) -> Fp {
             tokens.push(Fp::one().neg());
             filled += 1;
         }
-        
+
         used_lists += 1;
     }
 

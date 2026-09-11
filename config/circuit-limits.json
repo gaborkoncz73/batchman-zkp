@@ -1,0 +1,15 @@
+{
+  "integer_bits": 32,
+  "max_predicate_arity": 4,
+  "max_body_goals_per_branch": 10,
+  "max_term_nodes": 64,
+  "max_term_depth": 16,
+  "max_list_items": 16,
+  "max_arithmetic_operations": 3,
+  "max_proof_roots": 1,
+  "max_proof_nodes": 128,
+  "max_proof_depth": 32,
+  "max_children_per_node": 10,
+  "max_goal_bytes": 256,
+  "max_external_facts": 33
+}

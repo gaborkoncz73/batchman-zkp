@@ -9,11 +9,9 @@ rand_core    = { workspace = true, features = ["getrandom"] }
 serde = { workspace = true , features = ["derive", "std"] }
 serde_json = { workspace = true, features = ["std"]}
 halo2curves = { workspace = true }
-rayon = { workspace = true }
 halo2_gadgets = { workspace = true }
 anyhow = { workspace = true } 
 num-bigint = { workspace = true, features = ["serde"]}
 
 
 blake3 = { workspace = true }
-snark-verifier = "0.2.3"

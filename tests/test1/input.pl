@@ -1,2 +1,0 @@
-% Facts
-parent(alice, bob).

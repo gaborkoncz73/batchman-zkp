@@ -43,8 +43,7 @@ consumptionClass(RollingConsumptionVar,Class):-
     rolling_treshold('mid',Treshold),
     RollingConsumptionVar > Treshold,
     Class = 'mid'.
-consumptionClass(_RollingConsumptionVar,Class):-
-    Class = 'low'.
+consumptionClass(_RollingConsumptionVar,'low').
 
 % === 4. classify using savings ===
 savingsClass(RollingConsumptionVar,Consumption,Class):-

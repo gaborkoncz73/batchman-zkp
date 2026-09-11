@@ -1,433 +1,711 @@
-use std::collections::HashMap;
+use std::collections::BTreeSet;
 
-use common::{data::{FactEntry, GoalEntry, ProofNode, TermFp, UnificationInputFp}, utils_2::common_helpers::{MAX_ARITY, MAX_PRED_LIST, to_fp_value}};
-use halo2_proofs::pasta::Fp;
+use anyhow::{Context, Result, bail};
+use common::{
+    circuit_dialect::{
+        CircuitGoalKind, CircuitLimits, CircuitValidationError, validate_ground_goal_for_circuit,
+    },
+    data::ProofNode,
+    policy_ir::{PolicyFile, PredicateIndicator},
+    typed_fact::TypedFact,
+    witness_ir::{GoalResolution, GroundCall, LocalStepWitness, ResolvedGoal, StepTransition},
+};
+use tokens::parse_goal;
 
-// From the goal and hashmap it creates the Unification input
-pub fn unification_input_from_goal_and_facts(
-    g: &GoalEntry,
-    facts: &HashMap<String, Fp>
-) -> UnificationInputFp {
+#[derive(Debug, Clone)]
+pub(crate) struct ValidatedProofTree {
+    pub(crate) roots: Vec<ValidatedProofNode>,
+}
 
-    // goal is now a Vec<TermFp>
-    let goal_name_terms: Vec<TermFp> =
-        encode_str_to_termfp(&g.goal, facts, false);
+#[derive(Debug, Clone)]
+pub(crate) enum ValidatedProofNode {
+    Goal(ValidatedGoal),
+    True,
+}
 
-    // ubtree → Vec<Vec<TermFp>>
-    let subtree_terms: Vec<Vec<TermFp>> = g.subtree
+#[derive(Debug, Clone)]
+pub(crate) struct ValidatedGoal {
+    pub(crate) ground_call: GroundCall,
+    pub(crate) resolution: GoalResolution,
+    pub(crate) subtree: Vec<ValidatedProofNode>,
+}
+
+pub(crate) fn validate_proof_tree(
+    raw_roots: &[ProofNode],
+    policy: &PolicyFile,
+    facts: &[TypedFact],
+    limits: &CircuitLimits,
+) -> Result<ValidatedProofTree> {
+    limits.validate()?;
+    let analysis = policy.validate_for_circuit(limits)?;
+    if raw_roots.is_empty() {
+        bail!("proof_tree: at least one root goal is required");
+    }
+    if raw_roots.len() > limits.max_proof_roots {
+        bail!(
+            "proof_tree: {} roots exceed configured maximum {}",
+            raw_roots.len(),
+            limits.max_proof_roots
+        );
+    }
+    if facts.len() > limits.max_external_facts {
+        bail!(
+            "facts: {} entries exceed configured maximum {}",
+            facts.len(),
+            limits.max_external_facts
+        );
+    }
+
+    let fact_predicates: BTreeSet<_> = facts
         .iter()
-        .map(|node| encode_proofnode_to_termfp(node, facts))
+        .map(|fact| fact.goal.predicate.clone())
         .collect();
-
-    UnificationInputFp {
-        goal_name: goal_name_terms,
-        subtree_goals: subtree_terms,
-    }
-}
-
-// Converting a goal name into structured TermFp
-pub fn encode_str_to_termfp(input: &str, facts: &HashMap<String, Fp>, no_recurse: bool) -> Vec<TermFp> {
-    const OPERATORS: [&str; 8] = [" is ", "=", ">", "<", "*", " div ", "+", "-"];
-    let mut out_terms = Vec::new();
-    let has_op = OPERATORS.iter().any(|op| input.contains(op));
-    let has_list = input.contains('[');
-    //println!("input: {:?}", input);
-    //println!("list: {:?}", has_list);
-    // Simple predicate – no op, no list
-    if !has_op && !has_list {
-        out_terms.push(encode_str_to_termfp_og(input, facts));
-        return out_terms;
-    }
-
-    if !has_op && has_list {
-        let open = input.find('(').unwrap_or(input.len());
-        let close = input.rfind(')').unwrap_or(input.len());
-        let name_str = input[..open].trim();
-        let args_str = &input[open + 1..close];
-
-        // Empty list special handling
-        if args_str.contains("[]") && name_str != "applySocialSupports"{
-            out_terms.push(encode_str_to_termfp_og(input, facts));
-            return out_terms;
-        }
-
-        // Special handling
-        if name_str == "applySocialSupports" {
-            let mut matrix = vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
-
-            let parts = split_top_level_commas(args_str)
-                .into_iter()
-                .map(|s| s.trim())
-                .collect::<Vec<_>>();
-            // --- SPECIAL CASE: applySocialSupports(Input, [], Input)
-            if parts.len() == 3 && parts[1].trim() == "[]" {
-                matrix[0][0] = to_fp_value(parts[0]);         // Input
-                matrix[1][0] = Fp::zero();               // [] helyett -1
-                matrix[2][0] = to_fp_value(parts[2]);         // Result
-                out_terms.push(TermFp {
-                    name: to_fp_value(name_str),
-                    args: matrix,
-                    fact_hashes: Fp::zero(),
-                });
-                return out_terms;
-            }
-
-            if parts.len() >= 3 {
-                // Input parameter
-                matrix[0][0] = to_fp_value(parts[0]);
-
-                // Credential list process
-                let list_arg = parts[1];
-                if list_arg.starts_with('[') && list_arg.ends_with(']') {
-                    let inner = &list_arg[1..list_arg.len() - 1];
-                    let list_parts = split_top_level_commas(inner);
-
-                    if let Some(first) = list_parts.first() {
-                        if first.starts_with("(") && first.ends_with(")") {
-                            // Tuple split
-                            let tuple_fields = parse_tuple_fields_keep_all(first);
-                            for (i, f) in tuple_fields.into_iter().take(3).enumerate() {
-                                matrix[1][i] = to_fp_value(&f);
-                            }
-                        } else {
-                            matrix[1][0] = to_fp_value(first);
-                        }
-                    }
-                    if list_arg.contains("|") {
-                    // van explicit tail
-                    let list_split: Vec<&str> = list_arg
-                        .trim_start_matches('[')
-                        .trim_end_matches(']')
-                        .split('|')
-                        .map(|s| s.trim())
-                        .collect();
-
-                    if list_split.len() == 2 {
-                        let tail_str = list_split[1];
-                        if tail_str == "[]" {
-                            matrix[1][3] = Fp::zero();
-                        } else {
-                            matrix[1][3] = to_fp_value(tail_str);
-                        }
-                    }
-                } else {
-                    // nincs explicit tail => implicit üres []
-                    matrix[1][3] = Fp::zero();
-                }
-                }
-
-                // Result parameter
-                matrix[2][0] = to_fp_value(parts[2]);
-            }
-
-            out_terms.push(TermFp {
-                name: to_fp_value(name_str),
-                args: matrix,
-                fact_hashes: Fp::zero(),
-            });
-            return out_terms;
-        }
-
-        if name_str == "monthlyConsumptions" {
-            let mut matrix = vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
-
-            // Inner list without []s
-            let list_inner = args_str
-                .trim()
-                .trim_start_matches('[')
-                .trim_end_matches(']')
-                .to_string();
-
-            matrix[0][0] = to_fp_value(&list_inner);
-
-        
-            let reconstructed = format!("{}({})", name_str, list_inner);
-            let salt = facts.get(&reconstructed).copied().unwrap_or(Fp::zero());
-            out_terms.push(TermFp {
-                name: to_fp_value(&name_str),
-                args: matrix,
-                fact_hashes: salt,
-            });
-
-            return out_terms;
-        }
-        let pred_name = name_str.to_string();
-        let args_vec: Vec<&str> = split_top_level_commas(args_str);
-        let mut matrix: Vec<Vec<Fp>> =
-            vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
-        let mut args_for_fact_map = Vec::new();
-        for (arg_i, arg) in args_vec.iter().enumerate() {
-            let arg = arg.trim();
-                if name_str == "sumOfMonthlyConsumptions" && arg.starts_with('[') && arg.ends_with(']') {
-                    let inner = &arg[1..arg.len() - 1]; // strip [ ]
-                    let elems: Vec<&str> = split_top_level_commas(inner)
-                        .into_iter()
-                        .map(|s| s.trim())
-                        .filter(|s| !s.is_empty())
-                        .collect();
-
-                    if !elems.is_empty() {
-                        if elems.len() > 1 {
-                            if !no_recurse {
-                                // Remaining elements -> merged into ONE string for Tail
-                                matrix[arg_i][0] = to_fp_value(elems[0]);
-                                let tail = elems[1..].join(",");
-                                matrix[arg_i][1] = to_fp_value(&tail);
-                            }
-                            else {
-                                let tail = elems[0..].join(",");
-                                matrix[arg_i][0] = to_fp_value(&tail);
-                            }
-                        } else if elems.len() == 1 {
-                            matrix[arg_i][0] = to_fp_value(elems[0]);
-                            matrix[arg_i][1] = to_fp_value("[]");
-                        }                
-
-                        // Everything else stays empty
-                    }
-
-                    // IMPORTANT: NO DEFAULT LIST LOGIC EXECUTION!
-                    continue;
-                }
-            // lista: [ ... ]
-            if arg.starts_with('[') && arg.ends_with(']'){
-                let inner = &arg[1..arg.len() - 1];
-
-                if inner.is_empty() {
-                    matrix[arg_i][0] = Fp::one().neg();
-                    continue;
-                }
-
-                let mut idx = 0usize;
-
-                // split top level elems
-                for elem in split_top_level_commas(inner) {
-                    let elem = elem.trim();
-
-                    // tuple: ('A',B,C)
-                    if elem.starts_with("(") && elem.ends_with(")") {
-                        let tuple_parts = parse_tuple_fields_keep_all(elem);
-                        for (t_i, part) in tuple_parts.clone().into_iter().enumerate() {
-                            args_for_fact_map.push(part.clone());
-                            matrix[arg_i][idx + t_i] = to_fp_value(&part);
-                        }
-                        idx += tuple_parts.len();
-                    } else {
-                        args_for_fact_map.push(elem.to_string());
-                        matrix[arg_i][idx] = to_fp_value(elem);
-                        idx += 1;
-                    }
-                }
-            }
-
-            // if not list
-            else {
-                args_for_fact_map.push(arg.to_string());
-                matrix[arg_i][0] = to_fp_value(arg);
-            }
-        }
-        let reconstructed = format!("{}({})", name_str, args_for_fact_map.join(","));
-        let salt = facts.get(&reconstructed).copied().unwrap_or(Fp::zero());
-        //println!("name: {:?} ", pred_name);
-        //println!("argsaaa: {:?} ", matrix);
-        out_terms.push(TermFp {
-            name: to_fp_value(&pred_name),
-            args: matrix,
-            fact_hashes: salt,
-        });
-
-        return out_terms;
-    }
-
-    // Processing the operators
-    for op in OPERATORS {
-        if let Some(pos) = input.find(op) {
-            let lhs = input[..pos].trim();
-            let rhs = input[pos + op.len()..].trim();
-            let op_name = op.trim();
-
-            let mut preds: Vec<TermFp> = Vec::new();
-
-            // First predicate: op with LHS and ONLY FIRST RHS ARG
-            let mut first_args = vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
-            first_args[0][0] = to_fp_value(lhs);
-
-            // normalize `div` so splitter separates it
-            let rhs_clean = rhs.replace("div", " div ");
-
-            let rhs_first = rhs_clean
-                .split([' ', '-', '+', '*', '=', '>', '<'])
-                .filter(|s| !s.is_empty())
-                .next()
-                .unwrap()
-                .to_string();
-
-            first_args[1][0] = to_fp_value(&rhs_first);
-
-            preds.push(TermFp {
-                name: to_fp_value(op_name),
-                args: first_args,
-                fact_hashes: Fp::zero(),
-            });
-
-            // remaining operator predicates
-            let mut rest = rhs_clean.clone();
-
-            while let Some((next_op_pos, next_op)) =
-                OPERATORS.iter()
-                .filter_map(|o| rest.find(o).map(|pos| (pos, *o)))
-                .next()
-            {
-                let new_rhs = rest[next_op_pos + next_op.len()..]
-                    .trim()
-                    .replace("div", " div ");
-
-                let next_name = next_op.trim();
-
-                let mut new_args = vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
-
-                if let Some(first) = new_rhs
-                    .split([' ', '-', '+', '*', '=', '>', '<'])
-                    .filter(|s| !s.is_empty())
-                    .next()
-                {
-                    new_args[0][0] = to_fp_value(first);
-                }
-
-                preds.push(TermFp {
-                    name: to_fp_value(next_name),
-                    args: new_args,
-                    fact_hashes: Fp::zero(),
-                });
-
-                rest = new_rhs;
-            }
-            return preds;
+    for required in &analysis.required_external_predicates {
+        if !fact_predicates.contains(required) {
+            bail!(
+                "facts: policy requires external predicate {}/{}, but the fact registry does not provide it",
+                required.name,
+                required.arity
+            );
         }
     }
 
-
-    // fallback
-    out_terms.push(encode_str_to_termfp_og(input, facts));
-    out_terms
-}
-
-
-fn parse_tuple_fields_keep_all(atom_str: &str) -> Vec<String> {
-    let s = atom_str.trim();
-    if !(s.starts_with('(') && s.ends_with(')')) {
-        return vec![s.to_string()];
-    }
-    let inner = &s[1..s.len() - 1];
-    split_top_level_commas(inner)
-        .into_iter()
-        .map(|p| p.trim().to_string())
-        .collect()
-}
-
-fn split_top_level_commas(s: &str) -> Vec<&str> {
-    let mut out = Vec::new();
-    let mut depth_paren = 0;
-    let mut depth_bracket = 0;
-    let mut last = 0;
-    let chars: Vec<char> = s.chars().collect();
-
-    for (i, ch) in chars.iter().enumerate() {
-        match ch {
-            '(' => depth_paren += 1,
-            ')' => if depth_paren > 0 { depth_paren -= 1 },
-            '[' => depth_bracket += 1,
-            ']' => if depth_bracket > 0 { depth_bracket -= 1 },
-            ',' if depth_paren == 0 && depth_bracket == 0 => {
-                out.push(&s[last..i]);
-                last = i + 1;
-            }
-            _ => {}
-        }
-    }
-
-    if last <= s.len() {
-        out.push(&s[last..]);
-    }
-
-    out
-}
-
-fn encode_proofnode_to_termfp(
-    n: &ProofNode,
-    facts: &HashMap<String, Fp>
-) -> Vec<TermFp> {
-    match n {
-        ProofNode::GoalNode(child) => {
-            encode_str_to_termfp(&child.goal, facts, true)
-        }
-        _ => vec![TermFp {
-            name: Fp::zero(),
-            args: vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY],
-            fact_hashes:Fp::zero(),
-        }],
-    }
-}
-
-// Building the factmap to get the salts easier
-pub fn build_fact_map(facts: &[FactEntry]) -> HashMap<String, Fp> {
-    let mut map = HashMap::new();
-
-    for conf in facts {
-        // Join each inner Vec<String> into a single string: ["low"] → "low"
-        let joined_args: Vec<String> = conf.args
-            .iter()
-            .map(|inner| inner.join(",")) // join inner values without separator
-            .collect();
-
-        // Now join all arguments with commas: ["low","250"] → "low,250"
-        let key = if joined_args.is_empty() {
-            conf.predicate.clone()
-        } else {
-            format!("{}({})", conf.predicate, joined_args.join(","))
-        };
-
-        let salt = to_fp_value(&conf.salt);
-        map.insert(key, salt);
-    }
-
-    map
-}
-fn encode_str_to_termfp_og(input: &str, facts: &HashMap<String, Fp>) -> TermFp {
-    let open = input.find('(').unwrap_or(input.len());
-    let close = input.rfind(')').unwrap_or(input.len());
-
-    let name_str = input[..open].trim();
-    let args_str = if open < close {
-        &input[open + 1..close]
-    } else {
-        ""
+    let context = ProofValidationContext {
+        policy_predicates: analysis.defined_predicates,
+        external_predicates: analysis.required_external_predicates,
+        fact_predicates,
+        allowed_roots: analysis.exported_entry_points,
+        limits,
     };
-    
-    let flat_args: Vec<&str> = args_str
-        .split(',')
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .collect();
+    let mut node_count = 0;
+    let mut roots = Vec::with_capacity(raw_roots.len());
+    for (index, root) in raw_roots.iter().enumerate() {
+        let path = format!("proof_tree[{index}]");
+        let ProofNode::GoalNode(_) = root else {
+            bail!("{path}: a proof-tree root must be a goal");
+        };
+        let validated = validate_proof_node(root, &context, &path, 1, true, &mut node_count)?;
+        roots.push(validated);
+    }
+    Ok(ValidatedProofTree { roots })
+}
 
-    /*if name_str == "consumptionClass" && flat_args[1] == "low" {
-        flat_args[0] = "_";
-    }*/
-    let reconstructed = format!("{}({})", name_str, flat_args.join(","));
+struct ProofValidationContext<'a> {
+    policy_predicates: BTreeSet<PredicateIndicator>,
+    external_predicates: BTreeSet<PredicateIndicator>,
+    fact_predicates: BTreeSet<PredicateIndicator>,
+    allowed_roots: BTreeSet<PredicateIndicator>,
+    limits: &'a CircuitLimits,
+}
 
-    // Convert to correct 2D args matrix
-    let mut args_matrix = vec![vec![Fp::one().neg(); MAX_PRED_LIST]; MAX_ARITY];
-    for (i, val) in flat_args.clone().into_iter().enumerate() {
-        if !val.is_empty() {
-            args_matrix[i][0] = to_fp_value(val);
+fn validate_proof_node(
+    raw: &ProofNode,
+    context: &ProofValidationContext<'_>,
+    path: &str,
+    depth: usize,
+    is_root: bool,
+    node_count: &mut usize,
+) -> Result<ValidatedProofNode> {
+    if depth > context.limits.max_proof_depth {
+        bail!(
+            "{path}: proof depth {depth} exceeds configured maximum {}",
+            context.limits.max_proof_depth
+        );
+    }
+
+    match raw {
+        ProofNode::True(true) => Ok(ValidatedProofNode::True),
+        ProofNode::True(false) => bail!("{path}: false is not a valid proof marker"),
+        ProofNode::GoalNode(goal) => {
+            *node_count += 1;
+            if *node_count > context.limits.max_proof_nodes {
+                bail!(
+                    "{path}: proof tree exceeds configured maximum of {} goal nodes",
+                    context.limits.max_proof_nodes
+                );
+            }
+            if goal.goal.len() > context.limits.max_goal_bytes {
+                bail!(
+                    "{path}.goal: {} bytes exceed configured maximum {}",
+                    goal.goal.len(),
+                    context.limits.max_goal_bytes
+                );
+            }
+
+            let label = format!("{path}.goal");
+            let term = parse_goal(&goal.goal, &label)
+                .with_context(|| format!("failed to parse {label}"))?;
+            let kind = validate_ground_goal_for_circuit(&term, context.limits)
+                .map_err(|error| prefix_circuit_error(&label, error))?;
+
+            let resolution = match &kind {
+                CircuitGoalKind::Predicate(indicator) => {
+                    let is_policy = context.policy_predicates.contains(indicator);
+                    let is_external_fact = context.external_predicates.contains(indicator)
+                        && context.fact_predicates.contains(indicator);
+                    if !is_policy && !is_external_fact {
+                        bail!(
+                            "{label}: predicate {}/{} is neither defined by the policy nor present in the fact registry",
+                            indicator.name,
+                            indicator.arity
+                        );
+                    }
+                    if is_root && !context.allowed_roots.contains(indicator) {
+                        bail!(
+                            "{label}: root predicate {}/{} is not exported by the policy module",
+                            indicator.name,
+                            indicator.arity
+                        );
+                    }
+                    if is_policy {
+                        GoalResolution::Policy {
+                            predicate: indicator.clone(),
+                        }
+                    } else {
+                        GoalResolution::ExternalFact {
+                            predicate: indicator.clone(),
+                        }
+                    }
+                }
+                CircuitGoalKind::Builtin(_) if is_root => {
+                    bail!("{label}: a proof-tree root must be an exported policy predicate");
+                }
+                CircuitGoalKind::Builtin(builtin) => GoalResolution::Builtin { builtin: *builtin },
+            };
+
+            let ground_call = GroundCall::from_goal_term(&term)
+                .with_context(|| format!("failed to normalize typed witness for {label}"))?;
+
+            if goal.subtree.is_empty() {
+                bail!("{path}.subtree: a goal must contain either [true] or child goals");
+            }
+            if goal.subtree.len() > context.limits.max_children_per_node {
+                bail!(
+                    "{path}.subtree: {} children exceed configured maximum {}",
+                    goal.subtree.len(),
+                    context.limits.max_children_per_node
+                );
+            }
+
+            let marker_count = goal
+                .subtree
+                .iter()
+                .filter(|node| matches!(node, ProofNode::True(_)))
+                .count();
+            if marker_count > 0 && !(goal.subtree.len() == 1 && marker_count == 1) {
+                bail!("{path}.subtree: true is allowed only as the sole leaf marker [true]");
+            }
+            let must_be_leaf = matches!(
+                resolution,
+                GoalResolution::Builtin { .. } | GoalResolution::ExternalFact { .. }
+            );
+            if must_be_leaf && !matches!(goal.subtree.as_slice(), [ProofNode::True(true)]) {
+                let category = match resolution {
+                    GoalResolution::Builtin { .. } => "builtin",
+                    GoalResolution::ExternalFact { .. } => "external fact",
+                    GoalResolution::Policy { .. } => unreachable!(),
+                };
+                bail!("{path}.subtree: a {category} goal must use the leaf marker [true]");
+            }
+
+            let mut subtree = Vec::with_capacity(goal.subtree.len());
+            for (index, child) in goal.subtree.iter().enumerate() {
+                subtree.push(validate_proof_node(
+                    child,
+                    context,
+                    &format!("{path}.subtree[{index}]"),
+                    depth + 1,
+                    false,
+                    node_count,
+                )?);
+            }
+            Ok(ValidatedProofNode::Goal(ValidatedGoal {
+                ground_call,
+                resolution,
+                subtree,
+            }))
         }
     }
-    let salt = facts.get(&reconstructed).copied().unwrap_or(Fp::zero());
-    //println!("name: {:?}", name_str);
-    //println!("args: {:?}", args_matrix);
-    TermFp {
-        name: to_fp_value(name_str),
-        args: args_matrix,
-        fact_hashes: salt,
+}
+
+fn prefix_circuit_error(prefix: &str, error: CircuitValidationError) -> anyhow::Error {
+    anyhow::anyhow!("{prefix}.{}: {}", error.path, error.message)
+}
+
+pub(crate) fn semantic_local_step(g: &ValidatedGoal) -> Result<LocalStepWitness> {
+    let transition = match &g.resolution {
+        GoalResolution::Policy { .. } => {
+            let mut children = Vec::new();
+            for child in &g.subtree {
+                match child {
+                    ValidatedProofNode::Goal(child) => children.push(
+                        ResolvedGoal::new(child.ground_call.clone(), child.resolution.clone())
+                            .map_err(anyhow::Error::new)?,
+                    ),
+                    ValidatedProofNode::True if g.subtree.len() == 1 => {}
+                    ValidatedProofNode::True => {
+                        bail!("typed rule transition contains a mixed true marker")
+                    }
+                }
+            }
+            StepTransition::Rule { children }
+        }
+        GoalResolution::ExternalFact { .. } => StepTransition::ExternalFact,
+        GoalResolution::Builtin { builtin } => StepTransition::Builtin { builtin: *builtin },
+    };
+
+    LocalStepWitness::new(g.ground_call.clone(), g.resolution.clone(), transition)
+        .map_err(anyhow::Error::new)
+}
+
+#[cfg(test)]
+mod validation_tests {
+    use common::{
+        circuit_dialect::CircuitLimits,
+        commitments::{
+            append_local_step_public_inputs, goal_commitment_for_node, local_step_commitments,
+        },
+        data::{FactEntry, GoalEntry, ProofNode},
+        io::read_fact_hashes::parse_fact_hashes,
+        policy_compiler::compile_policy_for_current_circuit,
+        policy_ir::PolicyFile,
+        typed_fact::TypedFact,
+        unification_checker_circuit::UnificationCircuit,
+        utils_2::common_helpers::MAX_FACTS_HASHES,
+        witness_ir::{GoalResolution, LocalStepWitness},
+    };
+    use halo2_proofs::dev::MockProver;
+
+    use super::{ValidatedProofNode, semantic_local_step, validate_proof_tree};
+    use crate::legacy_circuit_v1::{LegacyFactRegistry, encode_local_step_for_legacy_circuit};
+
+    fn inputs() -> (PolicyFile, Vec<TypedFact>, CircuitLimits) {
+        let policy = serde_json::from_str(include_str!(
+            "../../tests/fixtures/current-policy.rules.json"
+        ))
+        .unwrap();
+        let raw_facts: Vec<FactEntry> =
+            serde_yaml::from_str(include_str!("../../issue/src/facts.yaml")).unwrap();
+        let limits =
+            serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
+        let facts = tokens::parse_fact_registry(&raw_facts, &limits, "facts.yaml").unwrap();
+        (policy, facts, limits)
+    }
+
+    #[test]
+    fn current_proof_tree_is_validated_before_witness_encoding() {
+        let (policy, facts, limits) = inputs();
+        let raw: Vec<ProofNode> =
+            serde_json::from_str(include_str!("../../tests/fixtures/current-proof-tree.json"))
+                .unwrap();
+        let validated = validate_proof_tree(&raw, &policy, &facts, &limits).unwrap();
+        assert_eq!(validated.roots.len(), 1);
+    }
+
+    #[test]
+    fn current_fact_hash_fixture_matches_the_tracked_fact_registry() {
+        let (_, facts, _) = inputs();
+        let mut computed = facts
+            .iter()
+            .map(|fact| fact.commitment().unwrap())
+            .collect::<Vec<_>>();
+        computed.resize(MAX_FACTS_HASHES, halo2_proofs::pasta::Fp::zero());
+
+        let expected = parse_fact_hashes(include_str!(
+            "../../tests/fixtures/current-fact-hashes.json"
+        ))
+        .unwrap();
+        assert_eq!(computed, expected);
+    }
+
+    #[test]
+    fn every_current_goal_has_a_deterministic_typed_local_step() {
+        fn visit(node: &ValidatedProofNode, output: &mut Vec<LocalStepWitness>) {
+            if let ValidatedProofNode::Goal(goal) = node {
+                output.push(semantic_local_step(goal).unwrap());
+                for child in &goal.subtree {
+                    visit(child, output);
+                }
+            }
+        }
+
+        let (policy, facts, limits) = inputs();
+        let raw: Vec<ProofNode> =
+            serde_json::from_str(include_str!("../../tests/fixtures/current-proof-tree.json"))
+                .unwrap();
+        let validated = validate_proof_tree(&raw, &policy, &facts, &limits).unwrap();
+        let mut steps = Vec::new();
+        for root in &validated.roots {
+            visit(root, &mut steps);
+        }
+
+        assert_eq!(steps.len(), 50);
+        assert!(
+            steps
+                .iter()
+                .any(|step| matches!(step.resolution, GoalResolution::Policy { .. }))
+        );
+        assert!(
+            steps
+                .iter()
+                .any(|step| matches!(step.resolution, GoalResolution::ExternalFact { .. }))
+        );
+        assert!(
+            steps
+                .iter()
+                .any(|step| matches!(step.resolution, GoalResolution::Builtin { .. }))
+        );
+
+        let first = serde_json::to_string_pretty(&steps).unwrap();
+        let second = serde_json::to_string_pretty(&steps).unwrap();
+        assert_eq!(first, second);
+        assert!(!first.contains("legacy_source"));
+    }
+
+    #[test]
+    fn every_current_typed_step_has_a_checked_legacy_bridge_encoding() {
+        fn visit(
+            node: &ValidatedProofNode,
+            facts: &LegacyFactRegistry,
+            policy: &common::data::RuleTemplateFile,
+            count: &mut usize,
+        ) {
+            if let ValidatedProofNode::Goal(goal) = node {
+                let step = semantic_local_step(goal).unwrap();
+                let encoded = encode_local_step_for_legacy_circuit(&step, facts, policy).unwrap();
+                assert!(!encoded.goal_name.is_empty());
+                *count += 1;
+                for child in &goal.subtree {
+                    visit(child, facts, policy, count);
+                }
+            }
+        }
+
+        let (policy, fact_entries, limits) = inputs();
+        let registry = LegacyFactRegistry::new(&fact_entries).unwrap();
+        let raw: Vec<ProofNode> =
+            serde_json::from_str(include_str!("../../tests/fixtures/current-proof-tree.json"))
+                .unwrap();
+        let validated = validate_proof_tree(&raw, &policy, &fact_entries, &limits).unwrap();
+        let compiled = compile_policy_for_current_circuit(&policy, &limits).unwrap();
+        let mut count = 0;
+        for root in &validated.roots {
+            visit(root, &registry, compiled.layout(), &mut count);
+        }
+        assert_eq!(count, 50);
+    }
+
+    #[test]
+    fn production_bridge_preserves_typed_goal_hash_on_every_current_tree_edge() {
+        fn visit(
+            node: &ValidatedProofNode,
+            facts: &LegacyFactRegistry,
+            policy: &common::data::RuleTemplateFile,
+            edge_count: &mut usize,
+        ) {
+            let ValidatedProofNode::Goal(goal) = node else {
+                return;
+            };
+            let parent_step = semantic_local_step(goal).unwrap();
+            let parent_unif =
+                encode_local_step_for_legacy_circuit(&parent_step, facts, policy).unwrap();
+            let proof_child_count = goal
+                .subtree
+                .iter()
+                .filter(|child| matches!(child, ValidatedProofNode::Goal(_)))
+                .count();
+            assert_eq!(
+                parent_unif.typed.children.len(),
+                proof_child_count,
+                "native typed bridge child count diverged for {:?}",
+                goal.ground_call,
+            );
+            let mut typed_child_index = 0;
+
+            for child in &goal.subtree {
+                let ValidatedProofNode::Goal(child_goal) = child else {
+                    continue;
+                };
+                let child_step = semantic_local_step(child_goal).unwrap();
+                let child_unif =
+                    encode_local_step_for_legacy_circuit(&child_step, facts, policy).unwrap();
+                assert_eq!(
+                    parent_unif.typed.children[typed_child_index].hash(),
+                    child_unif.typed.goal.hash(),
+                    "native typed bridge hash diverged on edge {:?} -> {:?}",
+                    goal.ground_call,
+                    child_goal.ground_call,
+                );
+                typed_child_index += 1;
+                *edge_count += 1;
+                visit(child, facts, policy, edge_count);
+            }
+        }
+
+        let (policy, fact_entries, limits) = inputs();
+        let registry = LegacyFactRegistry::new(&fact_entries).unwrap();
+        let raw: Vec<ProofNode> =
+            serde_json::from_str(include_str!("../../tests/fixtures/current-proof-tree.json"))
+                .unwrap();
+        let validated = validate_proof_tree(&raw, &policy, &fact_entries, &limits).unwrap();
+        let compiled = compile_policy_for_current_circuit(&policy, &limits).unwrap();
+        let mut edge_count = 0;
+        for root in &validated.roots {
+            visit(root, &registry, compiled.layout(), &mut edge_count);
+        }
+        assert_eq!(edge_count, 49);
+    }
+
+    #[test]
+    fn typed_circuit_goal_commitments_match_across_current_tree_edges() {
+        fn visit(
+            node: &ValidatedProofNode,
+            facts: &LegacyFactRegistry,
+            policy: &common::data::RuleTemplateFile,
+            edge_count: &mut usize,
+        ) {
+            let ValidatedProofNode::Goal(goal) = node else {
+                return;
+            };
+            let parent_step = semantic_local_step(goal).unwrap();
+            let parent = encode_local_step_for_legacy_circuit(&parent_step, facts, policy).unwrap();
+            let mut child_row = 1;
+            for child in &goal.subtree {
+                let ValidatedProofNode::Goal(child_goal) = child else {
+                    continue;
+                };
+                let child_step = semantic_local_step(child_goal).unwrap();
+                let child_projection =
+                    encode_local_step_for_legacy_circuit(&child_step, facts, policy).unwrap();
+                assert_eq!(
+                    goal_commitment_for_node(&parent, child_row).unwrap(),
+                    goal_commitment_for_node(&child_projection, 0).unwrap(),
+                    "parent {:?} child row {child_row} {:?} and child canonical typed commitment diverged",
+                    goal.ground_call,
+                    child_goal.ground_call,
+                );
+                *edge_count += 1;
+                child_row += 1;
+                visit(child, facts, policy, edge_count);
+            }
+        }
+
+        let (policy, fact_entries, limits) = inputs();
+        let registry = LegacyFactRegistry::new(&fact_entries).unwrap();
+        let raw: Vec<ProofNode> =
+            serde_json::from_str(include_str!("../../tests/fixtures/current-proof-tree.json"))
+                .unwrap();
+        let validated = validate_proof_tree(&raw, &policy, &fact_entries, &limits).unwrap();
+        let compiled = compile_policy_for_current_circuit(&policy, &limits).unwrap();
+        let mut edge_count = 0;
+        for root in &validated.roots {
+            visit(root, &registry, compiled.layout(), &mut edge_count);
+        }
+        assert_eq!(edge_count, 49);
+    }
+
+    #[test]
+    fn current_fact_and_recursive_rule_pass_through_the_new_pipeline() {
+        fn find<'a>(
+            node: &'a ValidatedProofNode,
+            predicate: &str,
+        ) -> Option<&'a super::ValidatedGoal> {
+            let ValidatedProofNode::Goal(goal) = node else {
+                return None;
+            };
+            if goal.ground_call.predicate.name == predicate {
+                return Some(goal);
+            }
+            goal.subtree.iter().find_map(|child| find(child, predicate))
+        }
+
+        let (policy, fact_entries, limits) = inputs();
+        let registry = LegacyFactRegistry::new(&fact_entries).unwrap();
+        let compiled = compile_policy_for_current_circuit(&policy, &limits).unwrap();
+        let legacy_policy = compiled.layout().clone();
+        let (rules, typed_policy) = compiled.into_circuit_parts();
+        let raw: Vec<ProofNode> =
+            serde_json::from_str(include_str!("../../tests/fixtures/current-proof-tree.json"))
+                .unwrap();
+        let validated = validate_proof_tree(&raw, &policy, &fact_entries, &limits).unwrap();
+        let public_hashes = parse_fact_hashes(include_str!(
+            "../../tests/fixtures/current-fact-hashes.json"
+        ))
+        .unwrap();
+
+        for predicate in [
+            "currentConsumption",
+            "sumOfMonthlyConsumptions",
+            "consumptionClass",
+            "savingsClass",
+        ] {
+            let goal = validated
+                .roots
+                .iter()
+                .find_map(|root| find(root, predicate))
+                .unwrap();
+            let step = semantic_local_step(goal).unwrap();
+            let unif =
+                encode_local_step_for_legacy_circuit(&step, &registry, &legacy_policy).unwrap();
+            let commitments = local_step_commitments(&rules, &typed_policy, &unif).unwrap();
+            let public_inputs = append_local_step_public_inputs(&public_hashes, &commitments);
+            let circuit = UnificationCircuit {
+                rules: rules.clone(),
+                typed_policy: typed_policy.clone(),
+                unif,
+            };
+            assert!(
+                MockProver::run(16, &circuit, vec![public_inputs])
+                    .unwrap()
+                    .verify()
+                    .is_ok(),
+                "new pipeline rejected current {predicate} witness"
+            );
+        }
+    }
+
+    #[test]
+    fn prolog_less_than_or_equal_signature_matches_the_legacy_bridge() {
+        let limits: CircuitLimits =
+            serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
+        let policy = tokens::parse_policy("p(X) :- X =< 10.", "le-policy.pl").unwrap();
+        let raw = vec![ProofNode::GoalNode(GoalEntry {
+            goal: "p(10)".to_owned(),
+            subtree: vec![ProofNode::GoalNode(GoalEntry {
+                goal: "10 =< 10".to_owned(),
+                subtree: vec![ProofNode::True(true)],
+            })],
+        })];
+        let validated = validate_proof_tree(&raw, &policy, &[], &limits).unwrap();
+        let ValidatedProofNode::Goal(root) = &validated.roots[0] else {
+            unreachable!()
+        };
+        let step = semantic_local_step(root).unwrap();
+        let compiled = compile_policy_for_current_circuit(&policy, &limits).unwrap();
+        let unif = encode_local_step_for_legacy_circuit(
+            &step,
+            &LegacyFactRegistry::new(&[]).unwrap(),
+            compiled.layout(),
+        )
+        .unwrap();
+        let (rules, typed_policy) = compiled.into_circuit_parts();
+        let commitments = local_step_commitments(&rules, &typed_policy, &unif).unwrap();
+        let public_inputs = append_local_step_public_inputs(
+            &vec![halo2_proofs::pasta::Fp::zero(); MAX_FACTS_HASHES],
+            &commitments,
+        );
+        let circuit = UnificationCircuit {
+            rules,
+            typed_policy,
+            unif,
+        };
+        assert!(
+            MockProver::run(16, &circuit, vec![public_inputs])
+                .unwrap()
+                .verify()
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn list_unification_uses_one_common_projection_for_both_operands() {
+        let limits: CircuitLimits =
+            serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
+        let policy = tokens::parse_policy("p(L) :- L = [a,b].", "list-unify-policy.pl").unwrap();
+        let raw = vec![ProofNode::GoalNode(GoalEntry {
+            goal: "p([a,b])".to_owned(),
+            subtree: vec![ProofNode::GoalNode(GoalEntry {
+                goal: "[a,b] = [a,b]".to_owned(),
+                subtree: vec![ProofNode::True(true)],
+            })],
+        })];
+        let validated = validate_proof_tree(&raw, &policy, &[], &limits).unwrap();
+        let ValidatedProofNode::Goal(root) = &validated.roots[0] else {
+            unreachable!()
+        };
+        let step = semantic_local_step(root).unwrap();
+        let compiled = compile_policy_for_current_circuit(&policy, &limits).unwrap();
+        let unif = encode_local_step_for_legacy_circuit(
+            &step,
+            &LegacyFactRegistry::new(&[]).unwrap(),
+            compiled.layout(),
+        )
+        .unwrap();
+        assert_eq!(
+            unif.subtree_goals[0][0].args[0],
+            unif.subtree_goals[0][0].args[1]
+        );
+        let (rules, typed_policy) = compiled.into_circuit_parts();
+        let commitments = local_step_commitments(&rules, &typed_policy, &unif).unwrap();
+        let public_inputs = append_local_step_public_inputs(
+            &vec![halo2_proofs::pasta::Fp::zero(); MAX_FACTS_HASHES],
+            &commitments,
+        );
+        let circuit = UnificationCircuit {
+            rules,
+            typed_policy,
+            unif,
+        };
+        assert!(
+            MockProver::run(16, &circuit, vec![public_inputs])
+                .unwrap()
+                .verify()
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn invalid_markers_and_tree_shapes_are_rejected() {
+        let (policy, facts, limits) = inputs();
+        assert!(validate_proof_tree(&[], &policy, &facts, &limits).is_err());
+
+        let false_leaf = vec![ProofNode::GoalNode(GoalEntry {
+            goal: "endPrice(1)".to_owned(),
+            subtree: vec![ProofNode::True(false)],
+        })];
+        assert!(
+            validate_proof_tree(&false_leaf, &policy, &facts, &limits)
+                .unwrap_err()
+                .to_string()
+                .contains("false")
+        );
+
+        let mixed = vec![ProofNode::GoalNode(GoalEntry {
+            goal: "endPrice(1)".to_owned(),
+            subtree: vec![
+                ProofNode::True(true),
+                ProofNode::GoalNode(GoalEntry {
+                    goal: "priceBase(1)".to_owned(),
+                    subtree: vec![ProofNode::True(true)],
+                }),
+            ],
+        })];
+        assert!(
+            validate_proof_tree(&mixed, &policy, &facts, &limits)
+                .unwrap_err()
+                .to_string()
+                .contains("sole leaf marker")
+        );
+    }
+
+    #[test]
+    fn unknown_predicates_and_extra_json_fields_are_rejected() {
+        let (policy, facts, limits) = inputs();
+        let unknown = vec![ProofNode::GoalNode(GoalEntry {
+            goal: "endPrice(1)".to_owned(),
+            subtree: vec![ProofNode::GoalNode(GoalEntry {
+                goal: "misspelledFact(1)".to_owned(),
+                subtree: vec![ProofNode::True(true)],
+            })],
+        })];
+        assert!(
+            validate_proof_tree(&unknown, &policy, &facts, &limits)
+                .unwrap_err()
+                .to_string()
+                .contains("neither defined")
+        );
+
+        let extra = r#"[{"goal":"endPrice(1)","subtree":[true],"extra":1}]"#;
+        assert!(serde_json::from_str::<Vec<ProofNode>>(extra).is_err());
     }
 }

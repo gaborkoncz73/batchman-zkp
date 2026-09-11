@@ -1,190 +1,287 @@
-/*
-BSD License
-
-Copyright (c) 2013, Tom Everett
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-3. Neither the name of Tom Everett nor the names of its contributors
-   may be used to endorse or promote products derived from this software
-   without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 grammar prolog;
 
+// Batchman policy-Prolog dialect.
+//
+// This grammar deliberately models a closed, pure policy subset instead of
+// pretending to accept every SWI-Prolog extension. Operator precedence and
+// associativity match the constructs supported by the policy compiler.
 
-// Prolog text and data formed from terms (6.2)
+p_text
+    : source_item* EOF
+    ;
 
-p_text: (directive | clause) * EOF ;
+source_item
+    : directive
+    | clause
+    ;
 
-directive: ':-' term '.' ; // also 3.58
+directive
+    : COLON_DASH body DOT
+    ;
 
 clause
-    : fact
-    | rule_
+    : callable (COLON_DASH body)? DOT
     ;
 
-fact: term '.' ;
-rule_: head ':-' body '.';
-
-head: term;
-body: termlist (';' termlist)*;
-// Abstract Syntax (6.3): terms formed from tokens
-
-termlist
-    : term ( ',' term )*
+callable
+    : atom (LPAREN argument_list RPAREN)?
     ;
 
-term
-    : VARIABLE          # variable
-    | '(' termlist ')'      # braced_term
-    | '-'? integer      # integer_term //TODO: negative case should be covered by unary_operator
-    | '-'? FLOAT        # float
-    // structure / compound term
-    | atom '(' termlist ')'     # compound_term
-    |<assoc=right> term operator_ term        # binary_operator
-    | operator_ term             # unary_operator
-    | '[' termlist ( '|' term )? ']' # list_term
-    | '{' termlist '}'          # curly_bracketed_term
-
-    | atom              # atom_term
+// Control operators. The recursive side encodes the Prolog associativity.
+body
+    : disjunction
     ;
 
-
-//TODO: operator priority, associativity, arity. Filter valid priority ranges for e.g. [list] syntax
-//TODO: modifying operator table
-
-operator_
-    //: ':-' | '-->'
-    : '-->'
-    | '?-'
-    | 'dynamic' | 'multifile' | 'discontiguous' | 'public' //TODO: move operators used in directives to "built-in" definition of dialect
-    // | ';'
-    | '->'
-    // | ','
-    | 'div'
-    | '\\+'
-    | '=' | '\\='
-    | '==' | '\\==' | '@<' | '@=<' | '@>' | '@>='
-    | '=..'
-    | 'is' | '=:=' | '=\\=' | '<' | '=<' | '>' | '>='
-    | ':' // modules: 5.2.1
-    | '+' | '-' | '/\\' | '\\/'
-    | '*' | '/' | '//' | 'rem' | 'mod' | '<<' | '>>' //TODO: '/' cannot be used as atom because token here not in GRAPHIC. only works because , is operator too. example: swipl/filesex.pl:177
-    | '**'
-    | '^'
-    | '\\'
+disjunction
+    : if_then (SEMI disjunction)?
     ;
 
-atom // 6.4.2 and 6.1.2
-    : '[' ']'           # empty_list //NOTE [] is not atom anymore in swipl 7 and later
-    | '{' '}'           # empty_braces
-    | LETTER_DIGIT      # name
-    | GRAPHIC_TOKEN     # graphic
-    | QUOTED            # quoted_string
-    | DOUBLE_QUOTED_LIST# dq_string
-    | BACK_QUOTED_STRING# backq_string
-    | ';'               # semicolon
-    | '!'               # cut
+if_then
+    : conjunction (IF_THEN if_then)?
     ;
 
+conjunction
+    : term999 (COMMA conjunction)?
+    ;
 
-integer // 6.4.4
+term999
+    : NOT term999
+    | relation_expr
+    ;
+
+// xfx priority 700: chaining, such as A < B < C, is intentionally rejected.
+relation_expr
+    : qualified_expr (relation_op qualified_expr)?
+    ;
+
+relation_op
+    : UNIFY
+    | NOT_UNIFIABLE
+    | IDENTICAL
+    | NOT_IDENTICAL
+    | TERM_LT
+    | TERM_LE
+    | TERM_GT
+    | TERM_GE
+    | UNIV
+    | IS
+    | ARITH_EQ
+    | ARITH_NE
+    | LT
+    | LE
+    | GT
+    | GE
+    ;
+
+qualified_expr
+    : additive_expr (COLON qualified_expr)?
+    ;
+
+// yfx priority 500.
+additive_expr
+    : multiplicative_expr
+      ((PLUS | MINUS | BIT_AND | BIT_OR) multiplicative_expr)*
+    ;
+
+// yfx priority 400.
+multiplicative_expr
+    : power_expr
+      ((STAR | SLASH | INT_DIV | DIV | MOD | REM | SHL | SHR) power_expr)*
+    ;
+
+// Priority 200 needs special care: prefix fy operators accept a priority-200
+// operand, while **/^ require a lower-priority left operand. Consequently
+// -A^B is -(A^B), but (-A)^B remains possible through a parenthesized primary.
+power_expr
+    : unary_expr
+    ;
+
+unary_expr
+    : (PLUS | MINUS | BIT_NOT) power_expr
+    | primary (POW_XFX primary | POW_XFY power_expr)?
+    ;
+
+// Arguments and list items are term(999): an unparenthesized comma separates
+// arguments/items, while a parenthesized comma remains a ','/2 term.
+argument_list
+    : term999 (COMMA term999)*
+    ;
+
+primary
+    : atom LPAREN argument_list RPAREN  # compoundTerm
+    | VARIABLE                          # variableTerm
+    | integer                           # integerTerm
+    | FLOAT                             # floatTerm
+    | atom                              # atomTerm
+    | DOUBLE_QUOTED_STRING              # stringTerm
+    | BACK_QUOTED_STRING                # backStringTerm
+    | list                              # listTerm
+    | LPAREN body RPAREN                # parenthesizedTerm
+    | LBRACE body? RBRACE               # bracedTerm
+    | CUT                               # cutTerm
+    ;
+
+list
+    : LBRACK RBRACK                                      # emptyList
+    | LBRACK list_items RBRACK                           # properList
+    | LBRACK list_items BAR term999 RBRACK               # improperList
+    ;
+
+list_items
+    : term999 (COMMA term999)*
+    ;
+
+atom
+    : ATOM_ID
+    | QUOTED_ATOM
+    | GRAPHIC_ATOM
+    ;
+
+integer
     : DECIMAL
-    | CHARACTER_CODE_CONSTANT
     | BINARY
     | OCTAL
     | HEX
+    | CHARACTER_CODE_CONSTANT
     ;
 
+// Explicit operators must precede the generic graphic-atom rule.
+COLON_DASH    : ':-';
+IF_THEN       : '->';
+NOT           : '\\+';
 
-// Lexer (6.4 & 6.5): Tokens formed from Characters
+NOT_IDENTICAL : '\\==';
+IDENTICAL     : '==';
+NOT_UNIFIABLE : '\\=';
+ARITH_NE      : '=\\=';
+ARITH_EQ      : '=:=';
+UNIV          : '=..';
+TERM_LE       : '@=<';
+TERM_GE       : '@>=';
+TERM_LT       : '@<';
+TERM_GT       : '@>';
+LE            : '=<';
+GE            : '>=';
+LT            : '<';
+GT            : '>';
+UNIFY         : '=';
+IS            : 'is';
 
-LETTER_DIGIT // 6.4.2
-    : SMALL_LETTER ALPHANUMERIC*
+INT_DIV       : '//';
+DIV           : 'div';
+MOD           : 'mod';
+REM           : 'rem';
+POW_XFX       : '**';
+POW_XFY       : '^';
+SHL           : '<<';
+SHR           : '>>';
+BIT_AND       : '/\\';
+BIT_OR        : '\\/';
+BIT_NOT       : '\\';
+PLUS          : '+';
+MINUS         : '-';
+STAR          : '*';
+SLASH         : '/';
+
+SEMI          : ';';
+COMMA         : ',';
+COLON         : ':';
+DOT           : '.';
+LPAREN        : '(';
+RPAREN        : ')';
+LBRACK        : '[';
+RBRACK        : ']';
+LBRACE        : '{';
+RBRACE        : '}';
+BAR           : '|';
+CUT           : '!';
+
+FLOAT
+    : DECIMAL_FRAGMENT '.' DIGIT+ ([eE] [+-]? DIGIT+)?
     ;
 
-VARIABLE // 6.4.3
-    : CAPITAL_LETTER ALPHANUMERIC*
-    | '_' ALPHANUMERIC+
-    | '_'
+BINARY  : '0b' [01]+;
+OCTAL   : '0o' [0-7]+;
+HEX     : '0x' HEX_DIGIT+;
+DECIMAL : DECIMAL_FRAGMENT;
+
+CHARACTER_CODE_CONSTANT
+    : '0' '\'' (META_ESCAPE | CONTROL_ESCAPE | OCTAL_ESCAPE | HEX_ESCAPE | .)
     ;
 
-// 6.4.4
-DECIMAL: DIGIT+ ;
-BINARY: '0b' [01]+ ;
-OCTAL: '0o' [0-7]+ ;
-HEX: '0x' HEX_DIGIT+ ;
+VARIABLE : [A-Z_] [a-zA-Z0-9_]*;
+ATOM_ID  : [a-z] [a-zA-Z0-9_]*;
 
-CHARACTER_CODE_CONSTANT: '0' '\'' SINGLE_QUOTED_CHARACTER ;
+QUOTED_ATOM
+    : '\'' (CONTINUATION_ESCAPE | SINGLE_QUOTED_CHARACTER)* '\''
+    ;
 
-FLOAT: DECIMAL '.' [0-9]+ ( [eE] [+-] DECIMAL )? ;
+DOUBLE_QUOTED_STRING
+    : '"' (CONTINUATION_ESCAPE | DOUBLE_QUOTED_CHARACTER)* '"'
+    ;
 
+BACK_QUOTED_STRING
+    : '`' (CONTINUATION_ESCAPE | BACK_QUOTED_CHARACTER)* '`'
+    ;
 
-GRAPHIC_TOKEN: (GRAPHIC | '\\')+ ; // 6.4.2
-fragment GRAPHIC: [#$&*+./:<=>?@^~] | '-' ; // 6.5.1 graphic char
+GRAPHIC_ATOM
+    : [#$&*+./:<=>?@^~\\-]+
+    ;
 
-// 6.4.2.1
-fragment SINGLE_QUOTED_CHARACTER: NON_QUOTE_CHAR | '\'\'' | '"' | '`' ;
-fragment DOUBLE_QUOTED_CHARACTER: NON_QUOTE_CHAR | '\'' | '""' | '`' ;
-fragment BACK_QUOTED_CHARACTER: NON_QUOTE_CHAR | '\'' | '"' | '``' ;
-fragment NON_QUOTE_CHAR
-    : GRAPHIC
-    | ALPHANUMERIC
-    | SOLO
-    | ' ' // space char
+fragment DECIMAL_FRAGMENT : DIGIT+;
+fragment DIGIT             : [0-9];
+fragment HEX_DIGIT         : [0-9a-fA-F];
+
+fragment SINGLE_QUOTED_CHARACTER
+    : NON_QUOTE_CHARACTER
+    | '\'\''
+    | '"'
+    | '`'
+    ;
+
+fragment DOUBLE_QUOTED_CHARACTER
+    : NON_DOUBLE_QUOTE_CHARACTER
+    | '""'
+    ;
+
+fragment BACK_QUOTED_CHARACTER
+    : NON_BACK_QUOTE_CHARACTER
+    | '``'
+    ;
+
+fragment NON_QUOTE_CHARACTER
+    : ~['\\\r\n]
     | META_ESCAPE
     | CONTROL_ESCAPE
     | OCTAL_ESCAPE
     | HEX_ESCAPE
     ;
-fragment META_ESCAPE: '\\' [\\'"`] ; // meta char
-fragment CONTROL_ESCAPE: '\\' [abrftnv] ;
-fragment OCTAL_ESCAPE: '\\' [0-7]+ '\\' ;
-fragment HEX_ESCAPE: '\\x' HEX_DIGIT+ '\\' ;
 
-QUOTED:          '\'' (CONTINUATION_ESCAPE | SINGLE_QUOTED_CHARACTER )*? '\'' ; // 6.4.2
-DOUBLE_QUOTED_LIST: '"' (CONTINUATION_ESCAPE | DOUBLE_QUOTED_CHARACTER )*? '"'; // 6.4.6
-BACK_QUOTED_STRING: '`' (CONTINUATION_ESCAPE | BACK_QUOTED_CHARACTER )*? '`'; // 6.4.7
-fragment CONTINUATION_ESCAPE: '\\\n' ;
+fragment NON_DOUBLE_QUOTE_CHARACTER
+    : ~["\\\r\n]
+    | META_ESCAPE
+    | CONTROL_ESCAPE
+    | OCTAL_ESCAPE
+    | HEX_ESCAPE
+    ;
 
-// 6.5.2
-fragment ALPHANUMERIC: ALPHA | DIGIT ;
-fragment ALPHA: '_' | SMALL_LETTER | CAPITAL_LETTER ;
-fragment SMALL_LETTER: [a-z_];
+fragment NON_BACK_QUOTE_CHARACTER
+    : ~[`\\\r\n]
+    | META_ESCAPE
+    | CONTROL_ESCAPE
+    | OCTAL_ESCAPE
+    | HEX_ESCAPE
+    ;
 
-fragment CAPITAL_LETTER: [A-Z];
+fragment META_ESCAPE         : '\\' [\\'"`];
+fragment CONTROL_ESCAPE      : '\\' [abrftnv];
+fragment OCTAL_ESCAPE        : '\\' [0-7]+ '\\';
+fragment HEX_ESCAPE          : '\\x' HEX_DIGIT+ '\\';
+fragment CONTINUATION_ESCAPE : '\\' '\r'? '\n';
 
-fragment DIGIT: [0-9] ;
-fragment HEX_DIGIT: [0-9a-fA-F] ;
+WS            : [ \t\r\n]+ -> skip;
+COMMENT       : '%' ~[\r\n]* -> channel(HIDDEN);
+BLOCK_COMMENT : '/*' .*? '*/' -> channel(HIDDEN);
 
-// 6.5.3
-fragment SOLO: [!(),;[{}|%] | ']' ;
-
-
-WS
-   : [ \t\r\n]+ -> skip
-   ;
-
-COMMENT: '%' ~[\n\r]* ( [\n\r] | EOF) -> channel(HIDDEN) ;
-MULTILINE_COMMENT: '/*' ( MULTILINE_COMMENT | . )*? ('*/' | EOF) -> channel(HIDDEN);
+// Keep unknown input visible to the parser, which then reports a hard error.
+ERROR_CHAR : .;

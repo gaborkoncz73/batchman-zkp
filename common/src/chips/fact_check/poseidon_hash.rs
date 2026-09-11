@@ -1,13 +1,17 @@
-use halo2_proofs::{
-    circuit::{AssignedCell, Layouter, Value},
-    plonk::{Advice, Column, ConstraintSystem, Error},
-    pasta::Fp,
-};
 use halo2_gadgets::poseidon::{
-    primitives::{P128Pow5T3, ConstantLength},
-    Pow5Chip, Pow5Config, Hash,
+    Hash, Pow5Chip, Pow5Config,
+    primitives::{ConstantLength, P128Pow5T3},
+};
+use halo2_proofs::{
+    circuit::{AssignedCell, Layouter},
+    pasta::Fp,
+    plonk::{Advice, Column, ConstraintSystem, Error},
 };
 use halo2curves::ff::Field;
+
+use crate::typed_fact::{
+    TYPED_FACT_DOMAIN_TAG, TYPED_FACT_HASH_INPUTS, TYPED_FACT_HASH_SCHEMA_VERSION,
+};
 
 /// ─────────────────────────────
 /// CONFIG
@@ -42,7 +46,10 @@ impl PoseidonHashChip {
         let expected_col = meta.advice_column();
         //let instance = meta.instance_column();
 
-        for col in state.iter().chain([&partial_sbox, &input_col, &expected_col]) {
+        for col in state
+            .iter()
+            .chain([&partial_sbox, &input_col, &expected_col])
+        {
             meta.enable_equality(*col);
         }
         //meta.enable_equality(instance);
@@ -70,69 +77,102 @@ impl PoseidonHashChip {
         mut layouter: impl Layouter<Fp>,
         pair: [AssignedCell<Fp, Fp>; 2],
     ) -> Result<AssignedCell<Fp, Fp>, Error> {
-        let inputs: [AssignedCell<Fp, Fp>; 2] = layouter.assign_region(
-            || "hash2 inputs",
-            |mut region| {
-                let a = region.assign_advice(|| "a", self.cfg.input_col, 0, || pair[0].value().copied())?;
-                let b = region.assign_advice(|| "b", self.cfg.input_col, 1, || pair[1].value().copied())?;
-                Ok([a, b])
-            },
-        )?;
+        self.hash_fixed(layouter.namespace(|| "poseidon hash2"), pair)
+    }
 
+    /// Fixed-length Poseidon sponge over the supplied cells themselves.
+    ///
+    /// `Hash::hash` copy-constrains every absorbed message word into the
+    /// Poseidon state.  In particular, this must not be replaced by assigning
+    /// fresh cells from `cell.value()`, which would leave commitments
+    /// disconnected from the circuit witness.
+    pub fn hash_fixed<const L: usize>(
+        &self,
+        mut layouter: impl Layouter<Fp>,
+        inputs: [AssignedCell<Fp, Fp>; L],
+    ) -> Result<AssignedCell<Fp, Fp>, Error> {
         let chip = Pow5Chip::<Fp, 3, 2>::construct(self.cfg.poseidon.clone());
-        let hasher = Hash::<Fp, Pow5Chip<Fp, 3, 2>, P128Pow5T3, ConstantLength<2>, 3, 2>::init(
+        let hasher = Hash::<Fp, Pow5Chip<Fp, 3, 2>, P128Pow5T3, ConstantLength<L>, 3, 2>::init(
             chip,
             layouter.namespace(|| "poseidon init"),
         )?;
+        hasher.hash(layouter.namespace(|| "poseidon hash"), inputs)
+    }
 
-        let output = hasher.hash(layouter.namespace(|| "poseidon hash2"), inputs)?;
-        Ok(output)
+    /// Hashes the exact typed external-fact preimage
+    /// `[domain, schema_version, typed_goal_digest, salt]`.
+    ///
+    /// Both caller-supplied cells are absorbed through copy constraints.  The
+    /// protocol constants are fixed cells, so neither can become prover data.
+    pub fn hash_typed_fact(
+        &self,
+        mut layouter: impl Layouter<Fp>,
+        typed_goal_digest: &AssignedCell<Fp, Fp>,
+        salt: &AssignedCell<Fp, Fp>,
+    ) -> Result<AssignedCell<Fp, Fp>, Error> {
+        let constants = layouter.assign_region(
+            || "typed fact hash protocol constants",
+            |mut region| {
+                let domain = region.assign_advice_from_constant(
+                    || "typed fact domain",
+                    self.cfg.input_col,
+                    0,
+                    Fp::from(TYPED_FACT_DOMAIN_TAG),
+                )?;
+                let schema = region.assign_advice_from_constant(
+                    || "typed fact schema version",
+                    self.cfg.input_col,
+                    1,
+                    Fp::from(TYPED_FACT_HASH_SCHEMA_VERSION as u64),
+                )?;
+                Ok([domain, schema])
+            },
+        )?;
+
+        self.hash_fixed::<TYPED_FACT_HASH_INPUTS>(
+            layouter.namespace(|| "typed external fact Poseidon"),
+            [
+                constants[0].clone(),
+                constants[1].clone(),
+                typed_goal_digest.clone(),
+                salt.clone(),
+            ],
+        )
     }
 
     // Hash tetszőleges hosszú listáról (Vec<Value<Fp>>)
-   pub fn hash_list(
-    &self,
-    mut layouter: impl Layouter<Fp>,
-    vals: &[AssignedCell<Fp, Fp>],
-) -> Result<AssignedCell<Fp, Fp>, Error> {
-    // Start with zero accumulator (assigned)
-    let mut acc = layouter.assign_region(
-        || "initial acc",
-        |mut region| {
-            region.assign_advice(
-                || "init acc",
-                self.cfg.input_col,
-                0,
-                || Value::known(Fp::ZERO),
-            )
-        },
-    )?;
+    pub fn hash_list(
+        &self,
+        mut layouter: impl Layouter<Fp>,
+        vals: &[AssignedCell<Fp, Fp>],
+    ) -> Result<AssignedCell<Fp, Fp>, Error> {
+        // Start with zero accumulator (assigned)
+        let mut acc = layouter.assign_region(
+            || "initial acc",
+            |mut region| {
+                region.assign_advice_from_constant(|| "init acc", self.cfg.input_col, 0, Fp::ZERO)
+            },
+        )?;
 
-    // Each iteration takes the accumulator + next value, hashes them
-    for (i, val) in vals.iter().enumerate() {
-        let pair = [acc.clone(), val.clone()];
-        acc = self.hash2(layouter.namespace(|| format!("hash step {i}")), pair)?;
-    }
+        // Each iteration takes the accumulator + next value, hashes them
+        for (i, val) in vals.iter().enumerate() {
+            let pair = [acc.clone(), val.clone()];
+            acc = self.hash2(layouter.namespace(|| format!("hash step {i}")), pair)?;
+        }
 
-    // Return the final accumulated hash
-    Ok(acc)
+        // Return the final accumulated hash
+        Ok(acc)
     }
     pub fn hash_nested_pairs(
         &self,
         mut layouter: impl Layouter<Fp>,
         proof_pairs_nested: &[Vec<(AssignedCell<Fp, Fp>, AssignedCell<Fp, Fp>)>],
     ) -> Result<AssignedCell<Fp, Fp>, Error> {
-
         // acc = 0
         let mut acc = layouter.assign_region(
             || "initial acc",
             |mut region| {
-                region.assign_advice(
-                    || "acc = 0",
-                    self.cfg.input_col,
-                    0,
-                    || Value::known(Fp::ZERO),
-                )
+                region.assign_advice_from_constant(|| "acc = 0", self.cfg.input_col, 0, Fp::ZERO)
             },
         )?;
 
@@ -154,7 +194,6 @@ impl PoseidonHashChip {
 
         Ok(acc)
     }
-    
 
     // Hash → publikusan megadott hash-érték ellenőrzése
     /*pub fn verify_hash_commitment(
@@ -185,7 +224,7 @@ impl PoseidonHashChip {
             || "check hash eq",
             |mut region| region.constrain_equal(computed_hash.cell(), expected.cell()),
         )
-    
+
         Ok(())
     }*/
 }

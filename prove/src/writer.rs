@@ -1,52 +1,74 @@
 use std::{
-    fs::{self, OpenOptions},
-    io::{BufWriter, Read, Write},
-    path::Path, sync::Mutex,
+    fs::{self, File},
+    io::{BufWriter, Write},
+    path::Path,
 };
-use anyhow::Result;
-use once_cell::sync::Lazy;
-use serde::{Serialize, Deserialize};
-use base64::{engine::general_purpose, Engine as _};
+
+use anyhow::{Context, Result};
+use base64::{Engine as _, engine::general_purpose};
+use common::commitments::{LocalStepCommitments, ProofCommitmentsV3};
+use common::proof_tree::ProofTreeManifestV1;
+use serde::{Deserialize, Serialize};
+
 #[derive(Serialize, Deserialize)]
 struct ProofEntry {
     proof_b64: String,
-}
-pub fn remove_proofs_file(name: &str) -> Result<()> {
-    let file_path = Path::new("output").join(format!("{}", name));
-    if file_path.exists() {
-        fs::remove_file(file_path)?;
-    }
-    Ok(())
+    commitments: ProofCommitmentsV3,
 }
 
-static FILE_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProofTreeArtifactV1 {
+    manifest: ProofTreeManifestV1,
+    proofs: Vec<ProofEntry>,
+}
 
-pub fn write_proof(name: &str, proof_bytes: &[u8]) -> anyhow::Result<()> {
-    // Mutex lock – one thread can write at a time
-    let _guard = FILE_LOCK.lock().unwrap();
-
-    let out_dir = Path::new("output");
-    fs::create_dir_all(out_dir)?;
-    let file_path = out_dir.join(format!("{}_proofs.json", name));
-
-    let proof_b64 = general_purpose::STANDARD.encode(proof_bytes);
-    let entry = ProofEntry { proof_b64 };
-
-    let mut existing: Vec<ProofEntry> = if file_path.exists() {
-        let mut content = String::new();
-        fs::File::open(&file_path)?.read_to_string(&mut content)?;
-        if content.trim().is_empty() { Vec::new() } else { serde_json::from_str(&content)? }
-    } else {
-        Vec::new()
+/// Writes the complete, DFS-indexed proof set in one atomic replacement.
+/// Callers collect indexed parallel results before invoking this function, so
+/// scheduling cannot reorder entries and a failed proof cannot leave a partial
+/// output file behind.
+pub fn write_proofs(
+    name: &str,
+    manifest: &ProofTreeManifestV1,
+    proofs: &[(Vec<u8>, LocalStepCommitments)],
+) -> Result<()> {
+    anyhow::ensure!(
+        manifest.nodes.len() == proofs.len(),
+        "manifest node count {} does not match proof count {}",
+        manifest.nodes.len(),
+        proofs.len()
+    );
+    let entries = proofs
+        .iter()
+        .map(|(proof, commitments)| ProofEntry {
+            proof_b64: general_purpose::STANDARD.encode(proof),
+            commitments: ProofCommitmentsV3::from_fields(*commitments),
+        })
+        .collect::<Vec<_>>();
+    let artifact = ProofTreeArtifactV1 {
+        manifest: manifest.clone(),
+        proofs: entries,
     };
+    let mut json = serde_json::to_string_pretty(&artifact)?;
+    json.push('\n');
 
-    existing.push(entry);
-
-    let json = serde_json::to_string_pretty(&existing)?;
-    let file = OpenOptions::new()
-        .write(true).create(true).truncate(true).open(&file_path)?;
+    let output_directory = Path::new("output");
+    fs::create_dir_all(output_directory)?;
+    let destination = output_directory.join(format!("{name}_proofs.json"));
+    let temporary = output_directory.join(format!(".{name}_proofs.json.tmp"));
+    let file = File::create(&temporary)
+        .with_context(|| format!("failed to create {}", temporary.display()))?;
     let mut writer = BufWriter::new(file);
     writer.write_all(json.as_bytes())?;
     writer.flush()?;
+    writer.get_ref().sync_all()?;
+    drop(writer);
+    fs::rename(&temporary, &destination).with_context(|| {
+        format!(
+            "failed to atomically replace {} with {}",
+            destination.display(),
+            temporary.display()
+        )
+    })?;
     Ok(())
 }

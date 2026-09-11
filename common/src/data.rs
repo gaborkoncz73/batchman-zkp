@@ -1,6 +1,10 @@
-use serde::{Deserialize, Serialize};
+use crate::{
+    circuit_dialect::BuiltinKind,
+    circuit_witness::TypedLocalStepFp,
+    utils_2::common_helpers::{MAX_ARITY, MAX_PRED_LIST, to_fp_value},
+};
 use halo2_proofs::pasta::Fp;
-use crate::utils_2::common_helpers::{MAX_ARITY, MAX_PRED_LIST, to_fp_value};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RuleTemplateFile {
@@ -61,22 +65,52 @@ pub enum ProofNode {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(deny_unknown_fields)]
 pub struct GoalEntry {
     pub goal: String,
     pub subtree: Vec<ProofNode>,
 }
 
-
 #[derive(Clone, Debug)]
 pub struct UnificationInputFp {
     pub goal_name: Vec<TermFp>,
     pub subtree_goals: Vec<Vec<TermFp>>,
+    /// Semantic resolution selected by the validated typed proof tree. The
+    /// circuit treats this as an honest assignment hint and separately proves
+    /// that the corresponding branch is valid.
+    pub resolution: LocalStepKind,
+    pub typed: TypedLocalStepFp,
 }
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum LocalStepKind {
+    #[default]
+    Rule,
+    ExternalFact,
+    Builtin(BuiltinKind),
+}
+
+impl LocalStepKind {
+    pub const fn protocol_tag(self) -> u64 {
+        match self {
+            Self::Rule => 1,
+            Self::ExternalFact => 2,
+            Self::Builtin(_) => 3,
+        }
+    }
+
+    pub fn protocol_field(self) -> Fp {
+        Fp::from(self.protocol_tag())
+    }
+}
+
 impl Default for UnificationInputFp {
     fn default() -> Self {
         Self {
             goal_name: vec![TermFp::default(); MAX_PRED_LIST],
-            subtree_goals: vec![vec![TermFp::default(); MAX_PRED_LIST];MAX_ARITY],
+            subtree_goals: vec![vec![TermFp::default(); MAX_PRED_LIST]; MAX_ARITY],
+            resolution: LocalStepKind::Rule,
+            typed: TypedLocalStepFp::default(),
         }
     }
 }
@@ -86,12 +120,13 @@ pub struct TermFp {
     pub args: Vec<Vec<Fp>>,
     pub fact_hashes: Fp,
 }
-impl Default for TermFp{
+impl Default for TermFp {
     fn default() -> Self {
         Self {
             name: Fp::zero(),
-            args: vec![vec![Fp::zero(); MAX_PRED_LIST];MAX_ARITY], 
-            fact_hashes: Fp::zero(), }
+            args: vec![vec![Fp::zero(); MAX_PRED_LIST]; MAX_ARITY],
+            fact_hashes: Fp::zero(),
+        }
     }
 }
 
@@ -102,13 +137,19 @@ pub struct RuleTemplateFileFp {
 
 impl From<&RuleTemplateFile> for RuleTemplateFileFp {
     fn from(r: &RuleTemplateFile) -> Self {
-        let predicates = r.predicates.iter().map(|p| {
-            PredicateTemplateFp {
+        let predicates = r
+            .predicates
+            .iter()
+            .map(|p| PredicateTemplateFp {
                 name: to_fp_value(&p.name),
                 arity: Fp::from(p.arity as u64),
-                clauses: p.clauses.iter().map(|c| ClauseTemplateFp::from(c)).collect(),
-            }
-        }).collect();
+                clauses: p
+                    .clauses
+                    .iter()
+                    .map(|c| ClauseTemplateFp::from(c))
+                    .collect(),
+            })
+            .collect();
 
         Self { predicates }
     }
@@ -123,21 +164,32 @@ pub struct PredicateTemplateFp {
 
 impl From<&ClauseTemplate> for ClauseTemplateFp {
     fn from(c: &ClauseTemplate) -> Self {
-        let children = c.children.iter().map(|row| {
-            row.iter().map(|ch| ChildSigFp {
-                name: to_fp_value(&ch.name),
-                arity: Fp::from(ch.arity as u64),
-            }).collect()
-        }).collect();
+        let children = c
+            .children
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|ch| ChildSigFp {
+                        name: to_fp_value(&ch.name),
+                        arity: Fp::from(ch.arity as u64),
+                    })
+                    .collect()
+            })
+            .collect();
 
-        let equalities = c.equalities.iter().map(|eq| {
-            EqualityFp {
+        let equalities = c
+            .equalities
+            .iter()
+            .map(|eq| EqualityFp {
                 left: TermSideFp::from(&eq.left),
                 right: TermSideFp::from(&eq.right),
-            }
-        }).collect();
+            })
+            .collect();
 
-        Self { children, equalities }
+        Self {
+            children,
+            equalities,
+        }
     }
 }
 impl Default for PredicateTemplateFp {
@@ -188,7 +240,6 @@ impl From<&TermSide> for TermSideFp {
     }
 }
 
-
 #[derive(Clone, Debug)]
 pub struct TermRefFp {
     pub children_node_list: Fp,
@@ -197,11 +248,13 @@ pub struct TermRefFp {
     pub list_index: Fp,
 }
 
-
-// Config struct to read the yaml
-#[derive(Debug, Deserialize)]
+/// Parser input for one external fact registry entry.
+///
+/// `goal` is parsed through the same Prolog frontend as proof-tree goals. It
+/// replaces the former string matrix, which could not preserve typed terms.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct FactEntry {
-    pub predicate: String,
-    pub args: Vec<Vec<String>>, // minden arg stringként jön a YAML-ből
+    pub goal: String,
     pub salt: String,
 }
