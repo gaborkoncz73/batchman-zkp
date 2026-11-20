@@ -1,14 +1,13 @@
 //! Parser-derived external fact registry normalization.
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, anyhow, bail};
 use common::{
-    circuit_dialect::{CircuitGoalKind, CircuitLimits, validate_ground_goal_for_circuit},
+    circuit_dialect::CircuitLimits,
     data::FactEntry,
     typed_fact::{TypedFact, parse_typed_fact_salt},
-    witness_ir::GroundCall,
 };
 
-use crate::frontend::parse_goal;
+use super::parse_ground_predicate;
 
 /// Parses and validates every external fact exactly once.
 ///
@@ -38,32 +37,19 @@ pub fn parse_fact_registry(
                 limits.max_goal_bytes
             );
         }
-        let term = parse_goal(&entry.goal, &format!("{path}.goal"))
-            .with_context(|| format!("failed to parse {path}.goal"))?;
-        let indicator = match validate_ground_goal_for_circuit(&term, limits)
-            .map_err(|error| anyhow::anyhow!("{path}.goal.{}: {}", error.path, error.message))?
-        {
-            CircuitGoalKind::Predicate(indicator) => indicator,
-            CircuitGoalKind::Builtin(builtin) => {
-                bail!(
-                    "{path}.goal: builtin {}/{} cannot be an external fact",
-                    builtin.functor(),
-                    builtin.arity()
-                )
-            }
-        };
-        let goal = GroundCall::from_goal_term(&term)
-            .with_context(|| format!("failed to normalize {path}.goal"))?;
-        if goal.predicate != indicator {
-            bail!("{path}.goal: parsed predicate indicator is inconsistent");
-        }
+        let goal = parse_ground_predicate(
+            &entry.goal,
+            &format!("{path}.goal"),
+            limits,
+            "an external fact",
+        )?;
         if let Some(previous) = parsed.iter().position(|fact| fact.goal == goal) {
             bail!(
                 "{path}.goal duplicates the canonical ground fact at {source_name}[{previous}].goal"
             );
         }
         let salt = parse_typed_fact_salt(&entry.salt)
-            .map_err(|message| anyhow::anyhow!("{path}.salt: {message}"))?;
+            .map_err(|message| anyhow!("{path}.salt: {message}"))?;
         parsed.push(TypedFact { goal, salt });
     }
     Ok(parsed)

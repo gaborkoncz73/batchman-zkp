@@ -6,7 +6,7 @@ Status vocabulary: **implemented** is enforced by current code; **partial** exis
 
 - Manuscript: Section 1, after the solution idea and before contributions.
 - Width: 180 mm.
-- Sources: `README.md`, `docs/soundness-baseline.md`, `tokens/src/{frontend,lowering}.rs`, `common/src/{policy_compiler,unification_checker_circuit}.rs`, prover/verifier entry points, analyzer fork at local revision `722b057` (dirty working tree inspected read-only).
+- Sources: `README.md`, `docs/soundness-baseline.md`, `policy-parser/src/{syntax/,policy.rs}`, `common/src/{policy_compiler,unification_checker_circuit}.rs`, prover/verifier entry points, analyzer fork at local revision `722b057` (dirty working tree inspected read-only).
 - Implemented: typed compilation, local certificates, independent local proving/verification, constraint analysis architecture in the analyzer fork.
 - Proposed: authenticated whole-tree package and complete verifier-side statement check.
 - Open: define and implement the final manifest protocol and its public binding.
@@ -34,7 +34,7 @@ Status vocabulary: **implemented** is enforced by current code; **partial** exis
 
 - Manuscript: opening of Section 5.
 - Width: 180 mm.
-- Sources: `tokens/prolog.g4`, parser generation script, `tokens/src/{frontend,lowering}.rs`, `common/src/{policy_ir,policy_compiler,circuit_dialect}.rs`, `config/circuit-limits.json`, prover/verifier entry points.
+- Sources: `policy-parser/prolog.g4`, parser generation script, `policy-parser/src/{syntax/,policy.rs}`, `common/src/{policy_ir,policy_compiler,circuit_dialect}.rs`, `config/circuit-limits.json`, prover/verifier entry points.
 - Implemented: semantic schema v2, explicit dialect/bounds validation, shared policy compiler, current explicit policy commitment, policy-specific PK/VK derivation.
 - Proposed: none; check marks mean tested/validated boundaries, not a mechanized compiler proof.
 - Open: state whether the final protocol retains the explicit policy commitment when VK provenance is guaranteed, and provide determinism evidence across supported environments.

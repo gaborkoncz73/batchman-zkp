@@ -2,7 +2,7 @@
 resolver = "3"
 members = ["common", "issue",
            "prove",
-           "tokens",
+           "policy-parser",
            "verify",
            ]
 

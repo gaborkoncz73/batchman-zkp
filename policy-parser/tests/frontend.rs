@@ -1,11 +1,11 @@
 use common::circuit_dialect::{CircuitLimits, validate_ground_goal_for_circuit};
 use common::data::{ClauseTemplate, ProofNode, RuleTemplateFile, TermSide};
+use common::policy_compiler::compile_policy_for_current_circuit;
 use common::policy_ir::{Clause, PolicyFile, PredicateDef, Term};
+use policy_parser::{parse_goal, parse_policy, to_canonical_json};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use tokens::lowering::compile_policy_for_current_circuit;
-use tokens::{parse_goal, parse_policy, to_canonical_json};
 
 fn limits() -> CircuitLimits {
     serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap()
@@ -222,7 +222,7 @@ fn current_policy_regressions_are_fixed() {
             .len(),
         4
     );
-    validate_circuit_references(&circuit);
+    validate_circuit_references(circuit);
 
     let circuit_percent = &circuit
         .predicates
@@ -373,81 +373,67 @@ fn goal_parser_rejects_partial_input_and_validator_rejects_unsupported_goals() {
 fn cli_output_is_byte_identical_across_processes() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let source = root.join("../prolog/policy.pl");
-    let limits = root.join("../config/circuit-limits.json");
-    let directory = std::env::temp_dir().join(format!("batchman-tokens-{}", std::process::id()));
+    let directory =
+        std::env::temp_dir().join(format!("batchman-policy-parser-{}", std::process::id()));
     if directory.exists() {
         fs::remove_dir_all(&directory).unwrap();
     }
     fs::create_dir_all(&directory).unwrap();
 
-    let semantic_one = directory.join("semantic-one.json");
-    let circuit_one = directory.join("circuit-one.json");
-    let semantic_two = directory.join("semantic-two.json");
-    let circuit_two = directory.join("circuit-two.json");
-
-    for (semantic, circuit) in [(&semantic_one, &circuit_one), (&semantic_two, &circuit_two)] {
-        let output = Command::new(env!("CARGO_BIN_EXE_tokens"))
+    let first = directory.join("first.json");
+    let second = directory.join("second.json");
+    for output in [&first, &second] {
+        let run = Command::new(env!("CARGO_BIN_EXE_policy-parser"))
             .arg(&source)
-            .arg(semantic)
-            .arg(circuit)
-            .arg(&limits)
+            .arg(output)
             .output()
             .unwrap();
         assert!(
-            output.status.success(),
-            "tokens failed: {}",
-            String::from_utf8_lossy(&output.stderr)
+            run.status.success(),
+            "policy-parser failed: {}",
+            String::from_utf8_lossy(&run.stderr)
         );
     }
 
+    let first = fs::read_to_string(first).unwrap();
+    assert_eq!(first, fs::read_to_string(second).unwrap());
     assert_eq!(
-        fs::read(semantic_one).unwrap(),
-        fs::read(semantic_two).unwrap()
-    );
-    assert_eq!(
-        fs::read(circuit_one).unwrap(),
-        fs::read(circuit_two).unwrap()
+        first,
+        include_str!("../../tests/fixtures/current-policy.rules.json")
     );
     fs::remove_dir_all(directory).unwrap();
 }
 
 #[test]
-fn cli_rejects_output_collisions_and_compiles_before_writing() {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let limits = root.join("../config/circuit-limits.json");
-    let directory =
-        std::env::temp_dir().join(format!("batchman-tokens-failure-{}", std::process::id()));
+fn cli_rejects_bad_input_before_writing() {
+    let directory = std::env::temp_dir().join(format!(
+        "batchman-policy-parser-failure-{}",
+        std::process::id()
+    ));
     if directory.exists() {
         fs::remove_dir_all(&directory).unwrap();
     }
     fs::create_dir_all(&directory).unwrap();
+    let run = |args: &[&std::path::Path]| {
+        Command::new(env!("CARGO_BIN_EXE_policy-parser"))
+            .args(args)
+            .output()
+            .unwrap()
+    };
 
-    let source = directory.join("unsupported.pl");
-    let semantic = directory.join("semantic.json");
-    let compatibility = directory.join("compatibility.json");
-    fs::write(&source, "p :- !.\n").unwrap();
+    let source = directory.join("broken.pl");
+    let output = directory.join("rules.json");
+    fs::write(&source, "p :- .\n").unwrap();
+    assert!(!run(&[&source, &output]).status.success());
+    assert!(!output.exists());
 
-    let failed_compile = Command::new(env!("CARGO_BIN_EXE_tokens"))
-        .arg(&source)
-        .arg(&semantic)
-        .arg(&compatibility)
-        .arg(&limits)
-        .output()
-        .unwrap();
-    assert!(!failed_compile.status.success());
-    assert!(!semantic.exists());
-    assert!(!compatibility.exists());
+    let valid = directory.join("valid.pl");
+    fs::write(&valid, "p.\n").unwrap();
+    assert!(!run(&[&valid, &valid]).status.success());
+    assert_eq!(fs::read_to_string(&valid).unwrap(), "p.\n");
 
-    let same_output = directory.join("same.json");
-    let collision = Command::new(env!("CARGO_BIN_EXE_tokens"))
-        .arg(&source)
-        .arg(&same_output)
-        .arg(&same_output)
-        .arg(&limits)
-        .output()
-        .unwrap();
-    assert!(!collision.status.success());
-    assert!(!same_output.exists());
+    assert!(!run(&[&valid, &output, &output]).status.success());
+    assert!(!output.exists());
 
     fs::remove_dir_all(directory).unwrap();
 }

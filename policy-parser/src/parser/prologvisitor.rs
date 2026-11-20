@@ -57,14 +57,6 @@ pub trait prologVisitor<'input>: ParseTreeVisitor<'input, prologParserContextTyp
     }
 
     /**
-     * Visit a parse tree produced by {@link prologParser#disjunction}.
-     * @param ctx the parse tree
-     */
-    fn visit_disjunction(&mut self, ctx: &DisjunctionContext<'input>) {
-        self.visit_children(ctx)
-    }
-
-    /**
      * Visit a parse tree produced by {@link prologParser#if_then}.
      * @param ctx the parse tree
      */
@@ -129,14 +121,6 @@ pub trait prologVisitor<'input>: ParseTreeVisitor<'input, prologParserContextTyp
     }
 
     /**
-     * Visit a parse tree produced by {@link prologParser#power_expr}.
-     * @param ctx the parse tree
-     */
-    fn visit_power_expr(&mut self, ctx: &Power_exprContext<'input>) {
-        self.visit_children(ctx)
-    }
-
-    /**
      * Visit a parse tree produced by {@link prologParser#unary_expr}.
      * @param ctx the parse tree
      */
@@ -145,10 +129,18 @@ pub trait prologVisitor<'input>: ParseTreeVisitor<'input, prologParserContextTyp
     }
 
     /**
-     * Visit a parse tree produced by {@link prologParser#argument_list}.
+     * Visit a parse tree produced by {@link prologParser#power_operand}.
      * @param ctx the parse tree
      */
-    fn visit_argument_list(&mut self, ctx: &Argument_listContext<'input>) {
+    fn visit_power_operand(&mut self, ctx: &Power_operandContext<'input>) {
+        self.visit_children(ctx)
+    }
+
+    /**
+     * Visit a parse tree produced by {@link prologParser#term_list}.
+     * @param ctx the parse tree
+     */
+    fn visit_term_list(&mut self, ctx: &Term_listContext<'input>) {
         self.visit_children(ctx)
     }
 
@@ -252,6 +244,30 @@ pub trait prologVisitor<'input>: ParseTreeVisitor<'input, prologParserContextTyp
     }
 
     /**
+     * Visit a parse tree produced by {@link prologParser#functor}.
+     * @param ctx the parse tree
+     */
+    fn visit_functor(&mut self, ctx: &FunctorContext<'input>) {
+        self.visit_children(ctx)
+    }
+
+    /**
+     * Visit a parse tree produced by {@link prologParser#operator_name}.
+     * @param ctx the parse tree
+     */
+    fn visit_operator_name(&mut self, ctx: &Operator_nameContext<'input>) {
+        self.visit_children(ctx)
+    }
+
+    /**
+     * Visit a parse tree produced by {@link prologParser#number}.
+     * @param ctx the parse tree
+     */
+    fn visit_number(&mut self, ctx: &NumberContext<'input>) {
+        self.visit_children(ctx)
+    }
+
+    /**
      * Visit a parse tree produced by the {@code emptyList}
      * labeled alternative in {@link prologParser#list}.
      * @param ctx the parse tree
@@ -275,14 +291,6 @@ pub trait prologVisitor<'input>: ParseTreeVisitor<'input, prologParserContextTyp
      * @param ctx the parse tree
      */
     fn visit_improperList(&mut self, ctx: &ImproperListContext<'input>) {
-        self.visit_children(ctx)
-    }
-
-    /**
-     * Visit a parse tree produced by {@link prologParser#list_items}.
-     * @param ctx the parse tree
-     */
-    fn visit_list_items(&mut self, ctx: &List_itemsContext<'input>) {
         self.visit_children(ctx)
     }
 
@@ -355,14 +363,6 @@ pub trait prologVisitorCompat<'input>:
     }
 
     /**
-     * Visit a parse tree produced by {@link prologParser#disjunction}.
-     * @param ctx the parse tree
-     */
-    fn visit_disjunction(&mut self, ctx: &DisjunctionContext<'input>) -> Self::Return {
-        self.visit_children(ctx)
-    }
-
-    /**
      * Visit a parse tree produced by {@link prologParser#if_then}.
      * @param ctx the parse tree
      */
@@ -430,14 +430,6 @@ pub trait prologVisitorCompat<'input>:
     }
 
     /**
-     * Visit a parse tree produced by {@link prologParser#power_expr}.
-     * @param ctx the parse tree
-     */
-    fn visit_power_expr(&mut self, ctx: &Power_exprContext<'input>) -> Self::Return {
-        self.visit_children(ctx)
-    }
-
-    /**
      * Visit a parse tree produced by {@link prologParser#unary_expr}.
      * @param ctx the parse tree
      */
@@ -446,10 +438,18 @@ pub trait prologVisitorCompat<'input>:
     }
 
     /**
-     * Visit a parse tree produced by {@link prologParser#argument_list}.
+     * Visit a parse tree produced by {@link prologParser#power_operand}.
      * @param ctx the parse tree
      */
-    fn visit_argument_list(&mut self, ctx: &Argument_listContext<'input>) -> Self::Return {
+    fn visit_power_operand(&mut self, ctx: &Power_operandContext<'input>) -> Self::Return {
+        self.visit_children(ctx)
+    }
+
+    /**
+     * Visit a parse tree produced by {@link prologParser#term_list}.
+     * @param ctx the parse tree
+     */
+    fn visit_term_list(&mut self, ctx: &Term_listContext<'input>) -> Self::Return {
         self.visit_children(ctx)
     }
 
@@ -553,6 +553,30 @@ pub trait prologVisitorCompat<'input>:
     }
 
     /**
+     * Visit a parse tree produced by {@link prologParser#functor}.
+     * @param ctx the parse tree
+     */
+    fn visit_functor(&mut self, ctx: &FunctorContext<'input>) -> Self::Return {
+        self.visit_children(ctx)
+    }
+
+    /**
+     * Visit a parse tree produced by {@link prologParser#operator_name}.
+     * @param ctx the parse tree
+     */
+    fn visit_operator_name(&mut self, ctx: &Operator_nameContext<'input>) -> Self::Return {
+        self.visit_children(ctx)
+    }
+
+    /**
+     * Visit a parse tree produced by {@link prologParser#number}.
+     * @param ctx the parse tree
+     */
+    fn visit_number(&mut self, ctx: &NumberContext<'input>) -> Self::Return {
+        self.visit_children(ctx)
+    }
+
+    /**
      * Visit a parse tree produced by the {@code emptyList}
      * labeled alternative in {@link prologParser#list}.
      * @param ctx the parse tree
@@ -576,14 +600,6 @@ pub trait prologVisitorCompat<'input>:
      * @param ctx the parse tree
      */
     fn visit_improperList(&mut self, ctx: &ImproperListContext<'input>) -> Self::Return {
-        self.visit_children(ctx)
-    }
-
-    /**
-     * Visit a parse tree produced by {@link prologParser#list_items}.
-     * @param ctx the parse tree
-     */
-    fn visit_list_items(&mut self, ctx: &List_itemsContext<'input>) -> Self::Return {
         self.visit_children(ctx)
     }
 
@@ -638,11 +654,6 @@ where
         *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
     }
 
-    fn visit_disjunction(&mut self, ctx: &DisjunctionContext<'input>) {
-        let result = <Self as prologVisitorCompat>::visit_disjunction(self, ctx);
-        *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
-    }
-
     fn visit_if_then(&mut self, ctx: &If_thenContext<'input>) {
         let result = <Self as prologVisitorCompat>::visit_if_then(self, ctx);
         *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
@@ -683,18 +694,18 @@ where
         *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
     }
 
-    fn visit_power_expr(&mut self, ctx: &Power_exprContext<'input>) {
-        let result = <Self as prologVisitorCompat>::visit_power_expr(self, ctx);
-        *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
-    }
-
     fn visit_unary_expr(&mut self, ctx: &Unary_exprContext<'input>) {
         let result = <Self as prologVisitorCompat>::visit_unary_expr(self, ctx);
         *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
     }
 
-    fn visit_argument_list(&mut self, ctx: &Argument_listContext<'input>) {
-        let result = <Self as prologVisitorCompat>::visit_argument_list(self, ctx);
+    fn visit_power_operand(&mut self, ctx: &Power_operandContext<'input>) {
+        let result = <Self as prologVisitorCompat>::visit_power_operand(self, ctx);
+        *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
+    }
+
+    fn visit_term_list(&mut self, ctx: &Term_listContext<'input>) {
+        let result = <Self as prologVisitorCompat>::visit_term_list(self, ctx);
         *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
     }
 
@@ -753,6 +764,21 @@ where
         *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
     }
 
+    fn visit_functor(&mut self, ctx: &FunctorContext<'input>) {
+        let result = <Self as prologVisitorCompat>::visit_functor(self, ctx);
+        *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
+    }
+
+    fn visit_operator_name(&mut self, ctx: &Operator_nameContext<'input>) {
+        let result = <Self as prologVisitorCompat>::visit_operator_name(self, ctx);
+        *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
+    }
+
+    fn visit_number(&mut self, ctx: &NumberContext<'input>) {
+        let result = <Self as prologVisitorCompat>::visit_number(self, ctx);
+        *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
+    }
+
     fn visit_emptyList(&mut self, ctx: &EmptyListContext<'input>) {
         let result = <Self as prologVisitorCompat>::visit_emptyList(self, ctx);
         *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
@@ -765,11 +791,6 @@ where
 
     fn visit_improperList(&mut self, ctx: &ImproperListContext<'input>) {
         let result = <Self as prologVisitorCompat>::visit_improperList(self, ctx);
-        *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
-    }
-
-    fn visit_list_items(&mut self, ctx: &List_itemsContext<'input>) {
-        let result = <Self as prologVisitorCompat>::visit_list_items(self, ctx);
         *<Self as ParseTreeVisitorCompat>::temp_result(self) = result;
     }
 

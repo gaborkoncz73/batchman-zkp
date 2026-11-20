@@ -1,17 +1,13 @@
 //! A small, circuit-independent oracle for local Prolog rule steps.
 //!
 //! This is deliberately test-only code.  It gives the soundness tests a
-//! trustworthy expected result without reusing the legacy lowering or any
+//! trustworthy expected result without reusing the policy compiler or any
 //! circuit witness calculation.
 
 use std::collections::BTreeMap;
 
-use common::{
-    circuit_dialect::CircuitLimits,
-    policy_compiler::compile_policy_for_current_circuit,
-    policy_ir::{Call, Clause, Term},
-};
-use tokens::{lowering::to_circuit_v1_json, parse_goal, parse_policy, to_canonical_json};
+use common::policy_ir::{Call, Clause, Term};
+use policy_parser::{parse_goal, parse_policy, to_canonical_json};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum NormalTerm {
@@ -241,14 +237,6 @@ fn current_policy_outputs_match_the_golden_files() {
     assert_eq!(
         to_canonical_json(&policy).unwrap(),
         include_str!("../../tests/fixtures/current-policy.rules.json")
-    );
-
-    let limits: CircuitLimits =
-        serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
-    let circuit_v1 = compile_policy_for_current_circuit(&policy, &limits).unwrap();
-    assert_eq!(
-        to_circuit_v1_json(circuit_v1.layout()).unwrap(),
-        include_str!("../../tests/fixtures/current-policy.circuit-v1.json")
     );
 }
 

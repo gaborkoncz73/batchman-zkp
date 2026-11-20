@@ -7,7 +7,7 @@
 Put the policy in `prolog/policy.pl`, then run:
 
 ```bash
-cargo run -p tokens --release
+cargo run -p policy-parser --release
 ```
 
 The compiler parses the supported Batchman policy-Prolog dialect with the generated ANTLR parser. It rejects syntax errors instead of emitting a partial result. A successful default run writes one deterministic source-of-truth file:
@@ -21,17 +21,15 @@ The semantic representation therefore keeps, for example, `Input * Value div 100
 The command accepts explicit source and semantic-output paths:
 
 ```bash
-cargo run -p tokens --release -- \
+cargo run -p policy-parser --release -- \
   path/to/policy.pl \
   path/to/rules.json
 ```
 
-A third path optionally writes the legacy circuit-v1 projection for debugging or golden tests. It is not a production input. When that output is requested, a fourth path may select the circuit-limit profile; its default is `config/circuit-limits.json`.
-
-To regenerate the checked-in Rust parser after changing `tokens/prolog.g4`:
+To regenerate the checked-in Rust parser after changing `policy-parser/prolog.g4`:
 
 ```bash
-./tokens/generate-parser.sh
+./policy-parser/generate-parser.sh
 ```
 
 ### Producing the commitment hashes

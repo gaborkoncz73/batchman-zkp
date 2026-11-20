@@ -2,7 +2,7 @@
 
 The fast suite separates three kinds of evidence:
 
-- `tokens/tests/reference_semantics.rs` is the circuit-independent semantic oracle and golden policy test.
+- `policy-parser/tests/reference_semantics.rs` is the circuit-independent semantic oracle and golden policy test.
 - `common/tests/circuit_soundness.rs` exercises the current honest circuit witness path with `MockProver`.
 - `common/tests/real_proof.rs` performs a real `create_proof` / `verify_proof` round trip in the opt-in release test.
 

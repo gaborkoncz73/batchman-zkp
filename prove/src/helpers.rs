@@ -10,7 +10,7 @@ use common::{
     typed_fact::TypedFact,
     witness_ir::{GoalResolution, GroundCall, LocalStepWitness, ResolvedGoal, StepTransition},
 };
-use tokens::parse_goal;
+use policy_parser::parse_goal;
 
 #[derive(Debug, Clone)]
 pub(crate) struct ValidatedProofTree {
@@ -288,7 +288,7 @@ mod validation_tests {
             serde_yaml::from_str(include_str!("../../issue/src/facts.yaml")).unwrap();
         let limits =
             serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
-        let facts = tokens::parse_fact_registry(&raw_facts, &limits, "facts.yaml").unwrap();
+        let facts = policy_parser::parse_fact_registry(&raw_facts, &limits, "facts.yaml").unwrap();
         (policy, facts, limits)
     }
 
@@ -568,7 +568,7 @@ mod validation_tests {
     fn prolog_less_than_or_equal_signature_matches_the_legacy_bridge() {
         let limits: CircuitLimits =
             serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
-        let policy = tokens::parse_policy("p(X) :- X =< 10.", "le-policy.pl").unwrap();
+        let policy = policy_parser::parse_policy("p(X) :- X =< 10.", "le-policy.pl").unwrap();
         let raw = vec![ProofNode::GoalNode(GoalEntry {
             goal: "p(10)".to_owned(),
             subtree: vec![ProofNode::GoalNode(GoalEntry {
@@ -611,7 +611,7 @@ mod validation_tests {
     fn list_unification_uses_one_common_projection_for_both_operands() {
         let limits: CircuitLimits =
             serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
-        let policy = tokens::parse_policy("p(L) :- L = [a,b].", "list-unify-policy.pl").unwrap();
+        let policy = policy_parser::parse_policy("p(L) :- L = [a,b].", "list-unify-policy.pl").unwrap();
         let raw = vec![ProofNode::GoalNode(GoalEntry {
             goal: "p([a,b])".to_owned(),
             subtree: vec![ProofNode::GoalNode(GoalEntry {

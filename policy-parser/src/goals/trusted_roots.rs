@@ -1,14 +1,12 @@
 //! Parsing and semantic validation for verifier-trusted root goals.
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use common::{
-    circuit_dialect::{CircuitGoalKind, CircuitLimits, validate_ground_goal_for_circuit},
-    policy_ir::PolicyFile,
-    proof_tree::TrustedRootsV1,
+    circuit_dialect::CircuitLimits, policy_ir::PolicyFile, proof_tree::TrustedRootsV1,
     witness_ir::GroundCall,
 };
 
-use crate::parse_goal;
+use super::parse_ground_predicate;
 
 pub fn parse_trusted_root_goals(
     statement: &TrustedRootsV1,
@@ -27,24 +25,15 @@ pub fn parse_trusted_root_goals(
         .enumerate()
         .map(|(index, source)| {
             let label = format!("{source_name}.root_goals[{index}]");
-            let term = parse_goal(source, &label)
-                .with_context(|| format!("failed to parse trusted root {index}"))?;
-            let CircuitGoalKind::Predicate(indicator) =
-                validate_ground_goal_for_circuit(&term, limits).map_err(|error| {
-                    anyhow::anyhow!("{label}.{}: {}", error.path, error.message)
-                })?
-            else {
-                bail!("{label}: a trusted root must be a policy predicate");
-            };
-            if !analysis.exported_entry_points.contains(&indicator) {
+            let goal = parse_ground_predicate(source, &label, limits, "a trusted root")?;
+            if !analysis.exported_entry_points.contains(&goal.predicate) {
                 bail!(
                     "{label}: predicate {}/{} is not exported by the policy module",
-                    indicator.name,
-                    indicator.arity
+                    goal.predicate.name,
+                    goal.predicate.arity
                 );
             }
-            GroundCall::from_goal_term(&term)
-                .with_context(|| format!("failed to normalize trusted root {index}"))
+            Ok(goal)
         })
         .collect()
 }
@@ -60,10 +49,10 @@ mod tests {
     fn inputs() -> (PolicyFile, CircuitLimits) {
         (
             serde_json::from_str(include_str!(
-                "../../tests/fixtures/current-policy.rules.json"
+                "../../../tests/fixtures/current-policy.rules.json"
             ))
             .unwrap(),
-            serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap(),
+            serde_json::from_str(include_str!("../../../config/circuit-limits.json")).unwrap(),
         )
     }
 

@@ -49,7 +49,7 @@ fn main() -> Result<()> {
     let policy: PolicyFile = serde_json::from_str(&policy_text)?;
     let trusted_roots_text = fs::read_to_string("input/trusted_roots.json")?;
     let trusted_roots: TrustedRootsV1 = serde_json::from_str(&trusted_roots_text)?;
-    let trusted_root_goals = tokens::parse_trusted_root_goals(
+    let trusted_root_goals = policy_parser::parse_trusted_root_goals(
         &trusted_roots,
         &policy,
         &limits,

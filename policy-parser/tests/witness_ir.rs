@@ -3,7 +3,7 @@ use common::{
     policy_ir::Term,
     witness_ir::{GoalResolution, GroundCall, GroundTerm, LocalStepWitness, StepTransition},
 };
-use tokens::parse_goal;
+use policy_parser::parse_goal;
 
 fn call(source: &str) -> GroundCall {
     GroundCall::from_goal_term(&parse_goal(source, "typed-witness-test").unwrap()).unwrap()

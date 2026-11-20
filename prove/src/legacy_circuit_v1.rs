@@ -676,7 +676,7 @@ mod tests {
         witness_ir::{GoalResolution, GroundCall, LocalStepWitness, ResolvedGoal, StepTransition},
     };
     use halo2_proofs::pasta::Fp;
-    use tokens::parse_goal;
+    use policy_parser::parse_goal;
 
     use super::{LegacyFactRegistry, encode_local_step_for_legacy_circuit};
 
@@ -716,7 +716,7 @@ mod tests {
     }
 
     fn policy(source: &str) -> common::data::RuleTemplateFile {
-        let semantic = tokens::parse_policy(source, "legacy-bridge-policy.pl").unwrap();
+        let semantic = policy_parser::parse_policy(source, "legacy-bridge-policy.pl").unwrap();
         let limits: CircuitLimits =
             serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
         compile_policy_for_current_circuit(&semantic, &limits)

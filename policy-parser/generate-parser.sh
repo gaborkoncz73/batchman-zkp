@@ -14,3 +14,5 @@ java -jar antlr4-4.13.3-SNAPSHOT-complete.jar \
 # ANTLR's interpreter/token metadata is not consumed by the Rust frontend.
 rm -f src/parser/prolog.interp src/parser/prolog.tokens \
     src/parser/prologLexer.interp src/parser/prologLexer.tokens
+
+rustfmt --edition 2024 src/parser/prolog*.rs

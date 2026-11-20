@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     let fact_configs: Vec<FactEntry> = serde_yaml::from_str(&file_content)?;
     let limits: CircuitLimits =
         serde_json::from_str(&fs::read_to_string("config/circuit-limits.json")?)?;
-    let facts = tokens::parse_fact_registry(&fact_configs, &limits, config_file)?;
+    let facts = policy_parser::parse_fact_registry(&fact_configs, &limits, config_file)?;
 
     let mut fact_hashes: Vec<String> = facts
         .iter()

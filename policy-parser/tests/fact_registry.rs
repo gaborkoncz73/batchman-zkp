@@ -1,5 +1,5 @@
 use common::{circuit_dialect::CircuitLimits, data::FactEntry, witness_ir::GroundTerm};
-use tokens::parse_fact_registry;
+use policy_parser::parse_fact_registry;
 
 fn limits() -> CircuitLimits {
     serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap()

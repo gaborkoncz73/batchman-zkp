@@ -39,68 +39,70 @@ use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::sync::Arc;
 
-pub const prolog_COLON_DASH: i32 = 1;
-pub const prolog_IF_THEN: i32 = 2;
-pub const prolog_NOT: i32 = 3;
-pub const prolog_NOT_IDENTICAL: i32 = 4;
-pub const prolog_IDENTICAL: i32 = 5;
-pub const prolog_NOT_UNIFIABLE: i32 = 6;
-pub const prolog_ARITH_NE: i32 = 7;
-pub const prolog_ARITH_EQ: i32 = 8;
-pub const prolog_UNIV: i32 = 9;
-pub const prolog_TERM_LE: i32 = 10;
-pub const prolog_TERM_GE: i32 = 11;
-pub const prolog_TERM_LT: i32 = 12;
-pub const prolog_TERM_GT: i32 = 13;
-pub const prolog_LE: i32 = 14;
-pub const prolog_GE: i32 = 15;
-pub const prolog_LT: i32 = 16;
-pub const prolog_GT: i32 = 17;
-pub const prolog_UNIFY: i32 = 18;
-pub const prolog_IS: i32 = 19;
-pub const prolog_INT_DIV: i32 = 20;
-pub const prolog_DIV: i32 = 21;
-pub const prolog_MOD: i32 = 22;
-pub const prolog_REM: i32 = 23;
-pub const prolog_POW_XFX: i32 = 24;
-pub const prolog_POW_XFY: i32 = 25;
-pub const prolog_SHL: i32 = 26;
-pub const prolog_SHR: i32 = 27;
-pub const prolog_BIT_AND: i32 = 28;
-pub const prolog_BIT_OR: i32 = 29;
-pub const prolog_BIT_NOT: i32 = 30;
-pub const prolog_PLUS: i32 = 31;
-pub const prolog_MINUS: i32 = 32;
-pub const prolog_STAR: i32 = 33;
-pub const prolog_SLASH: i32 = 34;
-pub const prolog_SEMI: i32 = 35;
-pub const prolog_COMMA: i32 = 36;
-pub const prolog_COLON: i32 = 37;
-pub const prolog_DOT: i32 = 38;
-pub const prolog_LPAREN: i32 = 39;
-pub const prolog_RPAREN: i32 = 40;
-pub const prolog_LBRACK: i32 = 41;
-pub const prolog_RBRACK: i32 = 42;
-pub const prolog_LBRACE: i32 = 43;
-pub const prolog_RBRACE: i32 = 44;
-pub const prolog_BAR: i32 = 45;
-pub const prolog_CUT: i32 = 46;
-pub const prolog_FLOAT: i32 = 47;
-pub const prolog_BINARY: i32 = 48;
-pub const prolog_OCTAL: i32 = 49;
-pub const prolog_HEX: i32 = 50;
-pub const prolog_DECIMAL: i32 = 51;
-pub const prolog_CHARACTER_CODE_CONSTANT: i32 = 52;
-pub const prolog_VARIABLE: i32 = 53;
-pub const prolog_ATOM_ID: i32 = 54;
-pub const prolog_QUOTED_ATOM: i32 = 55;
-pub const prolog_DOUBLE_QUOTED_STRING: i32 = 56;
-pub const prolog_BACK_QUOTED_STRING: i32 = 57;
-pub const prolog_GRAPHIC_ATOM: i32 = 58;
-pub const prolog_WS: i32 = 59;
-pub const prolog_COMMENT: i32 = 60;
-pub const prolog_BLOCK_COMMENT: i32 = 61;
-pub const prolog_ERROR_CHAR: i32 = 62;
+pub const prolog_COMMENT: i32 = 1;
+pub const prolog_BLOCK_COMMENT: i32 = 2;
+pub const prolog_COLON_DASH: i32 = 3;
+pub const prolog_IF_THEN: i32 = 4;
+pub const prolog_NOT: i32 = 5;
+pub const prolog_NOT_IDENTICAL: i32 = 6;
+pub const prolog_IDENTICAL: i32 = 7;
+pub const prolog_NOT_UNIFIABLE: i32 = 8;
+pub const prolog_ARITH_NE: i32 = 9;
+pub const prolog_ARITH_EQ: i32 = 10;
+pub const prolog_UNIV: i32 = 11;
+pub const prolog_TERM_LE: i32 = 12;
+pub const prolog_TERM_GE: i32 = 13;
+pub const prolog_TERM_LT: i32 = 14;
+pub const prolog_TERM_GT: i32 = 15;
+pub const prolog_LE: i32 = 16;
+pub const prolog_GE: i32 = 17;
+pub const prolog_LT: i32 = 18;
+pub const prolog_GT: i32 = 19;
+pub const prolog_UNIFY: i32 = 20;
+pub const prolog_IS: i32 = 21;
+pub const prolog_INT_DIV: i32 = 22;
+pub const prolog_DIV: i32 = 23;
+pub const prolog_MOD: i32 = 24;
+pub const prolog_REM: i32 = 25;
+pub const prolog_POW_XFX: i32 = 26;
+pub const prolog_POW_XFY: i32 = 27;
+pub const prolog_SHL: i32 = 28;
+pub const prolog_SHR: i32 = 29;
+pub const prolog_BIT_AND: i32 = 30;
+pub const prolog_BIT_OR: i32 = 31;
+pub const prolog_BIT_NOT: i32 = 32;
+pub const prolog_PLUS: i32 = 33;
+pub const prolog_MINUS: i32 = 34;
+pub const prolog_STAR: i32 = 35;
+pub const prolog_SLASH: i32 = 36;
+pub const prolog_SEMI: i32 = 37;
+pub const prolog_COMMA: i32 = 38;
+pub const prolog_COLON: i32 = 39;
+pub const prolog_DOT: i32 = 40;
+pub const prolog_GLUED_DOT: i32 = 41;
+pub const prolog_LPAREN: i32 = 42;
+pub const prolog_LAYOUT_LPAREN: i32 = 43;
+pub const prolog_RPAREN: i32 = 44;
+pub const prolog_LBRACK: i32 = 45;
+pub const prolog_RBRACK: i32 = 46;
+pub const prolog_LBRACE: i32 = 47;
+pub const prolog_RBRACE: i32 = 48;
+pub const prolog_BAR: i32 = 49;
+pub const prolog_CUT: i32 = 50;
+pub const prolog_FLOAT: i32 = 51;
+pub const prolog_BINARY: i32 = 52;
+pub const prolog_OCTAL: i32 = 53;
+pub const prolog_HEX: i32 = 54;
+pub const prolog_DECIMAL: i32 = 55;
+pub const prolog_CHARACTER_CODE_CONSTANT: i32 = 56;
+pub const prolog_VARIABLE: i32 = 57;
+pub const prolog_ATOM_ID: i32 = 58;
+pub const prolog_QUOTED_ATOM: i32 = 59;
+pub const prolog_DOUBLE_QUOTED_STRING: i32 = 60;
+pub const prolog_BACK_QUOTED_STRING: i32 = 61;
+pub const prolog_GRAPHIC_ATOM: i32 = 62;
+pub const prolog_WS: i32 = 63;
+pub const prolog_ERROR_CHAR: i32 = 64;
 pub const prolog_EOF: i32 = EOF;
 pub const RULE_p_text: usize = 0;
 pub const RULE_source_item: usize = 1;
@@ -108,31 +110,31 @@ pub const RULE_directive: usize = 2;
 pub const RULE_clause: usize = 3;
 pub const RULE_callable: usize = 4;
 pub const RULE_body: usize = 5;
-pub const RULE_disjunction: usize = 6;
-pub const RULE_if_then: usize = 7;
-pub const RULE_conjunction: usize = 8;
-pub const RULE_term999: usize = 9;
-pub const RULE_relation_expr: usize = 10;
-pub const RULE_relation_op: usize = 11;
-pub const RULE_qualified_expr: usize = 12;
-pub const RULE_additive_expr: usize = 13;
-pub const RULE_multiplicative_expr: usize = 14;
-pub const RULE_power_expr: usize = 15;
-pub const RULE_unary_expr: usize = 16;
-pub const RULE_argument_list: usize = 17;
-pub const RULE_primary: usize = 18;
-pub const RULE_list: usize = 19;
-pub const RULE_list_items: usize = 20;
-pub const RULE_atom: usize = 21;
-pub const RULE_integer: usize = 22;
-pub const ruleNames: [&'static str; 23] = [
+pub const RULE_if_then: usize = 6;
+pub const RULE_conjunction: usize = 7;
+pub const RULE_term999: usize = 8;
+pub const RULE_relation_expr: usize = 9;
+pub const RULE_relation_op: usize = 10;
+pub const RULE_qualified_expr: usize = 11;
+pub const RULE_additive_expr: usize = 12;
+pub const RULE_multiplicative_expr: usize = 13;
+pub const RULE_unary_expr: usize = 14;
+pub const RULE_power_operand: usize = 15;
+pub const RULE_term_list: usize = 16;
+pub const RULE_primary: usize = 17;
+pub const RULE_functor: usize = 18;
+pub const RULE_operator_name: usize = 19;
+pub const RULE_number: usize = 20;
+pub const RULE_list: usize = 21;
+pub const RULE_atom: usize = 22;
+pub const RULE_integer: usize = 23;
+pub const ruleNames: [&'static str; 24] = [
     "p_text",
     "source_item",
     "directive",
     "clause",
     "callable",
     "body",
-    "disjunction",
     "if_then",
     "conjunction",
     "term999",
@@ -141,17 +143,21 @@ pub const ruleNames: [&'static str; 23] = [
     "qualified_expr",
     "additive_expr",
     "multiplicative_expr",
-    "power_expr",
     "unary_expr",
-    "argument_list",
+    "power_operand",
+    "term_list",
     "primary",
+    "functor",
+    "operator_name",
+    "number",
     "list",
-    "list_items",
     "atom",
     "integer",
 ];
 
-pub const _LITERAL_NAMES: [Option<&'static str>; 47] = [
+pub const _LITERAL_NAMES: [Option<&'static str>; 51] = [
+    None,
+    None,
     None,
     Some("':-'"),
     Some("'->'"),
@@ -191,7 +197,9 @@ pub const _LITERAL_NAMES: [Option<&'static str>; 47] = [
     Some("','"),
     Some("':'"),
     Some("'.'"),
+    None,
     Some("'('"),
+    None,
     Some("')'"),
     Some("'['"),
     Some("']'"),
@@ -200,8 +208,10 @@ pub const _LITERAL_NAMES: [Option<&'static str>; 47] = [
     Some("'|'"),
     Some("'!'"),
 ];
-pub const _SYMBOLIC_NAMES: [Option<&'static str>; 63] = [
+pub const _SYMBOLIC_NAMES: [Option<&'static str>; 65] = [
     None,
+    Some("COMMENT"),
+    Some("BLOCK_COMMENT"),
     Some("COLON_DASH"),
     Some("IF_THEN"),
     Some("NOT"),
@@ -240,7 +250,9 @@ pub const _SYMBOLIC_NAMES: [Option<&'static str>; 63] = [
     Some("COMMA"),
     Some("COLON"),
     Some("DOT"),
+    Some("GLUED_DOT"),
     Some("LPAREN"),
+    Some("LAYOUT_LPAREN"),
     Some("RPAREN"),
     Some("LBRACK"),
     Some("RBRACK"),
@@ -261,8 +273,6 @@ pub const _SYMBOLIC_NAMES: [Option<&'static str>; 63] = [
     Some("BACK_QUOTED_STRING"),
     Some("GRAPHIC_ATOM"),
     Some("WS"),
-    Some("COMMENT"),
-    Some("BLOCK_COMMENT"),
     Some("ERROR_CHAR"),
 ];
 lazy_static! {
@@ -537,24 +547,24 @@ where
             //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
             recog.base.enter_outer_alt(None, 1)?;
             {
-                recog.base.set_state(49);
+                recog.base.set_state(51);
                 recog.err_handler.sync(&mut recog.base)?;
                 _la = recog.base.input.la(1);
                 while _la == prolog_COLON_DASH
-                    || (((_la - 54) & !0x3f) == 0 && ((1usize << (_la - 54)) & 19) != 0)
+                    || (((_la - 58) & !0x3f) == 0 && ((1usize << (_la - 58)) & 19) != 0)
                 {
                     {
                         {
                             /*InvokeRule source_item*/
-                            recog.base.set_state(46);
+                            recog.base.set_state(48);
                             recog.source_item()?;
                         }
                     }
-                    recog.base.set_state(51);
+                    recog.base.set_state(53);
                     recog.err_handler.sync(&mut recog.base)?;
                     _la = recog.base.input.la(1);
                 }
-                recog.base.set_state(52);
+                recog.base.set_state(54);
                 recog.base.match_token(prolog_EOF, &mut recog.err_handler)?;
             }
             Ok(())
@@ -659,7 +669,7 @@ where
             .enter_rule(_localctx.clone(), 2, RULE_source_item);
         let mut _localctx: Rc<Source_itemContextAll> = _localctx;
         let result: Result<(), ANTLRError> = (|| {
-            recog.base.set_state(56);
+            recog.base.set_state(58);
             recog.err_handler.sync(&mut recog.base)?;
             match recog.base.input.la(1) {
                 prolog_COLON_DASH => {
@@ -667,7 +677,7 @@ where
                     recog.base.enter_outer_alt(None, 1)?;
                     {
                         /*InvokeRule directive*/
-                        recog.base.set_state(54);
+                        recog.base.set_state(56);
                         recog.directive()?;
                     }
                 }
@@ -677,7 +687,7 @@ where
                     recog.base.enter_outer_alt(None, 2)?;
                     {
                         /*InvokeRule clause*/
-                        recog.base.set_state(55);
+                        recog.base.set_state(57);
                         recog.clause()?;
                     }
                 }
@@ -799,16 +809,16 @@ where
             //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
             recog.base.enter_outer_alt(None, 1)?;
             {
-                recog.base.set_state(58);
+                recog.base.set_state(60);
                 recog
                     .base
                     .match_token(prolog_COLON_DASH, &mut recog.err_handler)?;
 
                 /*InvokeRule body*/
-                recog.base.set_state(59);
+                recog.base.set_state(61);
                 recog.body()?;
 
-                recog.base.set_state(60);
+                recog.base.set_state(62);
                 recog.base.match_token(prolog_DOT, &mut recog.err_handler)?;
             }
             Ok(())
@@ -932,26 +942,26 @@ where
             recog.base.enter_outer_alt(None, 1)?;
             {
                 /*InvokeRule callable*/
-                recog.base.set_state(62);
+                recog.base.set_state(64);
                 recog.callable()?;
 
-                recog.base.set_state(65);
+                recog.base.set_state(67);
                 recog.err_handler.sync(&mut recog.base)?;
                 _la = recog.base.input.la(1);
                 if _la == prolog_COLON_DASH {
                     {
-                        recog.base.set_state(63);
+                        recog.base.set_state(65);
                         recog
                             .base
                             .match_token(prolog_COLON_DASH, &mut recog.err_handler)?;
 
                         /*InvokeRule body*/
-                        recog.base.set_state(64);
+                        recog.base.set_state(66);
                         recog.body()?;
                     }
                 }
 
-                recog.base.set_state(67);
+                recog.base.set_state(69);
                 recog.base.match_token(prolog_DOT, &mut recog.err_handler)?;
             }
             Ok(())
@@ -1041,7 +1051,7 @@ pub trait CallableContextAttrs<'input>:
     {
         self.get_token(prolog_LPAREN, 0)
     }
-    fn argument_list(&self) -> Option<Rc<Argument_listContextAll<'input>>>
+    fn term_list(&self) -> Option<Rc<Term_listContextAll<'input>>>
     where
         Self: Sized,
     {
@@ -1075,24 +1085,24 @@ where
             recog.base.enter_outer_alt(None, 1)?;
             {
                 /*InvokeRule atom*/
-                recog.base.set_state(69);
+                recog.base.set_state(71);
                 recog.atom()?;
 
-                recog.base.set_state(74);
+                recog.base.set_state(76);
                 recog.err_handler.sync(&mut recog.base)?;
                 _la = recog.base.input.la(1);
                 if _la == prolog_LPAREN {
                     {
-                        recog.base.set_state(70);
+                        recog.base.set_state(72);
                         recog
                             .base
                             .match_token(prolog_LPAREN, &mut recog.err_handler)?;
 
-                        /*InvokeRule argument_list*/
-                        recog.base.set_state(71);
-                        recog.argument_list()?;
+                        /*InvokeRule term_list*/
+                        recog.base.set_state(73);
+                        recog.term_list()?;
 
-                        recog.base.set_state(72);
+                        recog.base.set_state(74);
                         recog
                             .base
                             .match_token(prolog_RPAREN, &mut recog.err_handler)?;
@@ -1172,7 +1182,21 @@ impl<'input> BodyContextExt<'input> {
 pub trait BodyContextAttrs<'input>:
     prologParserContext<'input> + BorrowMut<BodyContextExt<'input>>
 {
-    fn disjunction(&self) -> Option<Rc<DisjunctionContextAll<'input>>>
+    fn if_then(&self) -> Option<Rc<If_thenContextAll<'input>>>
+    where
+        Self: Sized,
+    {
+        self.child_of_type(0)
+    }
+    /// Retrieves first TerminalNode corresponding to token SEMI
+    /// Returns `None` if there is no child corresponding to token SEMI
+    fn SEMI(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_SEMI, 0)
+    }
+    fn body(&self) -> Option<Rc<BodyContextAll<'input>>>
     where
         Self: Sized,
     {
@@ -1192,123 +1216,6 @@ where
         let mut _localctx = BodyContextExt::new(_parentctx.clone(), recog.base.get_state());
         recog.base.enter_rule(_localctx.clone(), 10, RULE_body);
         let mut _localctx: Rc<BodyContextAll> = _localctx;
-        let result: Result<(), ANTLRError> = (|| {
-            //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
-            recog.base.enter_outer_alt(None, 1)?;
-            {
-                /*InvokeRule disjunction*/
-                recog.base.set_state(76);
-                recog.disjunction()?;
-            }
-            Ok(())
-        })();
-        match result {
-            Ok(_) => {}
-            Err(e @ ANTLRError::FallThrough(_)) => return Err(e),
-            Err(ref re) => {
-                //_localctx.exception = re;
-                recog.err_handler.report_error(&mut recog.base, re);
-                recog.err_handler.recover(&mut recog.base, re)?;
-            }
-        }
-        recog.base.exit_rule()?;
-
-        Ok(_localctx)
-    }
-}
-//------------------- disjunction ----------------
-pub type DisjunctionContextAll<'input> = DisjunctionContext<'input>;
-
-pub type DisjunctionContext<'input> = BaseParserRuleContext<'input, DisjunctionContextExt<'input>>;
-
-#[derive(Clone)]
-pub struct DisjunctionContextExt<'input> {
-    ph: PhantomData<&'input str>,
-}
-
-impl<'input> prologParserContext<'input> for DisjunctionContext<'input> {}
-
-impl<'input, 'a> Listenable<dyn prologListener<'input> + 'a> for DisjunctionContext<'input> {
-    fn enter(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
-        listener.enter_every_rule(self)?;
-        listener.enter_disjunction(self);
-        Ok(())
-    }
-    fn exit(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
-        listener.exit_disjunction(self);
-        listener.exit_every_rule(self)?;
-        Ok(())
-    }
-}
-
-impl<'input, 'a> Visitable<dyn prologVisitor<'input> + 'a> for DisjunctionContext<'input> {
-    fn accept(&self, visitor: &mut (dyn prologVisitor<'input> + 'a)) {
-        visitor.visit_disjunction(self);
-    }
-}
-
-impl<'input> CustomRuleContext<'input> for DisjunctionContextExt<'input> {
-    type TF = LocalTokenFactory<'input>;
-    type Ctx = prologParserContextType;
-    fn get_rule_index(&self) -> usize {
-        RULE_disjunction
-    }
-    //fn type_rule_index() -> usize where Self: Sized { RULE_disjunction }
-}
-antlr4rust::tid! {DisjunctionContextExt<'a>}
-
-impl<'input> DisjunctionContextExt<'input> {
-    fn new(
-        parent: Option<Rc<dyn prologParserContext<'input> + 'input>>,
-        invoking_state: i32,
-    ) -> Rc<DisjunctionContextAll<'input>> {
-        Rc::new(BaseParserRuleContext::new_parser_ctx(
-            parent,
-            invoking_state,
-            DisjunctionContextExt { ph: PhantomData },
-        ))
-    }
-}
-
-pub trait DisjunctionContextAttrs<'input>:
-    prologParserContext<'input> + BorrowMut<DisjunctionContextExt<'input>>
-{
-    fn if_then(&self) -> Option<Rc<If_thenContextAll<'input>>>
-    where
-        Self: Sized,
-    {
-        self.child_of_type(0)
-    }
-    /// Retrieves first TerminalNode corresponding to token SEMI
-    /// Returns `None` if there is no child corresponding to token SEMI
-    fn SEMI(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
-    where
-        Self: Sized,
-    {
-        self.get_token(prolog_SEMI, 0)
-    }
-    fn disjunction(&self) -> Option<Rc<DisjunctionContextAll<'input>>>
-    where
-        Self: Sized,
-    {
-        self.child_of_type(0)
-    }
-}
-
-impl<'input> DisjunctionContextAttrs<'input> for DisjunctionContext<'input> {}
-
-impl<'input, I> prologParser<'input, I>
-where
-    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
-{
-    pub fn disjunction(&mut self) -> Result<Rc<DisjunctionContextAll<'input>>, ANTLRError> {
-        let mut recog = self;
-        let _parentctx = recog.ctx.take();
-        let mut _localctx = DisjunctionContextExt::new(_parentctx.clone(), recog.base.get_state());
-        recog
-            .base
-            .enter_rule(_localctx.clone(), 12, RULE_disjunction);
-        let mut _localctx: Rc<DisjunctionContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
             //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
@@ -1328,9 +1235,9 @@ where
                             .base
                             .match_token(prolog_SEMI, &mut recog.err_handler)?;
 
-                        /*InvokeRule disjunction*/
+                        /*InvokeRule body*/
                         recog.base.set_state(80);
-                        recog.disjunction()?;
+                        recog.body()?;
                     }
                 }
             }
@@ -1439,7 +1346,7 @@ where
         let mut recog = self;
         let _parentctx = recog.ctx.take();
         let mut _localctx = If_thenContextExt::new(_parentctx.clone(), recog.base.get_state());
-        recog.base.enter_rule(_localctx.clone(), 14, RULE_if_then);
+        recog.base.enter_rule(_localctx.clone(), 12, RULE_if_then);
         let mut _localctx: Rc<If_thenContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
@@ -1573,7 +1480,7 @@ where
         let mut _localctx = ConjunctionContextExt::new(_parentctx.clone(), recog.base.get_state());
         recog
             .base
-            .enter_rule(_localctx.clone(), 16, RULE_conjunction);
+            .enter_rule(_localctx.clone(), 14, RULE_conjunction);
         let mut _localctx: Rc<ConjunctionContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
@@ -1673,6 +1580,12 @@ impl<'input> Term999ContextExt<'input> {
 pub trait Term999ContextAttrs<'input>:
     prologParserContext<'input> + BorrowMut<Term999ContextExt<'input>>
 {
+    fn relation_expr(&self) -> Option<Rc<Relation_exprContextAll<'input>>>
+    where
+        Self: Sized,
+    {
+        self.child_of_type(0)
+    }
     /// Retrieves first TerminalNode corresponding to token NOT
     /// Returns `None` if there is no child corresponding to token NOT
     fn NOT(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
@@ -1682,12 +1595,6 @@ pub trait Term999ContextAttrs<'input>:
         self.get_token(prolog_NOT, 0)
     }
     fn term999(&self) -> Option<Rc<Term999ContextAll<'input>>>
-    where
-        Self: Sized,
-    {
-        self.child_of_type(0)
-    }
-    fn relation_expr(&self) -> Option<Rc<Relation_exprContextAll<'input>>>
     where
         Self: Sized,
     {
@@ -1705,56 +1612,35 @@ where
         let mut recog = self;
         let _parentctx = recog.ctx.take();
         let mut _localctx = Term999ContextExt::new(_parentctx.clone(), recog.base.get_state());
-        recog.base.enter_rule(_localctx.clone(), 18, RULE_term999);
+        recog.base.enter_rule(_localctx.clone(), 16, RULE_term999);
         let mut _localctx: Rc<Term999ContextAll> = _localctx;
         let result: Result<(), ANTLRError> = (|| {
             recog.base.set_state(96);
             recog.err_handler.sync(&mut recog.base)?;
-            match recog.base.input.la(1) {
-                prolog_NOT => {
+            match recog.interpreter.adaptive_predict(7, &mut recog.base)? {
+                1 => {
                     //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
                     recog.base.enter_outer_alt(None, 1)?;
                     {
+                        /*InvokeRule relation_expr*/
                         recog.base.set_state(93);
+                        recog.relation_expr()?;
+                    }
+                }
+                2 => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 2)?;
+                    recog.base.enter_outer_alt(None, 2)?;
+                    {
+                        recog.base.set_state(94);
                         recog.base.match_token(prolog_NOT, &mut recog.err_handler)?;
 
                         /*InvokeRule term999*/
-                        recog.base.set_state(94);
+                        recog.base.set_state(95);
                         recog.term999()?;
                     }
                 }
 
-                prolog_BIT_NOT
-                | prolog_PLUS
-                | prolog_MINUS
-                | prolog_LPAREN
-                | prolog_LBRACK
-                | prolog_LBRACE
-                | prolog_CUT
-                | prolog_FLOAT
-                | prolog_BINARY
-                | prolog_OCTAL
-                | prolog_HEX
-                | prolog_DECIMAL
-                | prolog_CHARACTER_CODE_CONSTANT
-                | prolog_VARIABLE
-                | prolog_ATOM_ID
-                | prolog_QUOTED_ATOM
-                | prolog_DOUBLE_QUOTED_STRING
-                | prolog_BACK_QUOTED_STRING
-                | prolog_GRAPHIC_ATOM => {
-                    //recog.base.enter_outer_alt(_localctx.clone(), 2)?;
-                    recog.base.enter_outer_alt(None, 2)?;
-                    {
-                        /*InvokeRule relation_expr*/
-                        recog.base.set_state(95);
-                        recog.relation_expr()?;
-                    }
-                }
-
-                _ => Err(ANTLRError::NoAltError(NoViableAltError::new(
-                    &mut recog.base,
-                )))?,
+                _ => {}
             }
             Ok(())
         })();
@@ -1863,7 +1749,7 @@ where
             Relation_exprContextExt::new(_parentctx.clone(), recog.base.get_state());
         recog
             .base
-            .enter_rule(_localctx.clone(), 20, RULE_relation_expr);
+            .enter_rule(_localctx.clone(), 18, RULE_relation_expr);
         let mut _localctx: Rc<Relation_exprContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
@@ -1877,7 +1763,7 @@ where
                 recog.base.set_state(102);
                 recog.err_handler.sync(&mut recog.base)?;
                 _la = recog.base.input.la(1);
-                if (((_la) & !0x3f) == 0 && ((1usize << _la) & 1048560) != 0) {
+                if (((_la) & !0x3f) == 0 && ((1usize << _la) & 4194240) != 0) {
                     {
                         /*InvokeRule relation_op*/
                         recog.base.set_state(99);
@@ -2104,7 +1990,7 @@ where
         let mut _localctx = Relation_opContextExt::new(_parentctx.clone(), recog.base.get_state());
         recog
             .base
-            .enter_rule(_localctx.clone(), 22, RULE_relation_op);
+            .enter_rule(_localctx.clone(), 20, RULE_relation_op);
         let mut _localctx: Rc<Relation_opContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
@@ -2113,7 +1999,7 @@ where
             {
                 recog.base.set_state(104);
                 _la = recog.base.input.la(1);
-                if { !(((_la) & !0x3f) == 0 && ((1usize << _la) & 1048560) != 0) } {
+                if { !(((_la) & !0x3f) == 0 && ((1usize << _la) & 4194240) != 0) } {
                     recog.err_handler.recover_inline(&mut recog.base)?;
                 } else {
                     if recog.base.input.la(1) == TOKEN_EOF {
@@ -2232,7 +2118,7 @@ where
             Qualified_exprContextExt::new(_parentctx.clone(), recog.base.get_state());
         recog
             .base
-            .enter_rule(_localctx.clone(), 24, RULE_qualified_expr);
+            .enter_rule(_localctx.clone(), 22, RULE_qualified_expr);
         let mut _localctx: Rc<Qualified_exprContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
@@ -2283,6 +2169,12 @@ pub type Additive_exprContext<'input> =
 
 #[derive(Clone)]
 pub struct Additive_exprContextExt<'input> {
+    pub PLUS: Option<TokenType<'input>>,
+    pub ops: Vec<TokenType<'input>>,
+    pub MINUS: Option<TokenType<'input>>,
+    pub BIT_AND: Option<TokenType<'input>>,
+    pub BIT_OR: Option<TokenType<'input>>,
+    pub _tset280: Option<TokenType<'input>>,
     ph: PhantomData<&'input str>,
 }
 
@@ -2325,7 +2217,16 @@ impl<'input> Additive_exprContextExt<'input> {
         Rc::new(BaseParserRuleContext::new_parser_ctx(
             parent,
             invoking_state,
-            Additive_exprContextExt { ph: PhantomData },
+            Additive_exprContextExt {
+                PLUS: None,
+                MINUS: None,
+                BIT_AND: None,
+                BIT_OR: None,
+                _tset280: None,
+                ops: Vec::new(),
+
+                ph: PhantomData,
+            },
         ))
     }
 }
@@ -2420,7 +2321,7 @@ where
             Additive_exprContextExt::new(_parentctx.clone(), recog.base.get_state());
         recog
             .base
-            .enter_rule(_localctx.clone(), 26, RULE_additive_expr);
+            .enter_rule(_localctx.clone(), 24, RULE_additive_expr);
         let mut _localctx: Rc<Additive_exprContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
@@ -2434,15 +2335,20 @@ where
                 recog.base.set_state(116);
                 recog.err_handler.sync(&mut recog.base)?;
                 _la = recog.base.input.la(1);
-                while (((_la - 28) & !0x3f) == 0 && ((1usize << (_la - 28)) & 27) != 0) {
+                while (((_la - 30) & !0x3f) == 0 && ((1usize << (_la - 30)) & 27) != 0) {
                     {
                         {
                             recog.base.set_state(112);
+                            cast_mut::<_, Additive_exprContext>(&mut _localctx)._tset280 =
+                                recog.base.input.lt(1).cloned();
+
                             _la = recog.base.input.la(1);
                             if {
-                                !(((_la - 28) & !0x3f) == 0 && ((1usize << (_la - 28)) & 27) != 0)
+                                !(((_la - 30) & !0x3f) == 0 && ((1usize << (_la - 30)) & 27) != 0)
                             } {
-                                recog.err_handler.recover_inline(&mut recog.base)?;
+                                let tmp = recog.err_handler.recover_inline(&mut recog.base)?;
+                                cast_mut::<_, Additive_exprContext>(&mut _localctx)._tset280 =
+                                    Some(tmp.clone());
                             } else {
                                 if recog.base.input.la(1) == TOKEN_EOF {
                                     recog.base.matched_eof = true
@@ -2450,6 +2356,14 @@ where
                                 recog.err_handler.report_match(&mut recog.base);
                                 recog.base.consume(&mut recog.err_handler);
                             }
+                            let temp = cast_mut::<_, Additive_exprContext>(&mut _localctx)
+                                ._tset280
+                                .clone()
+                                .unwrap();
+                            cast_mut::<_, Additive_exprContext>(&mut _localctx)
+                                .ops
+                                .push(temp);
+
                             /*InvokeRule multiplicative_expr*/
                             recog.base.set_state(113);
                             recog.multiplicative_expr()?;
@@ -2484,6 +2398,16 @@ pub type Multiplicative_exprContext<'input> =
 
 #[derive(Clone)]
 pub struct Multiplicative_exprContextExt<'input> {
+    pub STAR: Option<TokenType<'input>>,
+    pub ops: Vec<TokenType<'input>>,
+    pub SLASH: Option<TokenType<'input>>,
+    pub INT_DIV: Option<TokenType<'input>>,
+    pub DIV: Option<TokenType<'input>>,
+    pub MOD: Option<TokenType<'input>>,
+    pub REM: Option<TokenType<'input>>,
+    pub SHL: Option<TokenType<'input>>,
+    pub SHR: Option<TokenType<'input>>,
+    pub _tset313: Option<TokenType<'input>>,
     ph: PhantomData<&'input str>,
 }
 
@@ -2528,7 +2452,20 @@ impl<'input> Multiplicative_exprContextExt<'input> {
         Rc::new(BaseParserRuleContext::new_parser_ctx(
             parent,
             invoking_state,
-            Multiplicative_exprContextExt { ph: PhantomData },
+            Multiplicative_exprContextExt {
+                STAR: None,
+                SLASH: None,
+                INT_DIV: None,
+                DIV: None,
+                MOD: None,
+                REM: None,
+                SHL: None,
+                SHR: None,
+                _tset313: None,
+                ops: Vec::new(),
+
+                ph: PhantomData,
+            },
         ))
     }
 }
@@ -2536,13 +2473,13 @@ impl<'input> Multiplicative_exprContextExt<'input> {
 pub trait Multiplicative_exprContextAttrs<'input>:
     prologParserContext<'input> + BorrowMut<Multiplicative_exprContextExt<'input>>
 {
-    fn power_expr_all(&self) -> Vec<Rc<Power_exprContextAll<'input>>>
+    fn unary_expr_all(&self) -> Vec<Rc<Unary_exprContextAll<'input>>>
     where
         Self: Sized,
     {
         self.children_of_type()
     }
-    fn power_expr(&self, i: usize) -> Option<Rc<Power_exprContextAll<'input>>>
+    fn unary_expr(&self, i: usize) -> Option<Rc<Unary_exprContextAll<'input>>>
     where
         Self: Sized,
     {
@@ -2685,30 +2622,35 @@ where
             Multiplicative_exprContextExt::new(_parentctx.clone(), recog.base.get_state());
         recog
             .base
-            .enter_rule(_localctx.clone(), 28, RULE_multiplicative_expr);
+            .enter_rule(_localctx.clone(), 26, RULE_multiplicative_expr);
         let mut _localctx: Rc<Multiplicative_exprContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
             //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
             recog.base.enter_outer_alt(None, 1)?;
             {
-                /*InvokeRule power_expr*/
+                /*InvokeRule unary_expr*/
                 recog.base.set_state(119);
-                recog.power_expr()?;
+                recog.unary_expr()?;
 
                 recog.base.set_state(124);
                 recog.err_handler.sync(&mut recog.base)?;
                 _la = recog.base.input.la(1);
-                while (((_la - 20) & !0x3f) == 0 && ((1usize << (_la - 20)) & 24783) != 0) {
+                while (((_la - 22) & !0x3f) == 0 && ((1usize << (_la - 22)) & 24783) != 0) {
                     {
                         {
                             recog.base.set_state(120);
+                            cast_mut::<_, Multiplicative_exprContext>(&mut _localctx)._tset313 =
+                                recog.base.input.lt(1).cloned();
+
                             _la = recog.base.input.la(1);
                             if {
-                                !(((_la - 20) & !0x3f) == 0
-                                    && ((1usize << (_la - 20)) & 24783) != 0)
+                                !(((_la - 22) & !0x3f) == 0
+                                    && ((1usize << (_la - 22)) & 24783) != 0)
                             } {
-                                recog.err_handler.recover_inline(&mut recog.base)?;
+                                let tmp = recog.err_handler.recover_inline(&mut recog.base)?;
+                                cast_mut::<_, Multiplicative_exprContext>(&mut _localctx)
+                                    ._tset313 = Some(tmp.clone());
                             } else {
                                 if recog.base.input.la(1) == TOKEN_EOF {
                                     recog.base.matched_eof = true
@@ -2716,118 +2658,23 @@ where
                                 recog.err_handler.report_match(&mut recog.base);
                                 recog.base.consume(&mut recog.err_handler);
                             }
-                            /*InvokeRule power_expr*/
+                            let temp = cast_mut::<_, Multiplicative_exprContext>(&mut _localctx)
+                                ._tset313
+                                .clone()
+                                .unwrap();
+                            cast_mut::<_, Multiplicative_exprContext>(&mut _localctx)
+                                .ops
+                                .push(temp);
+
+                            /*InvokeRule unary_expr*/
                             recog.base.set_state(121);
-                            recog.power_expr()?;
+                            recog.unary_expr()?;
                         }
                     }
                     recog.base.set_state(126);
                     recog.err_handler.sync(&mut recog.base)?;
                     _la = recog.base.input.la(1);
                 }
-            }
-            Ok(())
-        })();
-        match result {
-            Ok(_) => {}
-            Err(e @ ANTLRError::FallThrough(_)) => return Err(e),
-            Err(ref re) => {
-                //_localctx.exception = re;
-                recog.err_handler.report_error(&mut recog.base, re);
-                recog.err_handler.recover(&mut recog.base, re)?;
-            }
-        }
-        recog.base.exit_rule()?;
-
-        Ok(_localctx)
-    }
-}
-//------------------- power_expr ----------------
-pub type Power_exprContextAll<'input> = Power_exprContext<'input>;
-
-pub type Power_exprContext<'input> = BaseParserRuleContext<'input, Power_exprContextExt<'input>>;
-
-#[derive(Clone)]
-pub struct Power_exprContextExt<'input> {
-    ph: PhantomData<&'input str>,
-}
-
-impl<'input> prologParserContext<'input> for Power_exprContext<'input> {}
-
-impl<'input, 'a> Listenable<dyn prologListener<'input> + 'a> for Power_exprContext<'input> {
-    fn enter(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
-        listener.enter_every_rule(self)?;
-        listener.enter_power_expr(self);
-        Ok(())
-    }
-    fn exit(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
-        listener.exit_power_expr(self);
-        listener.exit_every_rule(self)?;
-        Ok(())
-    }
-}
-
-impl<'input, 'a> Visitable<dyn prologVisitor<'input> + 'a> for Power_exprContext<'input> {
-    fn accept(&self, visitor: &mut (dyn prologVisitor<'input> + 'a)) {
-        visitor.visit_power_expr(self);
-    }
-}
-
-impl<'input> CustomRuleContext<'input> for Power_exprContextExt<'input> {
-    type TF = LocalTokenFactory<'input>;
-    type Ctx = prologParserContextType;
-    fn get_rule_index(&self) -> usize {
-        RULE_power_expr
-    }
-    //fn type_rule_index() -> usize where Self: Sized { RULE_power_expr }
-}
-antlr4rust::tid! {Power_exprContextExt<'a>}
-
-impl<'input> Power_exprContextExt<'input> {
-    fn new(
-        parent: Option<Rc<dyn prologParserContext<'input> + 'input>>,
-        invoking_state: i32,
-    ) -> Rc<Power_exprContextAll<'input>> {
-        Rc::new(BaseParserRuleContext::new_parser_ctx(
-            parent,
-            invoking_state,
-            Power_exprContextExt { ph: PhantomData },
-        ))
-    }
-}
-
-pub trait Power_exprContextAttrs<'input>:
-    prologParserContext<'input> + BorrowMut<Power_exprContextExt<'input>>
-{
-    fn unary_expr(&self) -> Option<Rc<Unary_exprContextAll<'input>>>
-    where
-        Self: Sized,
-    {
-        self.child_of_type(0)
-    }
-}
-
-impl<'input> Power_exprContextAttrs<'input> for Power_exprContext<'input> {}
-
-impl<'input, I> prologParser<'input, I>
-where
-    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
-{
-    pub fn power_expr(&mut self) -> Result<Rc<Power_exprContextAll<'input>>, ANTLRError> {
-        let mut recog = self;
-        let _parentctx = recog.ctx.take();
-        let mut _localctx = Power_exprContextExt::new(_parentctx.clone(), recog.base.get_state());
-        recog
-            .base
-            .enter_rule(_localctx.clone(), 30, RULE_power_expr);
-        let mut _localctx: Rc<Power_exprContextAll> = _localctx;
-        let result: Result<(), ANTLRError> = (|| {
-            //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
-            recog.base.enter_outer_alt(None, 1)?;
-            {
-                /*InvokeRule unary_expr*/
-                recog.base.set_state(127);
-                recog.unary_expr()?;
             }
             Ok(())
         })();
@@ -2852,6 +2699,7 @@ pub type Unary_exprContext<'input> = BaseParserRuleContext<'input, Unary_exprCon
 
 #[derive(Clone)]
 pub struct Unary_exprContextExt<'input> {
+    pub op: Option<TokenType<'input>>,
     ph: PhantomData<&'input str>,
 }
 
@@ -2894,7 +2742,11 @@ impl<'input> Unary_exprContextExt<'input> {
         Rc::new(BaseParserRuleContext::new_parser_ctx(
             parent,
             invoking_state,
-            Unary_exprContextExt { ph: PhantomData },
+            Unary_exprContextExt {
+                op: None,
+
+                ph: PhantomData,
+            },
         ))
     }
 }
@@ -2902,7 +2754,35 @@ impl<'input> Unary_exprContextExt<'input> {
 pub trait Unary_exprContextAttrs<'input>:
     prologParserContext<'input> + BorrowMut<Unary_exprContextExt<'input>>
 {
-    fn power_expr(&self) -> Option<Rc<Power_exprContextAll<'input>>>
+    fn primary(&self) -> Option<Rc<PrimaryContextAll<'input>>>
+    where
+        Self: Sized,
+    {
+        self.child_of_type(0)
+    }
+    /// Retrieves first TerminalNode corresponding to token POW_XFX
+    /// Returns `None` if there is no child corresponding to token POW_XFX
+    fn POW_XFX(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_POW_XFX, 0)
+    }
+    fn power_operand(&self) -> Option<Rc<Power_operandContextAll<'input>>>
+    where
+        Self: Sized,
+    {
+        self.child_of_type(0)
+    }
+    /// Retrieves first TerminalNode corresponding to token POW_XFY
+    /// Returns `None` if there is no child corresponding to token POW_XFY
+    fn POW_XFY(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_POW_XFY, 0)
+    }
+    fn unary_expr(&self) -> Option<Rc<Unary_exprContextAll<'input>>>
     where
         Self: Sized,
     {
@@ -2932,34 +2812,6 @@ pub trait Unary_exprContextAttrs<'input>:
     {
         self.get_token(prolog_BIT_NOT, 0)
     }
-    fn primary_all(&self) -> Vec<Rc<PrimaryContextAll<'input>>>
-    where
-        Self: Sized,
-    {
-        self.children_of_type()
-    }
-    fn primary(&self, i: usize) -> Option<Rc<PrimaryContextAll<'input>>>
-    where
-        Self: Sized,
-    {
-        self.child_of_type(i)
-    }
-    /// Retrieves first TerminalNode corresponding to token POW_XFX
-    /// Returns `None` if there is no child corresponding to token POW_XFX
-    fn POW_XFX(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
-    where
-        Self: Sized,
-    {
-        self.get_token(prolog_POW_XFX, 0)
-    }
-    /// Retrieves first TerminalNode corresponding to token POW_XFY
-    /// Returns `None` if there is no child corresponding to token POW_XFY
-    fn POW_XFY(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
-    where
-        Self: Sized,
-    {
-        self.get_token(prolog_POW_XFY, 0)
-    }
 }
 
 impl<'input> Unary_exprContextAttrs<'input> for Unary_exprContext<'input> {}
@@ -2974,83 +2826,47 @@ where
         let mut _localctx = Unary_exprContextExt::new(_parentctx.clone(), recog.base.get_state());
         recog
             .base
-            .enter_rule(_localctx.clone(), 32, RULE_unary_expr);
+            .enter_rule(_localctx.clone(), 28, RULE_unary_expr);
         let mut _localctx: Rc<Unary_exprContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
-            recog.base.set_state(138);
+            recog.base.set_state(136);
             recog.err_handler.sync(&mut recog.base)?;
-            match recog.base.input.la(1) {
-                prolog_BIT_NOT | prolog_PLUS | prolog_MINUS => {
+            match recog.interpreter.adaptive_predict(13, &mut recog.base)? {
+                1 => {
                     //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
                     recog.base.enter_outer_alt(None, 1)?;
                     {
-                        recog.base.set_state(129);
-                        _la = recog.base.input.la(1);
-                        if { !(((_la - 30) & !0x3f) == 0 && ((1usize << (_la - 30)) & 7) != 0) } {
-                            recog.err_handler.recover_inline(&mut recog.base)?;
-                        } else {
-                            if recog.base.input.la(1) == TOKEN_EOF {
-                                recog.base.matched_eof = true
-                            };
-                            recog.err_handler.report_match(&mut recog.base);
-                            recog.base.consume(&mut recog.err_handler);
-                        }
-                        /*InvokeRule power_expr*/
-                        recog.base.set_state(130);
-                        recog.power_expr()?;
-                    }
-                }
-
-                prolog_LPAREN
-                | prolog_LBRACK
-                | prolog_LBRACE
-                | prolog_CUT
-                | prolog_FLOAT
-                | prolog_BINARY
-                | prolog_OCTAL
-                | prolog_HEX
-                | prolog_DECIMAL
-                | prolog_CHARACTER_CODE_CONSTANT
-                | prolog_VARIABLE
-                | prolog_ATOM_ID
-                | prolog_QUOTED_ATOM
-                | prolog_DOUBLE_QUOTED_STRING
-                | prolog_BACK_QUOTED_STRING
-                | prolog_GRAPHIC_ATOM => {
-                    //recog.base.enter_outer_alt(_localctx.clone(), 2)?;
-                    recog.base.enter_outer_alt(None, 2)?;
-                    {
                         /*InvokeRule primary*/
-                        recog.base.set_state(131);
+                        recog.base.set_state(127);
                         recog.primary()?;
 
-                        recog.base.set_state(136);
+                        recog.base.set_state(132);
                         recog.err_handler.sync(&mut recog.base)?;
                         match recog.base.input.la(1) {
                             prolog_POW_XFX => {
                                 {
-                                    recog.base.set_state(132);
+                                    recog.base.set_state(128);
                                     recog
                                         .base
                                         .match_token(prolog_POW_XFX, &mut recog.err_handler)?;
 
-                                    /*InvokeRule primary*/
-                                    recog.base.set_state(133);
-                                    recog.primary()?;
+                                    /*InvokeRule power_operand*/
+                                    recog.base.set_state(129);
+                                    recog.power_operand()?;
                                 }
                             }
 
                             prolog_POW_XFY => {
                                 {
-                                    recog.base.set_state(134);
+                                    recog.base.set_state(130);
                                     recog
                                         .base
                                         .match_token(prolog_POW_XFY, &mut recog.err_handler)?;
 
-                                    /*InvokeRule power_expr*/
-                                    recog.base.set_state(135);
-                                    recog.power_expr()?;
+                                    /*InvokeRule unary_expr*/
+                                    recog.base.set_state(131);
+                                    recog.unary_expr()?;
                                 }
                             }
 
@@ -3069,10 +2885,32 @@ where
                         }
                     }
                 }
+                2 => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 2)?;
+                    recog.base.enter_outer_alt(None, 2)?;
+                    {
+                        recog.base.set_state(134);
+                        cast_mut::<_, Unary_exprContext>(&mut _localctx).op =
+                            recog.base.input.lt(1).cloned();
 
-                _ => Err(ANTLRError::NoAltError(NoViableAltError::new(
-                    &mut recog.base,
-                )))?,
+                        _la = recog.base.input.la(1);
+                        if { !(((_la - 32) & !0x3f) == 0 && ((1usize << (_la - 32)) & 7) != 0) } {
+                            let tmp = recog.err_handler.recover_inline(&mut recog.base)?;
+                            cast_mut::<_, Unary_exprContext>(&mut _localctx).op = Some(tmp.clone());
+                        } else {
+                            if recog.base.input.la(1) == TOKEN_EOF {
+                                recog.base.matched_eof = true
+                            };
+                            recog.err_handler.report_match(&mut recog.base);
+                            recog.base.consume(&mut recog.err_handler);
+                        }
+                        /*InvokeRule unary_expr*/
+                        recog.base.set_state(135);
+                        recog.unary_expr()?;
+                    }
+                }
+
+                _ => {}
             }
             Ok(())
         })();
@@ -3090,63 +2928,203 @@ where
         Ok(_localctx)
     }
 }
-//------------------- argument_list ----------------
-pub type Argument_listContextAll<'input> = Argument_listContext<'input>;
+//------------------- power_operand ----------------
+pub type Power_operandContextAll<'input> = Power_operandContext<'input>;
 
-pub type Argument_listContext<'input> =
-    BaseParserRuleContext<'input, Argument_listContextExt<'input>>;
+pub type Power_operandContext<'input> =
+    BaseParserRuleContext<'input, Power_operandContextExt<'input>>;
 
 #[derive(Clone)]
-pub struct Argument_listContextExt<'input> {
+pub struct Power_operandContextExt<'input> {
     ph: PhantomData<&'input str>,
 }
 
-impl<'input> prologParserContext<'input> for Argument_listContext<'input> {}
+impl<'input> prologParserContext<'input> for Power_operandContext<'input> {}
 
-impl<'input, 'a> Listenable<dyn prologListener<'input> + 'a> for Argument_listContext<'input> {
+impl<'input, 'a> Listenable<dyn prologListener<'input> + 'a> for Power_operandContext<'input> {
     fn enter(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
         listener.enter_every_rule(self)?;
-        listener.enter_argument_list(self);
+        listener.enter_power_operand(self);
         Ok(())
     }
     fn exit(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
-        listener.exit_argument_list(self);
+        listener.exit_power_operand(self);
         listener.exit_every_rule(self)?;
         Ok(())
     }
 }
 
-impl<'input, 'a> Visitable<dyn prologVisitor<'input> + 'a> for Argument_listContext<'input> {
+impl<'input, 'a> Visitable<dyn prologVisitor<'input> + 'a> for Power_operandContext<'input> {
     fn accept(&self, visitor: &mut (dyn prologVisitor<'input> + 'a)) {
-        visitor.visit_argument_list(self);
+        visitor.visit_power_operand(self);
     }
 }
 
-impl<'input> CustomRuleContext<'input> for Argument_listContextExt<'input> {
+impl<'input> CustomRuleContext<'input> for Power_operandContextExt<'input> {
     type TF = LocalTokenFactory<'input>;
     type Ctx = prologParserContextType;
     fn get_rule_index(&self) -> usize {
-        RULE_argument_list
+        RULE_power_operand
     }
-    //fn type_rule_index() -> usize where Self: Sized { RULE_argument_list }
+    //fn type_rule_index() -> usize where Self: Sized { RULE_power_operand }
 }
-antlr4rust::tid! {Argument_listContextExt<'a>}
+antlr4rust::tid! {Power_operandContextExt<'a>}
 
-impl<'input> Argument_listContextExt<'input> {
+impl<'input> Power_operandContextExt<'input> {
     fn new(
         parent: Option<Rc<dyn prologParserContext<'input> + 'input>>,
         invoking_state: i32,
-    ) -> Rc<Argument_listContextAll<'input>> {
+    ) -> Rc<Power_operandContextAll<'input>> {
         Rc::new(BaseParserRuleContext::new_parser_ctx(
             parent,
             invoking_state,
-            Argument_listContextExt { ph: PhantomData },
+            Power_operandContextExt { ph: PhantomData },
         ))
     }
 }
 
-pub trait Argument_listContextAttrs<'input>:
-    prologParserContext<'input> + BorrowMut<Argument_listContextExt<'input>>
+pub trait Power_operandContextAttrs<'input>:
+    prologParserContext<'input> + BorrowMut<Power_operandContextExt<'input>>
+{
+    fn primary(&self) -> Option<Rc<PrimaryContextAll<'input>>>
+    where
+        Self: Sized,
+    {
+        self.child_of_type(0)
+    }
+    /// Retrieves first TerminalNode corresponding to token MINUS
+    /// Returns `None` if there is no child corresponding to token MINUS
+    fn MINUS(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_MINUS, 0)
+    }
+    fn number(&self) -> Option<Rc<NumberContextAll<'input>>>
+    where
+        Self: Sized,
+    {
+        self.child_of_type(0)
+    }
+}
+
+impl<'input> Power_operandContextAttrs<'input> for Power_operandContext<'input> {}
+
+impl<'input, I> prologParser<'input, I>
+where
+    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
+{
+    pub fn power_operand(&mut self) -> Result<Rc<Power_operandContextAll<'input>>, ANTLRError> {
+        let mut recog = self;
+        let _parentctx = recog.ctx.take();
+        let mut _localctx =
+            Power_operandContextExt::new(_parentctx.clone(), recog.base.get_state());
+        recog
+            .base
+            .enter_rule(_localctx.clone(), 30, RULE_power_operand);
+        let mut _localctx: Rc<Power_operandContextAll> = _localctx;
+        let result: Result<(), ANTLRError> = (|| {
+            recog.base.set_state(141);
+            recog.err_handler.sync(&mut recog.base)?;
+            match recog.interpreter.adaptive_predict(14, &mut recog.base)? {
+                1 => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
+                    recog.base.enter_outer_alt(None, 1)?;
+                    {
+                        /*InvokeRule primary*/
+                        recog.base.set_state(138);
+                        recog.primary()?;
+                    }
+                }
+                2 => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 2)?;
+                    recog.base.enter_outer_alt(None, 2)?;
+                    {
+                        recog.base.set_state(139);
+                        recog
+                            .base
+                            .match_token(prolog_MINUS, &mut recog.err_handler)?;
+
+                        /*InvokeRule number*/
+                        recog.base.set_state(140);
+                        recog.number()?;
+                    }
+                }
+
+                _ => {}
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(_) => {}
+            Err(e @ ANTLRError::FallThrough(_)) => return Err(e),
+            Err(ref re) => {
+                //_localctx.exception = re;
+                recog.err_handler.report_error(&mut recog.base, re);
+                recog.err_handler.recover(&mut recog.base, re)?;
+            }
+        }
+        recog.base.exit_rule()?;
+
+        Ok(_localctx)
+    }
+}
+//------------------- term_list ----------------
+pub type Term_listContextAll<'input> = Term_listContext<'input>;
+
+pub type Term_listContext<'input> = BaseParserRuleContext<'input, Term_listContextExt<'input>>;
+
+#[derive(Clone)]
+pub struct Term_listContextExt<'input> {
+    ph: PhantomData<&'input str>,
+}
+
+impl<'input> prologParserContext<'input> for Term_listContext<'input> {}
+
+impl<'input, 'a> Listenable<dyn prologListener<'input> + 'a> for Term_listContext<'input> {
+    fn enter(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
+        listener.enter_every_rule(self)?;
+        listener.enter_term_list(self);
+        Ok(())
+    }
+    fn exit(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
+        listener.exit_term_list(self);
+        listener.exit_every_rule(self)?;
+        Ok(())
+    }
+}
+
+impl<'input, 'a> Visitable<dyn prologVisitor<'input> + 'a> for Term_listContext<'input> {
+    fn accept(&self, visitor: &mut (dyn prologVisitor<'input> + 'a)) {
+        visitor.visit_term_list(self);
+    }
+}
+
+impl<'input> CustomRuleContext<'input> for Term_listContextExt<'input> {
+    type TF = LocalTokenFactory<'input>;
+    type Ctx = prologParserContextType;
+    fn get_rule_index(&self) -> usize {
+        RULE_term_list
+    }
+    //fn type_rule_index() -> usize where Self: Sized { RULE_term_list }
+}
+antlr4rust::tid! {Term_listContextExt<'a>}
+
+impl<'input> Term_listContextExt<'input> {
+    fn new(
+        parent: Option<Rc<dyn prologParserContext<'input> + 'input>>,
+        invoking_state: i32,
+    ) -> Rc<Term_listContextAll<'input>> {
+        Rc::new(BaseParserRuleContext::new_parser_ctx(
+            parent,
+            invoking_state,
+            Term_listContextExt { ph: PhantomData },
+        ))
+    }
+}
+
+pub trait Term_listContextAttrs<'input>:
+    prologParserContext<'input> + BorrowMut<Term_listContextExt<'input>>
 {
     fn term999_all(&self) -> Vec<Rc<Term999ContextAll<'input>>>
     where
@@ -3177,47 +3155,44 @@ pub trait Argument_listContextAttrs<'input>:
     }
 }
 
-impl<'input> Argument_listContextAttrs<'input> for Argument_listContext<'input> {}
+impl<'input> Term_listContextAttrs<'input> for Term_listContext<'input> {}
 
 impl<'input, I> prologParser<'input, I>
 where
     I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
 {
-    pub fn argument_list(&mut self) -> Result<Rc<Argument_listContextAll<'input>>, ANTLRError> {
+    pub fn term_list(&mut self) -> Result<Rc<Term_listContextAll<'input>>, ANTLRError> {
         let mut recog = self;
         let _parentctx = recog.ctx.take();
-        let mut _localctx =
-            Argument_listContextExt::new(_parentctx.clone(), recog.base.get_state());
-        recog
-            .base
-            .enter_rule(_localctx.clone(), 34, RULE_argument_list);
-        let mut _localctx: Rc<Argument_listContextAll> = _localctx;
+        let mut _localctx = Term_listContextExt::new(_parentctx.clone(), recog.base.get_state());
+        recog.base.enter_rule(_localctx.clone(), 32, RULE_term_list);
+        let mut _localctx: Rc<Term_listContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
             //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
             recog.base.enter_outer_alt(None, 1)?;
             {
                 /*InvokeRule term999*/
-                recog.base.set_state(140);
+                recog.base.set_state(143);
                 recog.term999()?;
 
-                recog.base.set_state(145);
+                recog.base.set_state(148);
                 recog.err_handler.sync(&mut recog.base)?;
                 _la = recog.base.input.la(1);
                 while _la == prolog_COMMA {
                     {
                         {
-                            recog.base.set_state(141);
+                            recog.base.set_state(144);
                             recog
                                 .base
                                 .match_token(prolog_COMMA, &mut recog.err_handler)?;
 
                             /*InvokeRule term999*/
-                            recog.base.set_state(142);
+                            recog.base.set_state(145);
                             recog.term999()?;
                         }
                     }
-                    recog.base.set_state(147);
+                    recog.base.set_state(150);
                     recog.err_handler.sync(&mut recog.base)?;
                     _la = recog.base.input.la(1);
                 }
@@ -3658,14 +3633,6 @@ pub type ParenthesizedTermContext<'input> =
     BaseParserRuleContext<'input, ParenthesizedTermContextExt<'input>>;
 
 pub trait ParenthesizedTermContextAttrs<'input>: prologParserContext<'input> {
-    /// Retrieves first TerminalNode corresponding to token LPAREN
-    /// Returns `None` if there is no child corresponding to token LPAREN
-    fn LPAREN(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
-    where
-        Self: Sized,
-    {
-        self.get_token(prolog_LPAREN, 0)
-    }
     fn body(&self) -> Option<Rc<BodyContextAll<'input>>>
     where
         Self: Sized,
@@ -3679,6 +3646,22 @@ pub trait ParenthesizedTermContextAttrs<'input>: prologParserContext<'input> {
         Self: Sized,
     {
         self.get_token(prolog_RPAREN, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token LPAREN
+    /// Returns `None` if there is no child corresponding to token LPAREN
+    fn LPAREN(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_LPAREN, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token LAYOUT_LPAREN
+    /// Returns `None` if there is no child corresponding to token LAYOUT_LPAREN
+    fn LAYOUT_LPAREN(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_LAYOUT_LPAREN, 0)
     }
 }
 
@@ -3922,7 +3905,7 @@ pub type CompoundTermContext<'input> =
     BaseParserRuleContext<'input, CompoundTermContextExt<'input>>;
 
 pub trait CompoundTermContextAttrs<'input>: prologParserContext<'input> {
-    fn atom(&self) -> Option<Rc<AtomContextAll<'input>>>
+    fn functor(&self) -> Option<Rc<FunctorContextAll<'input>>>
     where
         Self: Sized,
     {
@@ -3936,7 +3919,7 @@ pub trait CompoundTermContextAttrs<'input>: prologParserContext<'input> {
     {
         self.get_token(prolog_LPAREN, 0)
     }
-    fn argument_list(&self) -> Option<Rc<Argument_listContextAll<'input>>>
+    fn term_list(&self) -> Option<Rc<Term_listContextAll<'input>>>
     where
         Self: Sized,
     {
@@ -4262,32 +4245,32 @@ where
         let mut recog = self;
         let _parentctx = recog.ctx.take();
         let mut _localctx = PrimaryContextExt::new(_parentctx.clone(), recog.base.get_state());
-        recog.base.enter_rule(_localctx.clone(), 36, RULE_primary);
+        recog.base.enter_rule(_localctx.clone(), 34, RULE_primary);
         let mut _localctx: Rc<PrimaryContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
-            recog.base.set_state(170);
+            recog.base.set_state(173);
             recog.err_handler.sync(&mut recog.base)?;
-            match recog.interpreter.adaptive_predict(16, &mut recog.base)? {
+            match recog.interpreter.adaptive_predict(17, &mut recog.base)? {
                 1 => {
                     let tmp = CompoundTermContextExt::new(&**_localctx);
                     recog.base.enter_outer_alt(Some(tmp.clone()), 1)?;
                     _localctx = tmp;
                     {
-                        /*InvokeRule atom*/
-                        recog.base.set_state(148);
-                        recog.atom()?;
+                        /*InvokeRule functor*/
+                        recog.base.set_state(151);
+                        recog.functor()?;
 
-                        recog.base.set_state(149);
+                        recog.base.set_state(152);
                         recog
                             .base
                             .match_token(prolog_LPAREN, &mut recog.err_handler)?;
 
-                        /*InvokeRule argument_list*/
-                        recog.base.set_state(150);
-                        recog.argument_list()?;
+                        /*InvokeRule term_list*/
+                        recog.base.set_state(153);
+                        recog.term_list()?;
 
-                        recog.base.set_state(151);
+                        recog.base.set_state(154);
                         recog
                             .base
                             .match_token(prolog_RPAREN, &mut recog.err_handler)?;
@@ -4298,7 +4281,7 @@ where
                     recog.base.enter_outer_alt(Some(tmp.clone()), 2)?;
                     _localctx = tmp;
                     {
-                        recog.base.set_state(153);
+                        recog.base.set_state(156);
                         recog
                             .base
                             .match_token(prolog_VARIABLE, &mut recog.err_handler)?;
@@ -4310,7 +4293,7 @@ where
                     _localctx = tmp;
                     {
                         /*InvokeRule integer*/
-                        recog.base.set_state(154);
+                        recog.base.set_state(157);
                         recog.integer()?;
                     }
                 }
@@ -4319,7 +4302,7 @@ where
                     recog.base.enter_outer_alt(Some(tmp.clone()), 4)?;
                     _localctx = tmp;
                     {
-                        recog.base.set_state(155);
+                        recog.base.set_state(158);
                         recog
                             .base
                             .match_token(prolog_FLOAT, &mut recog.err_handler)?;
@@ -4331,7 +4314,7 @@ where
                     _localctx = tmp;
                     {
                         /*InvokeRule atom*/
-                        recog.base.set_state(156);
+                        recog.base.set_state(159);
                         recog.atom()?;
                     }
                 }
@@ -4340,7 +4323,7 @@ where
                     recog.base.enter_outer_alt(Some(tmp.clone()), 6)?;
                     _localctx = tmp;
                     {
-                        recog.base.set_state(157);
+                        recog.base.set_state(160);
                         recog
                             .base
                             .match_token(prolog_DOUBLE_QUOTED_STRING, &mut recog.err_handler)?;
@@ -4351,7 +4334,7 @@ where
                     recog.base.enter_outer_alt(Some(tmp.clone()), 7)?;
                     _localctx = tmp;
                     {
-                        recog.base.set_state(158);
+                        recog.base.set_state(161);
                         recog
                             .base
                             .match_token(prolog_BACK_QUOTED_STRING, &mut recog.err_handler)?;
@@ -4363,7 +4346,7 @@ where
                     _localctx = tmp;
                     {
                         /*InvokeRule list*/
-                        recog.base.set_state(159);
+                        recog.base.set_state(162);
                         recog.list()?;
                     }
                 }
@@ -4372,16 +4355,22 @@ where
                     recog.base.enter_outer_alt(Some(tmp.clone()), 9)?;
                     _localctx = tmp;
                     {
-                        recog.base.set_state(160);
-                        recog
-                            .base
-                            .match_token(prolog_LPAREN, &mut recog.err_handler)?;
-
+                        recog.base.set_state(163);
+                        _la = recog.base.input.la(1);
+                        if { !(_la == prolog_LPAREN || _la == prolog_LAYOUT_LPAREN) } {
+                            recog.err_handler.recover_inline(&mut recog.base)?;
+                        } else {
+                            if recog.base.input.la(1) == TOKEN_EOF {
+                                recog.base.matched_eof = true
+                            };
+                            recog.err_handler.report_match(&mut recog.base);
+                            recog.base.consume(&mut recog.err_handler);
+                        }
                         /*InvokeRule body*/
-                        recog.base.set_state(161);
+                        recog.base.set_state(164);
                         recog.body()?;
 
-                        recog.base.set_state(162);
+                        recog.base.set_state(165);
                         recog
                             .base
                             .match_token(prolog_RPAREN, &mut recog.err_handler)?;
@@ -4392,26 +4381,26 @@ where
                     recog.base.enter_outer_alt(Some(tmp.clone()), 10)?;
                     _localctx = tmp;
                     {
-                        recog.base.set_state(164);
+                        recog.base.set_state(167);
                         recog
                             .base
                             .match_token(prolog_LBRACE, &mut recog.err_handler)?;
 
-                        recog.base.set_state(166);
+                        recog.base.set_state(169);
                         recog.err_handler.sync(&mut recog.base)?;
                         _la = recog.base.input.la(1);
-                        if (((_la) & !0x3f) == 0 && ((1usize << _la) & 3221225480) != 0)
+                        if (((_la) & !0x3f) == 0 && ((1usize << _la) & 4294967280) != 0)
                             || (((_la - 32) & !0x3f) == 0
-                                && ((1usize << (_la - 32)) & 134204033) != 0)
+                                && ((1usize << (_la - 32)) & 2147265727) != 0)
                         {
                             {
                                 /*InvokeRule body*/
-                                recog.base.set_state(165);
+                                recog.base.set_state(168);
                                 recog.body()?;
                             }
                         }
 
-                        recog.base.set_state(168);
+                        recog.base.set_state(171);
                         recog
                             .base
                             .match_token(prolog_RBRACE, &mut recog.err_handler)?;
@@ -4422,12 +4411,747 @@ where
                     recog.base.enter_outer_alt(Some(tmp.clone()), 11)?;
                     _localctx = tmp;
                     {
-                        recog.base.set_state(169);
+                        recog.base.set_state(172);
                         recog.base.match_token(prolog_CUT, &mut recog.err_handler)?;
                     }
                 }
 
                 _ => {}
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(_) => {}
+            Err(e @ ANTLRError::FallThrough(_)) => return Err(e),
+            Err(ref re) => {
+                //_localctx.exception = re;
+                recog.err_handler.report_error(&mut recog.base, re);
+                recog.err_handler.recover(&mut recog.base, re)?;
+            }
+        }
+        recog.base.exit_rule()?;
+
+        Ok(_localctx)
+    }
+}
+//------------------- functor ----------------
+pub type FunctorContextAll<'input> = FunctorContext<'input>;
+
+pub type FunctorContext<'input> = BaseParserRuleContext<'input, FunctorContextExt<'input>>;
+
+#[derive(Clone)]
+pub struct FunctorContextExt<'input> {
+    ph: PhantomData<&'input str>,
+}
+
+impl<'input> prologParserContext<'input> for FunctorContext<'input> {}
+
+impl<'input, 'a> Listenable<dyn prologListener<'input> + 'a> for FunctorContext<'input> {
+    fn enter(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
+        listener.enter_every_rule(self)?;
+        listener.enter_functor(self);
+        Ok(())
+    }
+    fn exit(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
+        listener.exit_functor(self);
+        listener.exit_every_rule(self)?;
+        Ok(())
+    }
+}
+
+impl<'input, 'a> Visitable<dyn prologVisitor<'input> + 'a> for FunctorContext<'input> {
+    fn accept(&self, visitor: &mut (dyn prologVisitor<'input> + 'a)) {
+        visitor.visit_functor(self);
+    }
+}
+
+impl<'input> CustomRuleContext<'input> for FunctorContextExt<'input> {
+    type TF = LocalTokenFactory<'input>;
+    type Ctx = prologParserContextType;
+    fn get_rule_index(&self) -> usize {
+        RULE_functor
+    }
+    //fn type_rule_index() -> usize where Self: Sized { RULE_functor }
+}
+antlr4rust::tid! {FunctorContextExt<'a>}
+
+impl<'input> FunctorContextExt<'input> {
+    fn new(
+        parent: Option<Rc<dyn prologParserContext<'input> + 'input>>,
+        invoking_state: i32,
+    ) -> Rc<FunctorContextAll<'input>> {
+        Rc::new(BaseParserRuleContext::new_parser_ctx(
+            parent,
+            invoking_state,
+            FunctorContextExt { ph: PhantomData },
+        ))
+    }
+}
+
+pub trait FunctorContextAttrs<'input>:
+    prologParserContext<'input> + BorrowMut<FunctorContextExt<'input>>
+{
+    fn atom(&self) -> Option<Rc<AtomContextAll<'input>>>
+    where
+        Self: Sized,
+    {
+        self.child_of_type(0)
+    }
+    fn operator_name(&self) -> Option<Rc<Operator_nameContextAll<'input>>>
+    where
+        Self: Sized,
+    {
+        self.child_of_type(0)
+    }
+}
+
+impl<'input> FunctorContextAttrs<'input> for FunctorContext<'input> {}
+
+impl<'input, I> prologParser<'input, I>
+where
+    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
+{
+    pub fn functor(&mut self) -> Result<Rc<FunctorContextAll<'input>>, ANTLRError> {
+        let mut recog = self;
+        let _parentctx = recog.ctx.take();
+        let mut _localctx = FunctorContextExt::new(_parentctx.clone(), recog.base.get_state());
+        recog.base.enter_rule(_localctx.clone(), 36, RULE_functor);
+        let mut _localctx: Rc<FunctorContextAll> = _localctx;
+        let result: Result<(), ANTLRError> = (|| {
+            recog.base.set_state(177);
+            recog.err_handler.sync(&mut recog.base)?;
+            match recog.base.input.la(1) {
+                prolog_ATOM_ID | prolog_QUOTED_ATOM | prolog_GRAPHIC_ATOM => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
+                    recog.base.enter_outer_alt(None, 1)?;
+                    {
+                        /*InvokeRule atom*/
+                        recog.base.set_state(175);
+                        recog.atom()?;
+                    }
+                }
+
+                prolog_IF_THEN | prolog_NOT | prolog_NOT_IDENTICAL | prolog_IDENTICAL
+                | prolog_NOT_UNIFIABLE | prolog_ARITH_NE | prolog_ARITH_EQ | prolog_UNIV
+                | prolog_TERM_LE | prolog_TERM_GE | prolog_TERM_LT | prolog_TERM_GT | prolog_LE
+                | prolog_GE | prolog_LT | prolog_GT | prolog_UNIFY | prolog_IS | prolog_INT_DIV
+                | prolog_DIV | prolog_MOD | prolog_REM | prolog_POW_XFX | prolog_POW_XFY
+                | prolog_SHL | prolog_SHR | prolog_BIT_AND | prolog_BIT_OR | prolog_BIT_NOT
+                | prolog_PLUS | prolog_MINUS | prolog_STAR | prolog_SLASH | prolog_SEMI
+                | prolog_COLON => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 2)?;
+                    recog.base.enter_outer_alt(None, 2)?;
+                    {
+                        /*InvokeRule operator_name*/
+                        recog.base.set_state(176);
+                        recog.operator_name()?;
+                    }
+                }
+
+                _ => Err(ANTLRError::NoAltError(NoViableAltError::new(
+                    &mut recog.base,
+                )))?,
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(_) => {}
+            Err(e @ ANTLRError::FallThrough(_)) => return Err(e),
+            Err(ref re) => {
+                //_localctx.exception = re;
+                recog.err_handler.report_error(&mut recog.base, re);
+                recog.err_handler.recover(&mut recog.base, re)?;
+            }
+        }
+        recog.base.exit_rule()?;
+
+        Ok(_localctx)
+    }
+}
+//------------------- operator_name ----------------
+pub type Operator_nameContextAll<'input> = Operator_nameContext<'input>;
+
+pub type Operator_nameContext<'input> =
+    BaseParserRuleContext<'input, Operator_nameContextExt<'input>>;
+
+#[derive(Clone)]
+pub struct Operator_nameContextExt<'input> {
+    ph: PhantomData<&'input str>,
+}
+
+impl<'input> prologParserContext<'input> for Operator_nameContext<'input> {}
+
+impl<'input, 'a> Listenable<dyn prologListener<'input> + 'a> for Operator_nameContext<'input> {
+    fn enter(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
+        listener.enter_every_rule(self)?;
+        listener.enter_operator_name(self);
+        Ok(())
+    }
+    fn exit(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
+        listener.exit_operator_name(self);
+        listener.exit_every_rule(self)?;
+        Ok(())
+    }
+}
+
+impl<'input, 'a> Visitable<dyn prologVisitor<'input> + 'a> for Operator_nameContext<'input> {
+    fn accept(&self, visitor: &mut (dyn prologVisitor<'input> + 'a)) {
+        visitor.visit_operator_name(self);
+    }
+}
+
+impl<'input> CustomRuleContext<'input> for Operator_nameContextExt<'input> {
+    type TF = LocalTokenFactory<'input>;
+    type Ctx = prologParserContextType;
+    fn get_rule_index(&self) -> usize {
+        RULE_operator_name
+    }
+    //fn type_rule_index() -> usize where Self: Sized { RULE_operator_name }
+}
+antlr4rust::tid! {Operator_nameContextExt<'a>}
+
+impl<'input> Operator_nameContextExt<'input> {
+    fn new(
+        parent: Option<Rc<dyn prologParserContext<'input> + 'input>>,
+        invoking_state: i32,
+    ) -> Rc<Operator_nameContextAll<'input>> {
+        Rc::new(BaseParserRuleContext::new_parser_ctx(
+            parent,
+            invoking_state,
+            Operator_nameContextExt { ph: PhantomData },
+        ))
+    }
+}
+
+pub trait Operator_nameContextAttrs<'input>:
+    prologParserContext<'input> + BorrowMut<Operator_nameContextExt<'input>>
+{
+    fn relation_op(&self) -> Option<Rc<Relation_opContextAll<'input>>>
+    where
+        Self: Sized,
+    {
+        self.child_of_type(0)
+    }
+    /// Retrieves first TerminalNode corresponding to token NOT
+    /// Returns `None` if there is no child corresponding to token NOT
+    fn NOT(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_NOT, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token IF_THEN
+    /// Returns `None` if there is no child corresponding to token IF_THEN
+    fn IF_THEN(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_IF_THEN, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token SEMI
+    /// Returns `None` if there is no child corresponding to token SEMI
+    fn SEMI(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_SEMI, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token COLON
+    /// Returns `None` if there is no child corresponding to token COLON
+    fn COLON(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_COLON, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token PLUS
+    /// Returns `None` if there is no child corresponding to token PLUS
+    fn PLUS(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_PLUS, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token MINUS
+    /// Returns `None` if there is no child corresponding to token MINUS
+    fn MINUS(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_MINUS, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token BIT_AND
+    /// Returns `None` if there is no child corresponding to token BIT_AND
+    fn BIT_AND(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_BIT_AND, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token BIT_OR
+    /// Returns `None` if there is no child corresponding to token BIT_OR
+    fn BIT_OR(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_BIT_OR, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token STAR
+    /// Returns `None` if there is no child corresponding to token STAR
+    fn STAR(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_STAR, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token SLASH
+    /// Returns `None` if there is no child corresponding to token SLASH
+    fn SLASH(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_SLASH, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token INT_DIV
+    /// Returns `None` if there is no child corresponding to token INT_DIV
+    fn INT_DIV(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_INT_DIV, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token DIV
+    /// Returns `None` if there is no child corresponding to token DIV
+    fn DIV(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_DIV, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token MOD
+    /// Returns `None` if there is no child corresponding to token MOD
+    fn MOD(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_MOD, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token REM
+    /// Returns `None` if there is no child corresponding to token REM
+    fn REM(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_REM, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token SHL
+    /// Returns `None` if there is no child corresponding to token SHL
+    fn SHL(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_SHL, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token SHR
+    /// Returns `None` if there is no child corresponding to token SHR
+    fn SHR(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_SHR, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token POW_XFX
+    /// Returns `None` if there is no child corresponding to token POW_XFX
+    fn POW_XFX(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_POW_XFX, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token POW_XFY
+    /// Returns `None` if there is no child corresponding to token POW_XFY
+    fn POW_XFY(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_POW_XFY, 0)
+    }
+    /// Retrieves first TerminalNode corresponding to token BIT_NOT
+    /// Returns `None` if there is no child corresponding to token BIT_NOT
+    fn BIT_NOT(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_BIT_NOT, 0)
+    }
+}
+
+impl<'input> Operator_nameContextAttrs<'input> for Operator_nameContext<'input> {}
+
+impl<'input, I> prologParser<'input, I>
+where
+    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
+{
+    pub fn operator_name(&mut self) -> Result<Rc<Operator_nameContextAll<'input>>, ANTLRError> {
+        let mut recog = self;
+        let _parentctx = recog.ctx.take();
+        let mut _localctx =
+            Operator_nameContextExt::new(_parentctx.clone(), recog.base.get_state());
+        recog
+            .base
+            .enter_rule(_localctx.clone(), 38, RULE_operator_name);
+        let mut _localctx: Rc<Operator_nameContextAll> = _localctx;
+        let result: Result<(), ANTLRError> = (|| {
+            recog.base.set_state(199);
+            recog.err_handler.sync(&mut recog.base)?;
+            match recog.base.input.la(1) {
+                prolog_NOT_IDENTICAL | prolog_IDENTICAL | prolog_NOT_UNIFIABLE
+                | prolog_ARITH_NE | prolog_ARITH_EQ | prolog_UNIV | prolog_TERM_LE
+                | prolog_TERM_GE | prolog_TERM_LT | prolog_TERM_GT | prolog_LE | prolog_GE
+                | prolog_LT | prolog_GT | prolog_UNIFY | prolog_IS => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
+                    recog.base.enter_outer_alt(None, 1)?;
+                    {
+                        /*InvokeRule relation_op*/
+                        recog.base.set_state(179);
+                        recog.relation_op()?;
+                    }
+                }
+
+                prolog_NOT => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 2)?;
+                    recog.base.enter_outer_alt(None, 2)?;
+                    {
+                        recog.base.set_state(180);
+                        recog.base.match_token(prolog_NOT, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_IF_THEN => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 3)?;
+                    recog.base.enter_outer_alt(None, 3)?;
+                    {
+                        recog.base.set_state(181);
+                        recog
+                            .base
+                            .match_token(prolog_IF_THEN, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_SEMI => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 4)?;
+                    recog.base.enter_outer_alt(None, 4)?;
+                    {
+                        recog.base.set_state(182);
+                        recog
+                            .base
+                            .match_token(prolog_SEMI, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_COLON => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 5)?;
+                    recog.base.enter_outer_alt(None, 5)?;
+                    {
+                        recog.base.set_state(183);
+                        recog
+                            .base
+                            .match_token(prolog_COLON, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_PLUS => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 6)?;
+                    recog.base.enter_outer_alt(None, 6)?;
+                    {
+                        recog.base.set_state(184);
+                        recog
+                            .base
+                            .match_token(prolog_PLUS, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_MINUS => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 7)?;
+                    recog.base.enter_outer_alt(None, 7)?;
+                    {
+                        recog.base.set_state(185);
+                        recog
+                            .base
+                            .match_token(prolog_MINUS, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_BIT_AND => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 8)?;
+                    recog.base.enter_outer_alt(None, 8)?;
+                    {
+                        recog.base.set_state(186);
+                        recog
+                            .base
+                            .match_token(prolog_BIT_AND, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_BIT_OR => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 9)?;
+                    recog.base.enter_outer_alt(None, 9)?;
+                    {
+                        recog.base.set_state(187);
+                        recog
+                            .base
+                            .match_token(prolog_BIT_OR, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_STAR => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 10)?;
+                    recog.base.enter_outer_alt(None, 10)?;
+                    {
+                        recog.base.set_state(188);
+                        recog
+                            .base
+                            .match_token(prolog_STAR, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_SLASH => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 11)?;
+                    recog.base.enter_outer_alt(None, 11)?;
+                    {
+                        recog.base.set_state(189);
+                        recog
+                            .base
+                            .match_token(prolog_SLASH, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_INT_DIV => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 12)?;
+                    recog.base.enter_outer_alt(None, 12)?;
+                    {
+                        recog.base.set_state(190);
+                        recog
+                            .base
+                            .match_token(prolog_INT_DIV, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_DIV => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 13)?;
+                    recog.base.enter_outer_alt(None, 13)?;
+                    {
+                        recog.base.set_state(191);
+                        recog.base.match_token(prolog_DIV, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_MOD => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 14)?;
+                    recog.base.enter_outer_alt(None, 14)?;
+                    {
+                        recog.base.set_state(192);
+                        recog.base.match_token(prolog_MOD, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_REM => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 15)?;
+                    recog.base.enter_outer_alt(None, 15)?;
+                    {
+                        recog.base.set_state(193);
+                        recog.base.match_token(prolog_REM, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_SHL => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 16)?;
+                    recog.base.enter_outer_alt(None, 16)?;
+                    {
+                        recog.base.set_state(194);
+                        recog.base.match_token(prolog_SHL, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_SHR => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 17)?;
+                    recog.base.enter_outer_alt(None, 17)?;
+                    {
+                        recog.base.set_state(195);
+                        recog.base.match_token(prolog_SHR, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_POW_XFX => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 18)?;
+                    recog.base.enter_outer_alt(None, 18)?;
+                    {
+                        recog.base.set_state(196);
+                        recog
+                            .base
+                            .match_token(prolog_POW_XFX, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_POW_XFY => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 19)?;
+                    recog.base.enter_outer_alt(None, 19)?;
+                    {
+                        recog.base.set_state(197);
+                        recog
+                            .base
+                            .match_token(prolog_POW_XFY, &mut recog.err_handler)?;
+                    }
+                }
+
+                prolog_BIT_NOT => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 20)?;
+                    recog.base.enter_outer_alt(None, 20)?;
+                    {
+                        recog.base.set_state(198);
+                        recog
+                            .base
+                            .match_token(prolog_BIT_NOT, &mut recog.err_handler)?;
+                    }
+                }
+
+                _ => Err(ANTLRError::NoAltError(NoViableAltError::new(
+                    &mut recog.base,
+                )))?,
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(_) => {}
+            Err(e @ ANTLRError::FallThrough(_)) => return Err(e),
+            Err(ref re) => {
+                //_localctx.exception = re;
+                recog.err_handler.report_error(&mut recog.base, re);
+                recog.err_handler.recover(&mut recog.base, re)?;
+            }
+        }
+        recog.base.exit_rule()?;
+
+        Ok(_localctx)
+    }
+}
+//------------------- number ----------------
+pub type NumberContextAll<'input> = NumberContext<'input>;
+
+pub type NumberContext<'input> = BaseParserRuleContext<'input, NumberContextExt<'input>>;
+
+#[derive(Clone)]
+pub struct NumberContextExt<'input> {
+    ph: PhantomData<&'input str>,
+}
+
+impl<'input> prologParserContext<'input> for NumberContext<'input> {}
+
+impl<'input, 'a> Listenable<dyn prologListener<'input> + 'a> for NumberContext<'input> {
+    fn enter(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
+        listener.enter_every_rule(self)?;
+        listener.enter_number(self);
+        Ok(())
+    }
+    fn exit(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
+        listener.exit_number(self);
+        listener.exit_every_rule(self)?;
+        Ok(())
+    }
+}
+
+impl<'input, 'a> Visitable<dyn prologVisitor<'input> + 'a> for NumberContext<'input> {
+    fn accept(&self, visitor: &mut (dyn prologVisitor<'input> + 'a)) {
+        visitor.visit_number(self);
+    }
+}
+
+impl<'input> CustomRuleContext<'input> for NumberContextExt<'input> {
+    type TF = LocalTokenFactory<'input>;
+    type Ctx = prologParserContextType;
+    fn get_rule_index(&self) -> usize {
+        RULE_number
+    }
+    //fn type_rule_index() -> usize where Self: Sized { RULE_number }
+}
+antlr4rust::tid! {NumberContextExt<'a>}
+
+impl<'input> NumberContextExt<'input> {
+    fn new(
+        parent: Option<Rc<dyn prologParserContext<'input> + 'input>>,
+        invoking_state: i32,
+    ) -> Rc<NumberContextAll<'input>> {
+        Rc::new(BaseParserRuleContext::new_parser_ctx(
+            parent,
+            invoking_state,
+            NumberContextExt { ph: PhantomData },
+        ))
+    }
+}
+
+pub trait NumberContextAttrs<'input>:
+    prologParserContext<'input> + BorrowMut<NumberContextExt<'input>>
+{
+    fn integer(&self) -> Option<Rc<IntegerContextAll<'input>>>
+    where
+        Self: Sized,
+    {
+        self.child_of_type(0)
+    }
+    /// Retrieves first TerminalNode corresponding to token FLOAT
+    /// Returns `None` if there is no child corresponding to token FLOAT
+    fn FLOAT(&self) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
+    where
+        Self: Sized,
+    {
+        self.get_token(prolog_FLOAT, 0)
+    }
+}
+
+impl<'input> NumberContextAttrs<'input> for NumberContext<'input> {}
+
+impl<'input, I> prologParser<'input, I>
+where
+    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
+{
+    pub fn number(&mut self) -> Result<Rc<NumberContextAll<'input>>, ANTLRError> {
+        let mut recog = self;
+        let _parentctx = recog.ctx.take();
+        let mut _localctx = NumberContextExt::new(_parentctx.clone(), recog.base.get_state());
+        recog.base.enter_rule(_localctx.clone(), 40, RULE_number);
+        let mut _localctx: Rc<NumberContextAll> = _localctx;
+        let result: Result<(), ANTLRError> = (|| {
+            recog.base.set_state(203);
+            recog.err_handler.sync(&mut recog.base)?;
+            match recog.base.input.la(1) {
+                prolog_BINARY
+                | prolog_OCTAL
+                | prolog_HEX
+                | prolog_DECIMAL
+                | prolog_CHARACTER_CODE_CONSTANT => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
+                    recog.base.enter_outer_alt(None, 1)?;
+                    {
+                        /*InvokeRule integer*/
+                        recog.base.set_state(201);
+                        recog.integer()?;
+                    }
+                }
+
+                prolog_FLOAT => {
+                    //recog.base.enter_outer_alt(_localctx.clone(), 2)?;
+                    recog.base.enter_outer_alt(None, 2)?;
+                    {
+                        recog.base.set_state(202);
+                        recog
+                            .base
+                            .match_token(prolog_FLOAT, &mut recog.err_handler)?;
+                    }
+                }
+
+                _ => Err(ANTLRError::NoAltError(NoViableAltError::new(
+                    &mut recog.base,
+                )))?,
             }
             Ok(())
         })();
@@ -4628,7 +5352,7 @@ pub trait ProperListContextAttrs<'input>: prologParserContext<'input> {
     {
         self.get_token(prolog_LBRACK, 0)
     }
-    fn list_items(&self) -> Option<Rc<List_itemsContextAll<'input>>>
+    fn term_list(&self) -> Option<Rc<Term_listContextAll<'input>>>
     where
         Self: Sized,
     {
@@ -4722,7 +5446,7 @@ pub trait ImproperListContextAttrs<'input>: prologParserContext<'input> {
     {
         self.get_token(prolog_LBRACK, 0)
     }
-    fn list_items(&self) -> Option<Rc<List_itemsContextAll<'input>>>
+    fn term_list(&self) -> Option<Rc<Term_listContextAll<'input>>>
     where
         Self: Sized,
     {
@@ -4826,23 +5550,23 @@ where
         let mut recog = self;
         let _parentctx = recog.ctx.take();
         let mut _localctx = ListContextExt::new(_parentctx.clone(), recog.base.get_state());
-        recog.base.enter_rule(_localctx.clone(), 38, RULE_list);
+        recog.base.enter_rule(_localctx.clone(), 42, RULE_list);
         let mut _localctx: Rc<ListContextAll> = _localctx;
         let result: Result<(), ANTLRError> = (|| {
-            recog.base.set_state(184);
+            recog.base.set_state(217);
             recog.err_handler.sync(&mut recog.base)?;
-            match recog.interpreter.adaptive_predict(17, &mut recog.base)? {
+            match recog.interpreter.adaptive_predict(21, &mut recog.base)? {
                 1 => {
                     let tmp = EmptyListContextExt::new(&**_localctx);
                     recog.base.enter_outer_alt(Some(tmp.clone()), 1)?;
                     _localctx = tmp;
                     {
-                        recog.base.set_state(172);
+                        recog.base.set_state(205);
                         recog
                             .base
                             .match_token(prolog_LBRACK, &mut recog.err_handler)?;
 
-                        recog.base.set_state(173);
+                        recog.base.set_state(206);
                         recog
                             .base
                             .match_token(prolog_RBRACK, &mut recog.err_handler)?;
@@ -4853,16 +5577,16 @@ where
                     recog.base.enter_outer_alt(Some(tmp.clone()), 2)?;
                     _localctx = tmp;
                     {
-                        recog.base.set_state(174);
+                        recog.base.set_state(207);
                         recog
                             .base
                             .match_token(prolog_LBRACK, &mut recog.err_handler)?;
 
-                        /*InvokeRule list_items*/
-                        recog.base.set_state(175);
-                        recog.list_items()?;
+                        /*InvokeRule term_list*/
+                        recog.base.set_state(208);
+                        recog.term_list()?;
 
-                        recog.base.set_state(176);
+                        recog.base.set_state(209);
                         recog
                             .base
                             .match_token(prolog_RBRACK, &mut recog.err_handler)?;
@@ -4873,23 +5597,23 @@ where
                     recog.base.enter_outer_alt(Some(tmp.clone()), 3)?;
                     _localctx = tmp;
                     {
-                        recog.base.set_state(178);
+                        recog.base.set_state(211);
                         recog
                             .base
                             .match_token(prolog_LBRACK, &mut recog.err_handler)?;
 
-                        /*InvokeRule list_items*/
-                        recog.base.set_state(179);
-                        recog.list_items()?;
+                        /*InvokeRule term_list*/
+                        recog.base.set_state(212);
+                        recog.term_list()?;
 
-                        recog.base.set_state(180);
+                        recog.base.set_state(213);
                         recog.base.match_token(prolog_BAR, &mut recog.err_handler)?;
 
                         /*InvokeRule term999*/
-                        recog.base.set_state(181);
+                        recog.base.set_state(214);
                         recog.term999()?;
 
-                        recog.base.set_state(182);
+                        recog.base.set_state(215);
                         recog
                             .base
                             .match_token(prolog_RBRACK, &mut recog.err_handler)?;
@@ -4897,152 +5621,6 @@ where
                 }
 
                 _ => {}
-            }
-            Ok(())
-        })();
-        match result {
-            Ok(_) => {}
-            Err(e @ ANTLRError::FallThrough(_)) => return Err(e),
-            Err(ref re) => {
-                //_localctx.exception = re;
-                recog.err_handler.report_error(&mut recog.base, re);
-                recog.err_handler.recover(&mut recog.base, re)?;
-            }
-        }
-        recog.base.exit_rule()?;
-
-        Ok(_localctx)
-    }
-}
-//------------------- list_items ----------------
-pub type List_itemsContextAll<'input> = List_itemsContext<'input>;
-
-pub type List_itemsContext<'input> = BaseParserRuleContext<'input, List_itemsContextExt<'input>>;
-
-#[derive(Clone)]
-pub struct List_itemsContextExt<'input> {
-    ph: PhantomData<&'input str>,
-}
-
-impl<'input> prologParserContext<'input> for List_itemsContext<'input> {}
-
-impl<'input, 'a> Listenable<dyn prologListener<'input> + 'a> for List_itemsContext<'input> {
-    fn enter(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
-        listener.enter_every_rule(self)?;
-        listener.enter_list_items(self);
-        Ok(())
-    }
-    fn exit(&self, listener: &mut (dyn prologListener<'input> + 'a)) -> Result<(), ANTLRError> {
-        listener.exit_list_items(self);
-        listener.exit_every_rule(self)?;
-        Ok(())
-    }
-}
-
-impl<'input, 'a> Visitable<dyn prologVisitor<'input> + 'a> for List_itemsContext<'input> {
-    fn accept(&self, visitor: &mut (dyn prologVisitor<'input> + 'a)) {
-        visitor.visit_list_items(self);
-    }
-}
-
-impl<'input> CustomRuleContext<'input> for List_itemsContextExt<'input> {
-    type TF = LocalTokenFactory<'input>;
-    type Ctx = prologParserContextType;
-    fn get_rule_index(&self) -> usize {
-        RULE_list_items
-    }
-    //fn type_rule_index() -> usize where Self: Sized { RULE_list_items }
-}
-antlr4rust::tid! {List_itemsContextExt<'a>}
-
-impl<'input> List_itemsContextExt<'input> {
-    fn new(
-        parent: Option<Rc<dyn prologParserContext<'input> + 'input>>,
-        invoking_state: i32,
-    ) -> Rc<List_itemsContextAll<'input>> {
-        Rc::new(BaseParserRuleContext::new_parser_ctx(
-            parent,
-            invoking_state,
-            List_itemsContextExt { ph: PhantomData },
-        ))
-    }
-}
-
-pub trait List_itemsContextAttrs<'input>:
-    prologParserContext<'input> + BorrowMut<List_itemsContextExt<'input>>
-{
-    fn term999_all(&self) -> Vec<Rc<Term999ContextAll<'input>>>
-    where
-        Self: Sized,
-    {
-        self.children_of_type()
-    }
-    fn term999(&self, i: usize) -> Option<Rc<Term999ContextAll<'input>>>
-    where
-        Self: Sized,
-    {
-        self.child_of_type(i)
-    }
-    /// Retrieves all `TerminalNode`s corresponding to token COMMA in current rule
-    fn COMMA_all(&self) -> Vec<Rc<TerminalNode<'input, prologParserContextType>>>
-    where
-        Self: Sized,
-    {
-        self.children_of_type()
-    }
-    /// Retrieves 'i's TerminalNode corresponding to token COMMA, starting from 0.
-    /// Returns `None` if number of children corresponding to token COMMA is less or equal than `i`.
-    fn COMMA(&self, i: usize) -> Option<Rc<TerminalNode<'input, prologParserContextType>>>
-    where
-        Self: Sized,
-    {
-        self.get_token(prolog_COMMA, i)
-    }
-}
-
-impl<'input> List_itemsContextAttrs<'input> for List_itemsContext<'input> {}
-
-impl<'input, I> prologParser<'input, I>
-where
-    I: TokenStream<'input, TF = LocalTokenFactory<'input>> + TidAble<'input>,
-{
-    pub fn list_items(&mut self) -> Result<Rc<List_itemsContextAll<'input>>, ANTLRError> {
-        let mut recog = self;
-        let _parentctx = recog.ctx.take();
-        let mut _localctx = List_itemsContextExt::new(_parentctx.clone(), recog.base.get_state());
-        recog
-            .base
-            .enter_rule(_localctx.clone(), 40, RULE_list_items);
-        let mut _localctx: Rc<List_itemsContextAll> = _localctx;
-        let mut _la: i32 = -1;
-        let result: Result<(), ANTLRError> = (|| {
-            //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
-            recog.base.enter_outer_alt(None, 1)?;
-            {
-                /*InvokeRule term999*/
-                recog.base.set_state(186);
-                recog.term999()?;
-
-                recog.base.set_state(191);
-                recog.err_handler.sync(&mut recog.base)?;
-                _la = recog.base.input.la(1);
-                while _la == prolog_COMMA {
-                    {
-                        {
-                            recog.base.set_state(187);
-                            recog
-                                .base
-                                .match_token(prolog_COMMA, &mut recog.err_handler)?;
-
-                            /*InvokeRule term999*/
-                            recog.base.set_state(188);
-                            recog.term999()?;
-                        }
-                    }
-                    recog.base.set_state(193);
-                    recog.err_handler.sync(&mut recog.base)?;
-                    _la = recog.base.input.la(1);
-                }
             }
             Ok(())
         })();
@@ -5153,16 +5731,16 @@ where
         let mut recog = self;
         let _parentctx = recog.ctx.take();
         let mut _localctx = AtomContextExt::new(_parentctx.clone(), recog.base.get_state());
-        recog.base.enter_rule(_localctx.clone(), 42, RULE_atom);
+        recog.base.enter_rule(_localctx.clone(), 44, RULE_atom);
         let mut _localctx: Rc<AtomContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
             //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
             recog.base.enter_outer_alt(None, 1)?;
             {
-                recog.base.set_state(194);
+                recog.base.set_state(219);
                 _la = recog.base.input.la(1);
-                if { !(((_la - 54) & !0x3f) == 0 && ((1usize << (_la - 54)) & 19) != 0) } {
+                if { !(((_la - 58) & !0x3f) == 0 && ((1usize << (_la - 58)) & 19) != 0) } {
                     recog.err_handler.recover_inline(&mut recog.base)?;
                 } else {
                     if recog.base.input.la(1) == TOKEN_EOF {
@@ -5297,16 +5875,16 @@ where
         let mut recog = self;
         let _parentctx = recog.ctx.take();
         let mut _localctx = IntegerContextExt::new(_parentctx.clone(), recog.base.get_state());
-        recog.base.enter_rule(_localctx.clone(), 44, RULE_integer);
+        recog.base.enter_rule(_localctx.clone(), 46, RULE_integer);
         let mut _localctx: Rc<IntegerContextAll> = _localctx;
         let mut _la: i32 = -1;
         let result: Result<(), ANTLRError> = (|| {
             //recog.base.enter_outer_alt(_localctx.clone(), 1)?;
             recog.base.enter_outer_alt(None, 1)?;
             {
-                recog.base.set_state(196);
+                recog.base.set_state(221);
                 _la = recog.base.input.la(1);
-                if { !(((_la - 48) & !0x3f) == 0 && ((1usize << (_la - 48)) & 31) != 0) } {
+                if { !(((_la - 52) & !0x3f) == 0 && ((1usize << (_la - 52)) & 31) != 0) } {
                     recog.err_handler.recover_inline(&mut recog.base)?;
                 } else {
                     if recog.base.input.la(1) == TOKEN_EOF {
@@ -5344,74 +5922,87 @@ lazy_static! {
         Arc::new(dfa)
     };
     static ref _serializedATN: Vec<i32> = vec![
-        4, 1, 62, 199, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7, 4, 2, 5, 7, 5, 2,
+        4, 1, 64, 224, 2, 0, 7, 0, 2, 1, 7, 1, 2, 2, 7, 2, 2, 3, 7, 3, 2, 4, 7, 4, 2, 5, 7, 5, 2,
         6, 7, 6, 2, 7, 7, 7, 2, 8, 7, 8, 2, 9, 7, 9, 2, 10, 7, 10, 2, 11, 7, 11, 2, 12, 7, 12, 2,
         13, 7, 13, 2, 14, 7, 14, 2, 15, 7, 15, 2, 16, 7, 16, 2, 17, 7, 17, 2, 18, 7, 18, 2, 19, 7,
-        19, 2, 20, 7, 20, 2, 21, 7, 21, 2, 22, 7, 22, 1, 0, 5, 0, 48, 8, 0, 10, 0, 12, 0, 51, 9, 0,
-        1, 0, 1, 0, 1, 1, 1, 1, 3, 1, 57, 8, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 3, 1, 3, 1, 3, 3, 3, 66,
-        8, 3, 1, 3, 1, 3, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 3, 4, 75, 8, 4, 1, 5, 1, 5, 1, 6, 1, 6, 1,
-        6, 3, 6, 82, 8, 6, 1, 7, 1, 7, 1, 7, 3, 7, 87, 8, 7, 1, 8, 1, 8, 1, 8, 3, 8, 92, 8, 8, 1,
-        9, 1, 9, 1, 9, 3, 9, 97, 8, 9, 1, 10, 1, 10, 1, 10, 1, 10, 3, 10, 103, 8, 10, 1, 11, 1, 11,
-        1, 12, 1, 12, 1, 12, 3, 12, 110, 8, 12, 1, 13, 1, 13, 1, 13, 5, 13, 115, 8, 13, 10, 13, 12,
-        13, 118, 9, 13, 1, 14, 1, 14, 1, 14, 5, 14, 123, 8, 14, 10, 14, 12, 14, 126, 9, 14, 1, 15,
-        1, 15, 1, 16, 1, 16, 1, 16, 1, 16, 1, 16, 1, 16, 1, 16, 3, 16, 137, 8, 16, 3, 16, 139, 8,
-        16, 1, 17, 1, 17, 1, 17, 5, 17, 144, 8, 17, 10, 17, 12, 17, 147, 9, 17, 1, 18, 1, 18, 1,
-        18, 1, 18, 1, 18, 1, 18, 1, 18, 1, 18, 1, 18, 1, 18, 1, 18, 1, 18, 1, 18, 1, 18, 1, 18, 1,
-        18, 1, 18, 1, 18, 3, 18, 167, 8, 18, 1, 18, 1, 18, 3, 18, 171, 8, 18, 1, 19, 1, 19, 1, 19,
-        1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 3, 19, 185, 8, 19, 1, 20, 1,
-        20, 1, 20, 5, 20, 190, 8, 20, 10, 20, 12, 20, 193, 9, 20, 1, 21, 1, 21, 1, 22, 1, 22, 1,
-        22, 0, 0, 23, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38,
-        40, 42, 44, 0, 6, 1, 0, 4, 19, 2, 0, 28, 29, 31, 32, 3, 0, 20, 23, 26, 27, 33, 34, 1, 0,
-        30, 32, 2, 0, 54, 55, 58, 58, 1, 0, 48, 52, 205, 0, 49, 1, 0, 0, 0, 2, 56, 1, 0, 0, 0, 4,
-        58, 1, 0, 0, 0, 6, 62, 1, 0, 0, 0, 8, 69, 1, 0, 0, 0, 10, 76, 1, 0, 0, 0, 12, 78, 1, 0, 0,
-        0, 14, 83, 1, 0, 0, 0, 16, 88, 1, 0, 0, 0, 18, 96, 1, 0, 0, 0, 20, 98, 1, 0, 0, 0, 22, 104,
-        1, 0, 0, 0, 24, 106, 1, 0, 0, 0, 26, 111, 1, 0, 0, 0, 28, 119, 1, 0, 0, 0, 30, 127, 1, 0,
-        0, 0, 32, 138, 1, 0, 0, 0, 34, 140, 1, 0, 0, 0, 36, 170, 1, 0, 0, 0, 38, 184, 1, 0, 0, 0,
-        40, 186, 1, 0, 0, 0, 42, 194, 1, 0, 0, 0, 44, 196, 1, 0, 0, 0, 46, 48, 3, 2, 1, 0, 47, 46,
-        1, 0, 0, 0, 48, 51, 1, 0, 0, 0, 49, 47, 1, 0, 0, 0, 49, 50, 1, 0, 0, 0, 50, 52, 1, 0, 0, 0,
-        51, 49, 1, 0, 0, 0, 52, 53, 5, 0, 0, 1, 53, 1, 1, 0, 0, 0, 54, 57, 3, 4, 2, 0, 55, 57, 3,
-        6, 3, 0, 56, 54, 1, 0, 0, 0, 56, 55, 1, 0, 0, 0, 57, 3, 1, 0, 0, 0, 58, 59, 5, 1, 0, 0, 59,
-        60, 3, 10, 5, 0, 60, 61, 5, 38, 0, 0, 61, 5, 1, 0, 0, 0, 62, 65, 3, 8, 4, 0, 63, 64, 5, 1,
-        0, 0, 64, 66, 3, 10, 5, 0, 65, 63, 1, 0, 0, 0, 65, 66, 1, 0, 0, 0, 66, 67, 1, 0, 0, 0, 67,
-        68, 5, 38, 0, 0, 68, 7, 1, 0, 0, 0, 69, 74, 3, 42, 21, 0, 70, 71, 5, 39, 0, 0, 71, 72, 3,
-        34, 17, 0, 72, 73, 5, 40, 0, 0, 73, 75, 1, 0, 0, 0, 74, 70, 1, 0, 0, 0, 74, 75, 1, 0, 0, 0,
-        75, 9, 1, 0, 0, 0, 76, 77, 3, 12, 6, 0, 77, 11, 1, 0, 0, 0, 78, 81, 3, 14, 7, 0, 79, 80, 5,
-        35, 0, 0, 80, 82, 3, 12, 6, 0, 81, 79, 1, 0, 0, 0, 81, 82, 1, 0, 0, 0, 82, 13, 1, 0, 0, 0,
-        83, 86, 3, 16, 8, 0, 84, 85, 5, 2, 0, 0, 85, 87, 3, 14, 7, 0, 86, 84, 1, 0, 0, 0, 86, 87,
-        1, 0, 0, 0, 87, 15, 1, 0, 0, 0, 88, 91, 3, 18, 9, 0, 89, 90, 5, 36, 0, 0, 90, 92, 3, 16, 8,
-        0, 91, 89, 1, 0, 0, 0, 91, 92, 1, 0, 0, 0, 92, 17, 1, 0, 0, 0, 93, 94, 5, 3, 0, 0, 94, 97,
-        3, 18, 9, 0, 95, 97, 3, 20, 10, 0, 96, 93, 1, 0, 0, 0, 96, 95, 1, 0, 0, 0, 97, 19, 1, 0, 0,
-        0, 98, 102, 3, 24, 12, 0, 99, 100, 3, 22, 11, 0, 100, 101, 3, 24, 12, 0, 101, 103, 1, 0, 0,
-        0, 102, 99, 1, 0, 0, 0, 102, 103, 1, 0, 0, 0, 103, 21, 1, 0, 0, 0, 104, 105, 7, 0, 0, 0,
-        105, 23, 1, 0, 0, 0, 106, 109, 3, 26, 13, 0, 107, 108, 5, 37, 0, 0, 108, 110, 3, 24, 12, 0,
-        109, 107, 1, 0, 0, 0, 109, 110, 1, 0, 0, 0, 110, 25, 1, 0, 0, 0, 111, 116, 3, 28, 14, 0,
-        112, 113, 7, 1, 0, 0, 113, 115, 3, 28, 14, 0, 114, 112, 1, 0, 0, 0, 115, 118, 1, 0, 0, 0,
-        116, 114, 1, 0, 0, 0, 116, 117, 1, 0, 0, 0, 117, 27, 1, 0, 0, 0, 118, 116, 1, 0, 0, 0, 119,
-        124, 3, 30, 15, 0, 120, 121, 7, 2, 0, 0, 121, 123, 3, 30, 15, 0, 122, 120, 1, 0, 0, 0, 123,
-        126, 1, 0, 0, 0, 124, 122, 1, 0, 0, 0, 124, 125, 1, 0, 0, 0, 125, 29, 1, 0, 0, 0, 126, 124,
-        1, 0, 0, 0, 127, 128, 3, 32, 16, 0, 128, 31, 1, 0, 0, 0, 129, 130, 7, 3, 0, 0, 130, 139, 3,
-        30, 15, 0, 131, 136, 3, 36, 18, 0, 132, 133, 5, 24, 0, 0, 133, 137, 3, 36, 18, 0, 134, 135,
-        5, 25, 0, 0, 135, 137, 3, 30, 15, 0, 136, 132, 1, 0, 0, 0, 136, 134, 1, 0, 0, 0, 136, 137,
-        1, 0, 0, 0, 137, 139, 1, 0, 0, 0, 138, 129, 1, 0, 0, 0, 138, 131, 1, 0, 0, 0, 139, 33, 1,
-        0, 0, 0, 140, 145, 3, 18, 9, 0, 141, 142, 5, 36, 0, 0, 142, 144, 3, 18, 9, 0, 143, 141, 1,
-        0, 0, 0, 144, 147, 1, 0, 0, 0, 145, 143, 1, 0, 0, 0, 145, 146, 1, 0, 0, 0, 146, 35, 1, 0,
-        0, 0, 147, 145, 1, 0, 0, 0, 148, 149, 3, 42, 21, 0, 149, 150, 5, 39, 0, 0, 150, 151, 3, 34,
-        17, 0, 151, 152, 5, 40, 0, 0, 152, 171, 1, 0, 0, 0, 153, 171, 5, 53, 0, 0, 154, 171, 3, 44,
-        22, 0, 155, 171, 5, 47, 0, 0, 156, 171, 3, 42, 21, 0, 157, 171, 5, 56, 0, 0, 158, 171, 5,
-        57, 0, 0, 159, 171, 3, 38, 19, 0, 160, 161, 5, 39, 0, 0, 161, 162, 3, 10, 5, 0, 162, 163,
-        5, 40, 0, 0, 163, 171, 1, 0, 0, 0, 164, 166, 5, 43, 0, 0, 165, 167, 3, 10, 5, 0, 166, 165,
-        1, 0, 0, 0, 166, 167, 1, 0, 0, 0, 167, 168, 1, 0, 0, 0, 168, 171, 5, 44, 0, 0, 169, 171, 5,
-        46, 0, 0, 170, 148, 1, 0, 0, 0, 170, 153, 1, 0, 0, 0, 170, 154, 1, 0, 0, 0, 170, 155, 1, 0,
-        0, 0, 170, 156, 1, 0, 0, 0, 170, 157, 1, 0, 0, 0, 170, 158, 1, 0, 0, 0, 170, 159, 1, 0, 0,
-        0, 170, 160, 1, 0, 0, 0, 170, 164, 1, 0, 0, 0, 170, 169, 1, 0, 0, 0, 171, 37, 1, 0, 0, 0,
-        172, 173, 5, 41, 0, 0, 173, 185, 5, 42, 0, 0, 174, 175, 5, 41, 0, 0, 175, 176, 3, 40, 20,
-        0, 176, 177, 5, 42, 0, 0, 177, 185, 1, 0, 0, 0, 178, 179, 5, 41, 0, 0, 179, 180, 3, 40, 20,
-        0, 180, 181, 5, 45, 0, 0, 181, 182, 3, 18, 9, 0, 182, 183, 5, 42, 0, 0, 183, 185, 1, 0, 0,
-        0, 184, 172, 1, 0, 0, 0, 184, 174, 1, 0, 0, 0, 184, 178, 1, 0, 0, 0, 185, 39, 1, 0, 0, 0,
-        186, 191, 3, 18, 9, 0, 187, 188, 5, 36, 0, 0, 188, 190, 3, 18, 9, 0, 189, 187, 1, 0, 0, 0,
-        190, 193, 1, 0, 0, 0, 191, 189, 1, 0, 0, 0, 191, 192, 1, 0, 0, 0, 192, 41, 1, 0, 0, 0, 193,
-        191, 1, 0, 0, 0, 194, 195, 7, 4, 0, 0, 195, 43, 1, 0, 0, 0, 196, 197, 7, 5, 0, 0, 197, 45,
-        1, 0, 0, 0, 19, 49, 56, 65, 74, 81, 86, 91, 96, 102, 109, 116, 124, 136, 138, 145, 166,
-        170, 184, 191
+        19, 2, 20, 7, 20, 2, 21, 7, 21, 2, 22, 7, 22, 2, 23, 7, 23, 1, 0, 5, 0, 50, 8, 0, 10, 0,
+        12, 0, 53, 9, 0, 1, 0, 1, 0, 1, 1, 1, 1, 3, 1, 59, 8, 1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 3, 1,
+        3, 1, 3, 3, 3, 68, 8, 3, 1, 3, 1, 3, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 3, 4, 77, 8, 4, 1, 5, 1,
+        5, 1, 5, 3, 5, 82, 8, 5, 1, 6, 1, 6, 1, 6, 3, 6, 87, 8, 6, 1, 7, 1, 7, 1, 7, 3, 7, 92, 8,
+        7, 1, 8, 1, 8, 1, 8, 3, 8, 97, 8, 8, 1, 9, 1, 9, 1, 9, 1, 9, 3, 9, 103, 8, 9, 1, 10, 1, 10,
+        1, 11, 1, 11, 1, 11, 3, 11, 110, 8, 11, 1, 12, 1, 12, 1, 12, 5, 12, 115, 8, 12, 10, 12, 12,
+        12, 118, 9, 12, 1, 13, 1, 13, 1, 13, 5, 13, 123, 8, 13, 10, 13, 12, 13, 126, 9, 13, 1, 14,
+        1, 14, 1, 14, 1, 14, 1, 14, 3, 14, 133, 8, 14, 1, 14, 1, 14, 3, 14, 137, 8, 14, 1, 15, 1,
+        15, 1, 15, 3, 15, 142, 8, 15, 1, 16, 1, 16, 1, 16, 5, 16, 147, 8, 16, 10, 16, 12, 16, 150,
+        9, 16, 1, 17, 1, 17, 1, 17, 1, 17, 1, 17, 1, 17, 1, 17, 1, 17, 1, 17, 1, 17, 1, 17, 1, 17,
+        1, 17, 1, 17, 1, 17, 1, 17, 1, 17, 1, 17, 3, 17, 170, 8, 17, 1, 17, 1, 17, 3, 17, 174, 8,
+        17, 1, 18, 1, 18, 3, 18, 178, 8, 18, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1,
+        19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 1, 19, 3,
+        19, 200, 8, 19, 1, 20, 1, 20, 3, 20, 204, 8, 20, 1, 21, 1, 21, 1, 21, 1, 21, 1, 21, 1, 21,
+        1, 21, 1, 21, 1, 21, 1, 21, 1, 21, 1, 21, 3, 21, 218, 8, 21, 1, 22, 1, 22, 1, 23, 1, 23, 1,
+        23, 0, 0, 24, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38,
+        40, 42, 44, 46, 0, 7, 1, 0, 6, 21, 2, 0, 30, 31, 33, 34, 3, 0, 22, 25, 28, 29, 35, 36, 1,
+        0, 32, 34, 1, 0, 42, 43, 2, 0, 58, 59, 62, 62, 1, 0, 52, 56, 250, 0, 51, 1, 0, 0, 0, 2, 58,
+        1, 0, 0, 0, 4, 60, 1, 0, 0, 0, 6, 64, 1, 0, 0, 0, 8, 71, 1, 0, 0, 0, 10, 78, 1, 0, 0, 0,
+        12, 83, 1, 0, 0, 0, 14, 88, 1, 0, 0, 0, 16, 96, 1, 0, 0, 0, 18, 98, 1, 0, 0, 0, 20, 104, 1,
+        0, 0, 0, 22, 106, 1, 0, 0, 0, 24, 111, 1, 0, 0, 0, 26, 119, 1, 0, 0, 0, 28, 136, 1, 0, 0,
+        0, 30, 141, 1, 0, 0, 0, 32, 143, 1, 0, 0, 0, 34, 173, 1, 0, 0, 0, 36, 177, 1, 0, 0, 0, 38,
+        199, 1, 0, 0, 0, 40, 203, 1, 0, 0, 0, 42, 217, 1, 0, 0, 0, 44, 219, 1, 0, 0, 0, 46, 221, 1,
+        0, 0, 0, 48, 50, 3, 2, 1, 0, 49, 48, 1, 0, 0, 0, 50, 53, 1, 0, 0, 0, 51, 49, 1, 0, 0, 0,
+        51, 52, 1, 0, 0, 0, 52, 54, 1, 0, 0, 0, 53, 51, 1, 0, 0, 0, 54, 55, 5, 0, 0, 1, 55, 1, 1,
+        0, 0, 0, 56, 59, 3, 4, 2, 0, 57, 59, 3, 6, 3, 0, 58, 56, 1, 0, 0, 0, 58, 57, 1, 0, 0, 0,
+        59, 3, 1, 0, 0, 0, 60, 61, 5, 3, 0, 0, 61, 62, 3, 10, 5, 0, 62, 63, 5, 40, 0, 0, 63, 5, 1,
+        0, 0, 0, 64, 67, 3, 8, 4, 0, 65, 66, 5, 3, 0, 0, 66, 68, 3, 10, 5, 0, 67, 65, 1, 0, 0, 0,
+        67, 68, 1, 0, 0, 0, 68, 69, 1, 0, 0, 0, 69, 70, 5, 40, 0, 0, 70, 7, 1, 0, 0, 0, 71, 76, 3,
+        44, 22, 0, 72, 73, 5, 42, 0, 0, 73, 74, 3, 32, 16, 0, 74, 75, 5, 44, 0, 0, 75, 77, 1, 0, 0,
+        0, 76, 72, 1, 0, 0, 0, 76, 77, 1, 0, 0, 0, 77, 9, 1, 0, 0, 0, 78, 81, 3, 12, 6, 0, 79, 80,
+        5, 37, 0, 0, 80, 82, 3, 10, 5, 0, 81, 79, 1, 0, 0, 0, 81, 82, 1, 0, 0, 0, 82, 11, 1, 0, 0,
+        0, 83, 86, 3, 14, 7, 0, 84, 85, 5, 4, 0, 0, 85, 87, 3, 12, 6, 0, 86, 84, 1, 0, 0, 0, 86,
+        87, 1, 0, 0, 0, 87, 13, 1, 0, 0, 0, 88, 91, 3, 16, 8, 0, 89, 90, 5, 38, 0, 0, 90, 92, 3,
+        14, 7, 0, 91, 89, 1, 0, 0, 0, 91, 92, 1, 0, 0, 0, 92, 15, 1, 0, 0, 0, 93, 97, 3, 18, 9, 0,
+        94, 95, 5, 5, 0, 0, 95, 97, 3, 16, 8, 0, 96, 93, 1, 0, 0, 0, 96, 94, 1, 0, 0, 0, 97, 17, 1,
+        0, 0, 0, 98, 102, 3, 22, 11, 0, 99, 100, 3, 20, 10, 0, 100, 101, 3, 22, 11, 0, 101, 103, 1,
+        0, 0, 0, 102, 99, 1, 0, 0, 0, 102, 103, 1, 0, 0, 0, 103, 19, 1, 0, 0, 0, 104, 105, 7, 0, 0,
+        0, 105, 21, 1, 0, 0, 0, 106, 109, 3, 24, 12, 0, 107, 108, 5, 39, 0, 0, 108, 110, 3, 22, 11,
+        0, 109, 107, 1, 0, 0, 0, 109, 110, 1, 0, 0, 0, 110, 23, 1, 0, 0, 0, 111, 116, 3, 26, 13, 0,
+        112, 113, 7, 1, 0, 0, 113, 115, 3, 26, 13, 0, 114, 112, 1, 0, 0, 0, 115, 118, 1, 0, 0, 0,
+        116, 114, 1, 0, 0, 0, 116, 117, 1, 0, 0, 0, 117, 25, 1, 0, 0, 0, 118, 116, 1, 0, 0, 0, 119,
+        124, 3, 28, 14, 0, 120, 121, 7, 2, 0, 0, 121, 123, 3, 28, 14, 0, 122, 120, 1, 0, 0, 0, 123,
+        126, 1, 0, 0, 0, 124, 122, 1, 0, 0, 0, 124, 125, 1, 0, 0, 0, 125, 27, 1, 0, 0, 0, 126, 124,
+        1, 0, 0, 0, 127, 132, 3, 34, 17, 0, 128, 129, 5, 26, 0, 0, 129, 133, 3, 30, 15, 0, 130,
+        131, 5, 27, 0, 0, 131, 133, 3, 28, 14, 0, 132, 128, 1, 0, 0, 0, 132, 130, 1, 0, 0, 0, 132,
+        133, 1, 0, 0, 0, 133, 137, 1, 0, 0, 0, 134, 135, 7, 3, 0, 0, 135, 137, 3, 28, 14, 0, 136,
+        127, 1, 0, 0, 0, 136, 134, 1, 0, 0, 0, 137, 29, 1, 0, 0, 0, 138, 142, 3, 34, 17, 0, 139,
+        140, 5, 34, 0, 0, 140, 142, 3, 40, 20, 0, 141, 138, 1, 0, 0, 0, 141, 139, 1, 0, 0, 0, 142,
+        31, 1, 0, 0, 0, 143, 148, 3, 16, 8, 0, 144, 145, 5, 38, 0, 0, 145, 147, 3, 16, 8, 0, 146,
+        144, 1, 0, 0, 0, 147, 150, 1, 0, 0, 0, 148, 146, 1, 0, 0, 0, 148, 149, 1, 0, 0, 0, 149, 33,
+        1, 0, 0, 0, 150, 148, 1, 0, 0, 0, 151, 152, 3, 36, 18, 0, 152, 153, 5, 42, 0, 0, 153, 154,
+        3, 32, 16, 0, 154, 155, 5, 44, 0, 0, 155, 174, 1, 0, 0, 0, 156, 174, 5, 57, 0, 0, 157, 174,
+        3, 46, 23, 0, 158, 174, 5, 51, 0, 0, 159, 174, 3, 44, 22, 0, 160, 174, 5, 60, 0, 0, 161,
+        174, 5, 61, 0, 0, 162, 174, 3, 42, 21, 0, 163, 164, 7, 4, 0, 0, 164, 165, 3, 10, 5, 0, 165,
+        166, 5, 44, 0, 0, 166, 174, 1, 0, 0, 0, 167, 169, 5, 47, 0, 0, 168, 170, 3, 10, 5, 0, 169,
+        168, 1, 0, 0, 0, 169, 170, 1, 0, 0, 0, 170, 171, 1, 0, 0, 0, 171, 174, 5, 48, 0, 0, 172,
+        174, 5, 50, 0, 0, 173, 151, 1, 0, 0, 0, 173, 156, 1, 0, 0, 0, 173, 157, 1, 0, 0, 0, 173,
+        158, 1, 0, 0, 0, 173, 159, 1, 0, 0, 0, 173, 160, 1, 0, 0, 0, 173, 161, 1, 0, 0, 0, 173,
+        162, 1, 0, 0, 0, 173, 163, 1, 0, 0, 0, 173, 167, 1, 0, 0, 0, 173, 172, 1, 0, 0, 0, 174, 35,
+        1, 0, 0, 0, 175, 178, 3, 44, 22, 0, 176, 178, 3, 38, 19, 0, 177, 175, 1, 0, 0, 0, 177, 176,
+        1, 0, 0, 0, 178, 37, 1, 0, 0, 0, 179, 200, 3, 20, 10, 0, 180, 200, 5, 5, 0, 0, 181, 200, 5,
+        4, 0, 0, 182, 200, 5, 37, 0, 0, 183, 200, 5, 39, 0, 0, 184, 200, 5, 33, 0, 0, 185, 200, 5,
+        34, 0, 0, 186, 200, 5, 30, 0, 0, 187, 200, 5, 31, 0, 0, 188, 200, 5, 35, 0, 0, 189, 200, 5,
+        36, 0, 0, 190, 200, 5, 22, 0, 0, 191, 200, 5, 23, 0, 0, 192, 200, 5, 24, 0, 0, 193, 200, 5,
+        25, 0, 0, 194, 200, 5, 28, 0, 0, 195, 200, 5, 29, 0, 0, 196, 200, 5, 26, 0, 0, 197, 200, 5,
+        27, 0, 0, 198, 200, 5, 32, 0, 0, 199, 179, 1, 0, 0, 0, 199, 180, 1, 0, 0, 0, 199, 181, 1,
+        0, 0, 0, 199, 182, 1, 0, 0, 0, 199, 183, 1, 0, 0, 0, 199, 184, 1, 0, 0, 0, 199, 185, 1, 0,
+        0, 0, 199, 186, 1, 0, 0, 0, 199, 187, 1, 0, 0, 0, 199, 188, 1, 0, 0, 0, 199, 189, 1, 0, 0,
+        0, 199, 190, 1, 0, 0, 0, 199, 191, 1, 0, 0, 0, 199, 192, 1, 0, 0, 0, 199, 193, 1, 0, 0, 0,
+        199, 194, 1, 0, 0, 0, 199, 195, 1, 0, 0, 0, 199, 196, 1, 0, 0, 0, 199, 197, 1, 0, 0, 0,
+        199, 198, 1, 0, 0, 0, 200, 39, 1, 0, 0, 0, 201, 204, 3, 46, 23, 0, 202, 204, 5, 51, 0, 0,
+        203, 201, 1, 0, 0, 0, 203, 202, 1, 0, 0, 0, 204, 41, 1, 0, 0, 0, 205, 206, 5, 45, 0, 0,
+        206, 218, 5, 46, 0, 0, 207, 208, 5, 45, 0, 0, 208, 209, 3, 32, 16, 0, 209, 210, 5, 46, 0,
+        0, 210, 218, 1, 0, 0, 0, 211, 212, 5, 45, 0, 0, 212, 213, 3, 32, 16, 0, 213, 214, 5, 49, 0,
+        0, 214, 215, 3, 16, 8, 0, 215, 216, 5, 46, 0, 0, 216, 218, 1, 0, 0, 0, 217, 205, 1, 0, 0,
+        0, 217, 207, 1, 0, 0, 0, 217, 211, 1, 0, 0, 0, 218, 43, 1, 0, 0, 0, 219, 220, 7, 5, 0, 0,
+        220, 45, 1, 0, 0, 0, 221, 222, 7, 6, 0, 0, 222, 47, 1, 0, 0, 0, 22, 51, 58, 67, 76, 81, 86,
+        91, 96, 102, 109, 116, 124, 132, 136, 141, 148, 169, 173, 177, 199, 203, 217
     ];
 }

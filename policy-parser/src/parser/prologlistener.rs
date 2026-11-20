@@ -65,16 +65,6 @@ pub trait prologListener<'input>: ParseTreeListener<'input, prologParserContextT
      */
     fn exit_body(&mut self, _ctx: &BodyContext<'input>) {}
     /**
-     * Enter a parse tree produced by {@link prologParser#disjunction}.
-     * @param ctx the parse tree
-     */
-    fn enter_disjunction(&mut self, _ctx: &DisjunctionContext<'input>) {}
-    /**
-     * Exit a parse tree produced by {@link prologParser#disjunction}.
-     * @param ctx the parse tree
-     */
-    fn exit_disjunction(&mut self, _ctx: &DisjunctionContext<'input>) {}
-    /**
      * Enter a parse tree produced by {@link prologParser#if_then}.
      * @param ctx the parse tree
      */
@@ -155,16 +145,6 @@ pub trait prologListener<'input>: ParseTreeListener<'input, prologParserContextT
      */
     fn exit_multiplicative_expr(&mut self, _ctx: &Multiplicative_exprContext<'input>) {}
     /**
-     * Enter a parse tree produced by {@link prologParser#power_expr}.
-     * @param ctx the parse tree
-     */
-    fn enter_power_expr(&mut self, _ctx: &Power_exprContext<'input>) {}
-    /**
-     * Exit a parse tree produced by {@link prologParser#power_expr}.
-     * @param ctx the parse tree
-     */
-    fn exit_power_expr(&mut self, _ctx: &Power_exprContext<'input>) {}
-    /**
      * Enter a parse tree produced by {@link prologParser#unary_expr}.
      * @param ctx the parse tree
      */
@@ -175,15 +155,25 @@ pub trait prologListener<'input>: ParseTreeListener<'input, prologParserContextT
      */
     fn exit_unary_expr(&mut self, _ctx: &Unary_exprContext<'input>) {}
     /**
-     * Enter a parse tree produced by {@link prologParser#argument_list}.
+     * Enter a parse tree produced by {@link prologParser#power_operand}.
      * @param ctx the parse tree
      */
-    fn enter_argument_list(&mut self, _ctx: &Argument_listContext<'input>) {}
+    fn enter_power_operand(&mut self, _ctx: &Power_operandContext<'input>) {}
     /**
-     * Exit a parse tree produced by {@link prologParser#argument_list}.
+     * Exit a parse tree produced by {@link prologParser#power_operand}.
      * @param ctx the parse tree
      */
-    fn exit_argument_list(&mut self, _ctx: &Argument_listContext<'input>) {}
+    fn exit_power_operand(&mut self, _ctx: &Power_operandContext<'input>) {}
+    /**
+     * Enter a parse tree produced by {@link prologParser#term_list}.
+     * @param ctx the parse tree
+     */
+    fn enter_term_list(&mut self, _ctx: &Term_listContext<'input>) {}
+    /**
+     * Exit a parse tree produced by {@link prologParser#term_list}.
+     * @param ctx the parse tree
+     */
+    fn exit_term_list(&mut self, _ctx: &Term_listContext<'input>) {}
     /**
      * Enter a parse tree produced by the {@code compoundTerm}
      * labeled alternative in {@link prologParser#primary}.
@@ -317,6 +307,36 @@ pub trait prologListener<'input>: ParseTreeListener<'input, prologParserContextT
      */
     fn exit_cutTerm(&mut self, _ctx: &CutTermContext<'input>) {}
     /**
+     * Enter a parse tree produced by {@link prologParser#functor}.
+     * @param ctx the parse tree
+     */
+    fn enter_functor(&mut self, _ctx: &FunctorContext<'input>) {}
+    /**
+     * Exit a parse tree produced by {@link prologParser#functor}.
+     * @param ctx the parse tree
+     */
+    fn exit_functor(&mut self, _ctx: &FunctorContext<'input>) {}
+    /**
+     * Enter a parse tree produced by {@link prologParser#operator_name}.
+     * @param ctx the parse tree
+     */
+    fn enter_operator_name(&mut self, _ctx: &Operator_nameContext<'input>) {}
+    /**
+     * Exit a parse tree produced by {@link prologParser#operator_name}.
+     * @param ctx the parse tree
+     */
+    fn exit_operator_name(&mut self, _ctx: &Operator_nameContext<'input>) {}
+    /**
+     * Enter a parse tree produced by {@link prologParser#number}.
+     * @param ctx the parse tree
+     */
+    fn enter_number(&mut self, _ctx: &NumberContext<'input>) {}
+    /**
+     * Exit a parse tree produced by {@link prologParser#number}.
+     * @param ctx the parse tree
+     */
+    fn exit_number(&mut self, _ctx: &NumberContext<'input>) {}
+    /**
      * Enter a parse tree produced by the {@code emptyList}
      * labeled alternative in {@link prologParser#list}.
      * @param ctx the parse tree
@@ -352,16 +372,6 @@ pub trait prologListener<'input>: ParseTreeListener<'input, prologParserContextT
      * @param ctx the parse tree
      */
     fn exit_improperList(&mut self, _ctx: &ImproperListContext<'input>) {}
-    /**
-     * Enter a parse tree produced by {@link prologParser#list_items}.
-     * @param ctx the parse tree
-     */
-    fn enter_list_items(&mut self, _ctx: &List_itemsContext<'input>) {}
-    /**
-     * Exit a parse tree produced by {@link prologParser#list_items}.
-     * @param ctx the parse tree
-     */
-    fn exit_list_items(&mut self, _ctx: &List_itemsContext<'input>) {}
     /**
      * Enter a parse tree produced by {@link prologParser#atom}.
      * @param ctx the parse tree

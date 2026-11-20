@@ -36,11 +36,6 @@ pub trait prologBaseVisitor<'input>: ParseTreeVisitor<'input, prologParserContex
         self.visit_children(ctx)
     }
 
-    // Visit a parse tree produced by prologParser#disjunction.
-    fn visit_disjunction(&mut self, ctx: &DisjunctionContext<'input>) {
-        self.visit_children(ctx)
-    }
-
     // Visit a parse tree produced by prologParser#if_then.
     fn visit_if_then(&mut self, ctx: &If_thenContext<'input>) {
         self.visit_children(ctx)
@@ -81,18 +76,18 @@ pub trait prologBaseVisitor<'input>: ParseTreeVisitor<'input, prologParserContex
         self.visit_children(ctx)
     }
 
-    // Visit a parse tree produced by prologParser#power_expr.
-    fn visit_power_expr(&mut self, ctx: &Power_exprContext<'input>) {
-        self.visit_children(ctx)
-    }
-
     // Visit a parse tree produced by prologParser#unary_expr.
     fn visit_unary_expr(&mut self, ctx: &Unary_exprContext<'input>) {
         self.visit_children(ctx)
     }
 
-    // Visit a parse tree produced by prologParser#argument_list.
-    fn visit_argument_list(&mut self, ctx: &Argument_listContext<'input>) {
+    // Visit a parse tree produced by prologParser#power_operand.
+    fn visit_power_operand(&mut self, ctx: &Power_operandContext<'input>) {
+        self.visit_children(ctx)
+    }
+
+    // Visit a parse tree produced by prologParser#term_list.
+    fn visit_term_list(&mut self, ctx: &Term_listContext<'input>) {
         self.visit_children(ctx)
     }
 
@@ -151,6 +146,21 @@ pub trait prologBaseVisitor<'input>: ParseTreeVisitor<'input, prologParserContex
         self.visit_children(ctx)
     }
 
+    // Visit a parse tree produced by prologParser#functor.
+    fn visit_functor(&mut self, ctx: &FunctorContext<'input>) {
+        self.visit_children(ctx)
+    }
+
+    // Visit a parse tree produced by prologParser#operator_name.
+    fn visit_operator_name(&mut self, ctx: &Operator_nameContext<'input>) {
+        self.visit_children(ctx)
+    }
+
+    // Visit a parse tree produced by prologParser#number.
+    fn visit_number(&mut self, ctx: &NumberContext<'input>) {
+        self.visit_children(ctx)
+    }
+
     // Visit a parse tree produced by prologParser#emptyList.
     fn visit_emptylist(&mut self, ctx: &EmptyListContext<'input>) {
         self.visit_children(ctx)
@@ -163,11 +173,6 @@ pub trait prologBaseVisitor<'input>: ParseTreeVisitor<'input, prologParserContex
 
     // Visit a parse tree produced by prologParser#improperList.
     fn visit_improperlist(&mut self, ctx: &ImproperListContext<'input>) {
-        self.visit_children(ctx)
-    }
-
-    // Visit a parse tree produced by prologParser#list_items.
-    fn visit_list_items(&mut self, ctx: &List_itemsContext<'input>) {
         self.visit_children(ctx)
     }
 
