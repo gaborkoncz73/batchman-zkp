@@ -8,7 +8,7 @@ use halo2_proofs::pasta::Fp;
 
 use crate::error::ModelError;
 use crate::position::{Position, Slot};
-use crate::term::{GroundTerm, MAX_ARITY};
+use crate::term::{GroundTerm, MAX_ARITY, TermTag, hash_node};
 
 /// The meaning of one cell of a node assignment.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -50,6 +50,62 @@ pub struct OpenedNode {
     pub children: [usize; MAX_ARITY],
 }
 
+impl OpenedNode {
+    /// Checks that the cells of this node, read from `assignment`, encode one
+    /// node of a ground term (see [`crate::term`]):
+    ///
+    /// * the tag is a [`TermTag`];
+    /// * an absent node has all its cells zero;
+    /// * a present node has an arity its tag allows, payload zero if it is nil
+    ///   or cons, exactly `arity` non-zero child digests followed by zeros,
+    ///   and the digest is the hash of the other cells.
+    pub fn check(&self, assignment: &[Fp]) -> Result<(), String> {
+        let digest = assignment[self.digest];
+        let tag = assignment[self.tag];
+        let payload = assignment[self.payload];
+        let arity = assignment[self.arity];
+        let children = self.children.map(|column| assignment[column]);
+
+        let tag = TermTag::from_field(tag).ok_or("the tag is not a term tag")?;
+        if tag == TermTag::Absent {
+            let cells = [digest, payload, arity].into_iter().chain(children);
+            if cells.into_iter().any(|value| value != Fp::ZERO) {
+                return Err("the node is absent, but not all of its cells are zero".to_owned());
+            }
+            return Ok(());
+        }
+
+        let (smallest, largest) = tag.arities();
+        let count = (smallest..=largest)
+            .find(|&count| Fp::from(count as u64) == arity)
+            .ok_or_else(|| {
+                format!(
+                    "a {} node must have arity {smallest}..={largest}",
+                    tag.name()
+                )
+            })?;
+        if matches!(tag, TermTag::Nil | TermTag::Cons) && payload != Fp::ZERO {
+            return Err(format!("a {} node must have payload zero", tag.name()));
+        }
+        for (index, child) in children.iter().enumerate() {
+            if index < count && *child == Fp::ZERO {
+                return Err(format!(
+                    "child {index} is missing, but the arity is {count}"
+                ));
+            }
+            if index >= count && *child != Fp::ZERO {
+                return Err(format!(
+                    "child {index} is present, but the arity is {count}"
+                ));
+            }
+        }
+        if digest != hash_node(tag.field(), payload, arity, &children) {
+            return Err("the digest is not the hash of the other cells".to_owned());
+        }
+        Ok(())
+    }
+}
+
 /// Column layout shared by every branch.
 ///
 /// The opened positions are closed under prefixes and always include the
@@ -67,8 +123,11 @@ impl Layout {
     /// Builds the smallest layout that contains `referenced` cells.
     pub(crate) fn covering<'a>(
         child_slots: usize,
+        //A referenced cellák, amiket a layoutnak tartalmaznia kell. Ezek lehetnek ChildCount, Digest, Tag, Payload vagy Arity cellák.
+        //Ezek oonnan jönnek, hogy a branch-ekben milyen cellákra van szükség a constraint-ekhez.
         referenced: impl IntoIterator<Item = &'a Cell>,
     ) -> Result<Self, ModelError> {
+        // AZ indexedik child slot-ot adja vissza, ha az index kisebb, mint child_slots, különben hibát dob.
         let slot = |index: usize| {
             u8::try_from(index)
                 .map(Slot::Child)
@@ -155,6 +214,24 @@ impl Layout {
         &self.opened
     }
 
+    /// Checks every opened node of `assignment` (see [`OpenedNode::check`]).
+    /// This is the branch-independent part of a node check.
+    pub fn check_well_formed(&self, assignment: &[Fp]) -> Result<(), ModelError> {
+        if assignment.len() != self.width() {
+            return Err(ModelError::new(format!(
+                "the assignment has {} cells, the layout has {}",
+                assignment.len(),
+                self.width()
+            )));
+        }
+        for node in &self.opened {
+            node.check(assignment).map_err(|reason| {
+                ModelError::new(format!("subterm {}: {reason}", node.position))
+            })?;
+        }
+        Ok(())
+    }
+
     /// Fills the cells of a node whose goal is `parent` and whose body goals
     /// are `children`. Positions that do not exist in the goals are zero.
     pub fn assign(
@@ -169,6 +246,7 @@ impl Layout {
                 self.child_slots
             )));
         }
+        //Megadunk egy pozíciót és ha azon a helyen van GroundTerm, akkor visszaadja, ha nincs, akkor None-t ad vissza.
         let subterm = |at: &Position| -> Option<&GroundTerm> {
             let goal = match at.slot() {
                 Slot::Parent => parent,
@@ -176,6 +254,7 @@ impl Layout {
             };
             goal.at(at.path())
         };
+        //Visszaadja a cellák értékeit, ha van GroundTerm, ha nincs, akkor Fp::ZERO-t ad vissza.
         Ok(self
             .cells
             .iter()

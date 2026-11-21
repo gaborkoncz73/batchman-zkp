@@ -25,7 +25,8 @@
 //!
 //! * well-formedness of every opened node: its digest is the Poseidon hash of
 //!   its tag, payload, arity and child digests (see [`term::node_digest`]),
-//!   or the node is absent and all its cells are zero;
+//!   or the node is absent and all its cells are zero
+//!   ([`Layout::check_well_formed`]);
 //! * the semantics attached to a branch kind: arithmetic for builtins and
 //!   registry membership for external facts.
 

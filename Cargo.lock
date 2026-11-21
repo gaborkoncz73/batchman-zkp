@@ -658,6 +658,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "proof-witness"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ff",
+ "halo2_proofs",
+ "num-bigint",
+ "policy-constraints",
+ "policy-ir",
+ "policy-parser",
+ "rand_core",
+ "rayon",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
 name = "prove"
 version = "0.1.0"
 dependencies = [

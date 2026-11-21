@@ -21,10 +21,10 @@
 //! encoded as the term it is written as: `p(1, a)` is the compound `p/2`, and
 //! a zero-arity goal is an atom.
 
-use ff::{Field, FromUniformBytes};
+use ff::{Field, FromUniformBytes, PrimeField};
 use halo2_gadgets::poseidon::primitives::{ConstantLength, Hash, P128Pow5T3};
 use halo2_proofs::pasta::Fp;
-use policy_ir::Term;
+use policy_ir::Term;     
 
 use crate::error::ModelError;
 
@@ -64,6 +64,29 @@ impl TermTag {
             Self::Compound => "compound",
         }
     }
+
+    /// The tag whose [`field`](Self::field) encoding is `value`, if any.
+    pub fn from_field(value: Fp) -> Option<Self> {
+        [
+            Self::Absent,
+            Self::Atom,
+            Self::Integer,
+            Self::Nil,
+            Self::Cons,
+            Self::Compound,
+        ]
+        .into_iter()
+        .find(|tag| tag.field() == value)
+    }
+
+    /// The smallest and largest arity of a present node with this tag.
+    pub fn arities(self) -> (usize, usize) {
+        match self {
+            Self::Absent | Self::Atom | Self::Integer | Self::Nil => (0, 0),
+            Self::Cons => (2, 2),
+            Self::Compound => (1, MAX_ARITY),
+        }
+    }
 }
 
 /// Encodes an atom or functor name as a field element.
@@ -87,11 +110,17 @@ pub fn integer(value: i64) -> Fp {
 /// with zeros to `MAX_ARITY`.
 pub fn node_digest(tag: TermTag, payload: Fp, arity: usize, children: &[Fp; MAX_ARITY]) -> Fp {
     debug_assert!(tag != TermTag::Absent, "absent nodes have no digest");
+    hash_node(tag.field(), payload, Fp::from(arity as u64), children)
+}
+
+/// [`node_digest`] over the cell values of a node, as the circuit sees them:
+/// the tag and the arity are field elements, not checked to be meaningful.
+pub fn hash_node(tag: Fp, payload: Fp, arity: Fp, children: &[Fp; MAX_ARITY]) -> Fp {
     let mut input = [Fp::ZERO; NODE_HASH_INPUTS];
     input[0] = Fp::from(NODE_DOMAIN);
-    input[1] = tag.field();
+    input[1] = tag;
     input[2] = payload;
-    input[3] = Fp::from(arity as u64);
+    input[3] = arity;
     input[4..].copy_from_slice(children);
     Hash::<Fp, P128Pow5T3, ConstantLength<NODE_HASH_INPUTS>, 3, 2>::init().hash(input)
 }
@@ -198,6 +227,24 @@ impl GroundTerm {
         self.digest
     }
 
+    /// The value of an integer node, `None` for every other node.
+    pub fn integer_value(&self) -> Option<i64> {
+        if self.tag != TermTag::Integer {
+            return None;
+        }
+        let small = |value: Fp| -> Option<u64> {
+            let repr = value.to_repr();
+            let (low, high) = repr.as_ref().split_at(8);
+            high.iter()
+                .all(|byte| *byte == 0)
+                .then(|| u64::from_le_bytes(low.try_into().expect("8 bytes")))
+        };
+        match small(self.payload) {
+            Some(magnitude) => i64::try_from(magnitude).ok(),
+            None => 0_i64.checked_sub_unsigned(small(-self.payload)?),
+        }
+    }
+
     /// The subterm reached by following child indices, if it exists.
     pub fn at(&self, path: &[u8]) -> Option<&GroundTerm> {
         path.iter()
@@ -221,6 +268,14 @@ mod tests {
         };
         assert_ne!(digest(Term::atom("1")), digest(one));
         assert_ne!(digest(Term::atom("[]")), digest(nil));
+    }
+
+    #[test]
+    fn integer_values_round_trip() {
+        for value in [0, 1, -1, 2000, -941_220, i64::MAX, i64::MIN] {
+            assert_eq!(GroundTerm::integer(value).integer_value(), Some(value));
+        }
+        assert_eq!(GroundTerm::atom("a").integer_value(), None);
     }
 
     #[test]

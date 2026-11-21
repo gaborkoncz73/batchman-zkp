@@ -6,8 +6,10 @@ use ff::Field;
 use halo2_proofs::pasta::Fp;
 use policy_ir::PredicateIndicator;
 
+use crate::error::ModelError;
 use crate::position::Position;
 use crate::row::LinearRow;
+use crate::term::GroundTerm;
 
 /// One alternative way to prove a node, with its linear rows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -139,10 +141,85 @@ impl BuiltinCheck {
             Self::Compare { relation, .. } => relation.functor(),
         }
     }
+
+    /// Whether the builtin `goal`, whose form this check describes, is true.
+    ///
+    /// This is the part of a builtin that the linear rows do not check. It
+    /// fails, like Prolog, on division by zero, and also on results outside
+    /// 64 bits.
+    pub fn holds(&self, goal: &GroundTerm) -> Result<bool, ModelError> {
+        match self {
+            Self::Unify => {
+                let argument = |index| {
+                    goal.at(&[index])
+                        .map(GroundTerm::digest)
+                        .ok_or_else(|| ModelError::new("=/2 needs two arguments"))
+                };
+                Ok(argument(0)? == argument(1)?)
+            }
+            Self::Evaluate { result, expression } => {
+                Ok(integer_at(goal, result)? == expression.value(goal)?)
+            }
+            Self::Compare {
+                relation,
+                left,
+                right,
+            } => Ok(relation.holds(left.value(goal)?, right.value(goal)?)),
+        }
+    }
+}
+
+fn integer_at(goal: &GroundTerm, at: &Position) -> Result<i64, ModelError> {
+    goal.at(at.path())
+        .and_then(GroundTerm::integer_value)
+        .ok_or_else(|| ModelError::new(format!("{at} is not an integer")))
+}
+
+impl Expression {
+    /// The value of the expression in the builtin `goal`.
+    pub fn value(&self, goal: &GroundTerm) -> Result<i64, ModelError> {
+        match self {
+            Self::Integer { at } => integer_at(goal, at),
+            Self::Apply {
+                at,
+                operator,
+                left,
+                right,
+            } => operator
+                .apply(left.value(goal)?, right.value(goal)?)
+                .map_err(|error| error.context(at)),
+        }
+    }
 }
 
 impl ArithmeticOp {
     pub const ALL: [Self; 4] = [Self::Add, Self::Subtract, Self::Multiply, Self::FloorDivide];
+
+    /// `left op right`, failing on division by zero and on overflow.
+    pub fn apply(self, left: i64, right: i64) -> Result<i64, ModelError> {
+        if self == Self::FloorDivide && right == 0 {
+            return Err(ModelError::new(format!("{left} div 0: division by zero")));
+        }
+        let value = match self {
+            Self::Add => left.checked_add(right),
+            Self::Subtract => left.checked_sub(right),
+            Self::Multiply => left.checked_mul(right),
+            Self::FloorDivide => left.checked_div(right).map(|quotient| {
+                let inexact = quotient * right != left;
+                if inexact && (left < 0) != (right < 0) {
+                    quotient - 1
+                } else {
+                    quotient
+                }
+            }),
+        };
+        value.ok_or_else(|| {
+            ModelError::new(format!(
+                "{left} {} {right} does not fit in 64 bits",
+                self.functor()
+            ))
+        })
+    }
 
     pub fn functor(self) -> &'static str {
         match self {
@@ -163,6 +240,17 @@ impl Comparison {
         Self::Equal,
         Self::NotEqual,
     ];
+
+    pub fn holds(self, left: i64, right: i64) -> bool {
+        match self {
+            Self::Less => left < right,
+            Self::LessOrEqual => left <= right,
+            Self::Greater => left > right,
+            Self::GreaterOrEqual => left >= right,
+            Self::Equal => left == right,
+            Self::NotEqual => left != right,
+        }
+    }
 
     pub fn functor(self) -> &'static str {
         match self {
@@ -226,5 +314,29 @@ impl Display for BranchKind {
                 )
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn div_rounds_towards_negative_infinity_like_prolog() {
+        let div = |left, right| ArithmeticOp::FloorDivide.apply(left, right).unwrap();
+        assert_eq!(div(7, 2), 3);
+        assert_eq!(div(-7, 2), -4);
+        assert_eq!(div(7, -2), -4);
+        assert_eq!(div(-7, -2), 3);
+        assert_eq!(div(-8, 2), -4);
+        assert_eq!(div(1_045_800 * 10, 100), 104_580);
+    }
+
+    #[test]
+    fn division_by_zero_and_overflow_fail() {
+        assert!(ArithmeticOp::FloorDivide.apply(1, 0).is_err());
+        assert!(ArithmeticOp::FloorDivide.apply(i64::MIN, -1).is_err());
+        assert!(ArithmeticOp::Multiply.apply(i64::MAX, 2).is_err());
+        assert!(ArithmeticOp::Add.apply(i64::MAX, 1).is_err());
     }
 }

@@ -5,6 +5,7 @@ members = ["common", "issue",
            "policy-ir",
            "policy-parser",
            "policy-constraints",
+           "proof-witness",
            "verify",
            ]
 

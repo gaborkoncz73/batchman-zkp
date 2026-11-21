@@ -7,7 +7,7 @@ edition = "2024"
 serde_json = { workspace = true, features = ["std"]}
 anyhow = { workspace = true } 
 common = { workspace = true }
-policy-parser = { path = "../policy-parser" }
+policy-parser = { path = "../policy-parser", features = ["legacy"] }
 halo2curves = { workspace = true }
 num-bigint = { workspace = true, features = ["serde"]}
 serde_yaml = { workspace = true }
