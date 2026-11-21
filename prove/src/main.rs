@@ -51,7 +51,8 @@ fn main() -> Result<()> {
 
     let limits_text = fs::read_to_string("config/circuit-limits.json")?;
     let limits: CircuitLimits = serde_json::from_str(&limits_text)?;
-    let typed_facts = policy_parser::parse_fact_registry(&fact_configs, &limits, "issue/src/facts.yaml")?;
+    let typed_facts =
+        policy_parser::parse_fact_registry(&fact_configs, &limits, "issue/src/facts.yaml")?;
 
     // The compatibility bridge and typed public registry share this exact
     // parser-derived set of canonical ground calls.
@@ -301,7 +302,8 @@ mod composition_tests {
         ))
         .unwrap();
         let trusted_goals =
-            policy_parser::parse_trusted_root_goals(&trusted, &policy, &limits, "trusted_roots").unwrap();
+            policy_parser::parse_trusted_root_goals(&trusted, &policy, &limits, "trusted_roots")
+                .unwrap();
 
         let compiled = compile_policy_for_current_circuit(&policy, &limits).unwrap();
         let legacy_facts = LegacyFactRegistry::new(&facts).unwrap();

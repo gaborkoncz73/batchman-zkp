@@ -6,7 +6,7 @@
 
 use std::collections::BTreeMap;
 
-use common::policy_ir::{Call, Clause, Term};
+use policy_ir::{Clause, Term};
 use policy_parser::{parse_goal, parse_policy, to_canonical_json};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -14,9 +14,6 @@ enum NormalTerm {
     Variable(u32),
     Atom(String),
     Integer(String),
-    Float(String),
-    String(String),
-    BackQuoted(String),
     Compound(String, Vec<NormalTerm>),
     Nil,
     Cons(Box<NormalTerm>, Box<NormalTerm>),
@@ -28,12 +25,7 @@ impl NormalTerm {
             Self::Variable(_) => false,
             Self::Compound(_, args) => args.iter().all(Self::is_ground),
             Self::Cons(head, tail) => head.is_ground() && tail.is_ground(),
-            Self::Atom(_)
-            | Self::Integer(_)
-            | Self::Float(_)
-            | Self::String(_)
-            | Self::BackQuoted(_)
-            | Self::Nil => true,
+            Self::Atom(_) | Self::Integer(_) | Self::Nil => true,
         }
     }
 }
@@ -43,9 +35,6 @@ fn normalize(term: &Term) -> NormalTerm {
         Term::Variable { id } => NormalTerm::Variable(*id),
         Term::Atom { value } => NormalTerm::Atom(value.clone()),
         Term::Integer { decimal } => NormalTerm::Integer(decimal.clone()),
-        Term::Float { lexeme } => NormalTerm::Float(lexeme.clone()),
-        Term::String { value } => NormalTerm::String(value.clone()),
-        Term::BackQuoted { value } => NormalTerm::BackQuoted(value.clone()),
         Term::Compound { functor, args } => {
             NormalTerm::Compound(functor.clone(), args.iter().map(normalize).collect())
         }
@@ -58,11 +47,8 @@ fn normalize(term: &Term) -> NormalTerm {
     }
 }
 
-fn normalize_call(call: &Call) -> NormalTerm {
-    NormalTerm::Compound(
-        call.predicate.name.clone(),
-        call.args.iter().map(normalize).collect(),
-    )
+fn normalize_head(name: &str, args: &[Term]) -> NormalTerm {
+    NormalTerm::Compound(name.to_owned(), args.iter().map(normalize).collect())
 }
 
 fn matches_pattern(
@@ -83,10 +69,7 @@ fn matches_pattern(
             }
         },
         (NormalTerm::Atom(left), NormalTerm::Atom(right))
-        | (NormalTerm::Integer(left), NormalTerm::Integer(right))
-        | (NormalTerm::Float(left), NormalTerm::Float(right))
-        | (NormalTerm::String(left), NormalTerm::String(right))
-        | (NormalTerm::BackQuoted(left), NormalTerm::BackQuoted(right)) => left == right,
+        | (NormalTerm::Integer(left), NormalTerm::Integer(right)) => left == right,
         (
             NormalTerm::Compound(left_name, left_args),
             NormalTerm::Compound(right_name, right_args),
@@ -132,7 +115,14 @@ fn body_branches(term: &Term) -> Vec<Vec<&Term>> {
     }
 }
 
-fn reference_accepts(clause: &Clause, parent: &Term, ordered_children: &[Term]) -> bool {
+/// A clause of the predicate `name`, as returned by `only_clause`.
+type NamedClause = (String, Clause);
+
+fn reference_accepts(
+    (name, clause): &NamedClause,
+    parent: &Term,
+    ordered_children: &[Term],
+) -> bool {
     let parent = normalize(parent);
     if !parent.is_ground() {
         return false;
@@ -144,7 +134,7 @@ fn reference_accepts(clause: &Clause, parent: &Term, ordered_children: &[Term]) 
         }
 
         let mut bindings = BTreeMap::new();
-        matches_pattern(&normalize_call(&clause.head), &parent, &mut bindings)
+        matches_pattern(&normalize_head(name, &clause.head), &parent, &mut bindings)
             && branch.iter().zip(ordered_children).all(|(pattern, value)| {
                 matches_pattern(&normalize(pattern), &normalize(value), &mut bindings)
             })
@@ -218,17 +208,15 @@ fn goal(source: &str) -> Term {
     parse_goal(source, "reference-goal").unwrap()
 }
 
-fn only_clause(source: &str) -> Clause {
-    parse_policy(source, "reference-policy.pl")
+fn only_clause(source: &str) -> NamedClause {
+    let predicate = parse_policy(source, "reference-policy.pl")
         .unwrap()
         .predicates
         .into_iter()
         .next()
-        .unwrap()
-        .clauses
-        .into_iter()
-        .next()
-        .unwrap()
+        .unwrap();
+    let clause = predicate.clauses.into_iter().next().unwrap();
+    (predicate.indicator.name, clause)
 }
 
 #[test]
@@ -242,21 +230,21 @@ fn current_policy_outputs_match_the_golden_files() {
 
 #[test]
 fn reference_oracle_rejects_literal_and_literal_type_changes() {
-    let clause = only_clause("p(a, 1, \"1\") :- q(a).");
+    let clause = only_clause("p(a, 1) :- q(a).");
     assert!(reference_accepts(
         &clause,
-        &goal("p(a, 1, \"1\")"),
-        &[goal("q(a)")],
+        &goal("p(a, 1)"),
+        &[goal("q(a)")]
     ));
     assert!(!reference_accepts(
         &clause,
-        &goal("p(b, 1, \"1\")"),
-        &[goal("q(a)")],
+        &goal("p(b, 1)"),
+        &[goal("q(a)")]
     ));
     assert!(!reference_accepts(
         &clause,
-        &goal("p(a, '1', \"1\")"),
-        &[goal("q(a)")],
+        &goal("p(a, '1')"),
+        &[goal("q(a)")]
     ));
 }
 

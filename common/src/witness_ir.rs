@@ -74,15 +74,6 @@ impl GroundTerm {
                     })
                 })
             }
-            Term::Float { .. } => Err(WitnessIrError::new(
-                "float literals are outside the circuit witness dialect",
-            )),
-            Term::String { .. } => Err(WitnessIrError::new(
-                "double-quoted strings are outside the circuit witness dialect",
-            )),
-            Term::BackQuoted { .. } => Err(WitnessIrError::new(
-                "back-quoted strings are outside the circuit witness dialect",
-            )),
         }
     }
 

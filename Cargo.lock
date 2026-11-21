@@ -159,6 +159,7 @@ dependencies = [
  "halo2_proofs",
  "halo2curves",
  "num-bigint",
+ "policy-ir",
  "rand_core",
  "serde",
  "serde_json",
@@ -605,6 +606,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1e554181dc95243b8d9948ae7bae5759c7fb2502fed28f671f95ef38079406"
 
 [[package]]
+name = "policy-constraints"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "blake3",
+ "ff",
+ "halo2_gadgets",
+ "halo2_proofs",
+ "policy-ir",
+ "policy-parser",
+ "rand_core",
+ "serde_json",
+]
+
+[[package]]
+name = "policy-ir"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "policy-parser"
 version = "0.1.0"
 dependencies = [
@@ -612,6 +635,7 @@ dependencies = [
  "anyhow",
  "common",
  "num-bigint",
+ "policy-ir",
  "serde_json",
 ]
 

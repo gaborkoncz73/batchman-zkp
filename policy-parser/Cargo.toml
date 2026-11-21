@@ -7,5 +7,6 @@ edition = "2024"
 serde_json = { workspace = true, features = ["std"] }
 anyhow = { workspace = true } 
 common = { workspace = true }
+policy-ir = { workspace = true }
 antlr4rust = "0.5.2"
 num-bigint = { workspace = true }

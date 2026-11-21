@@ -1,10 +1,7 @@
 use common::{
     circuit_dialect::CircuitLimits,
     policy_compiler::{compile_policy_for_current_circuit, to_circuit_v1_json},
-    policy_ir::{
-        Call, Clause, POLICY_DIALECT, POLICY_SCHEMA_VERSION, PolicyFile, PredicateDef,
-        PredicateIndicator, Term, VariableDecl,
-    },
+    policy_ir::{Clause, PolicyFile, PredicateDef, PredicateIndicator, Term},
     typed_policy::{TypedGoalSlot, TypedPatternCheck, TypedTermRef, typed_policy_commitment},
     typed_term::{TermPath, TermPathStep, TermTag, hash_ground_term, symbol_to_field},
     witness_ir::GroundTerm,
@@ -24,7 +21,7 @@ fn current_policy() -> PolicyFile {
 
 fn single_clause_policy(
     head_argument: Term,
-    variables: Vec<VariableDecl>,
+    variables: Vec<Option<String>>,
     body: Term,
 ) -> PolicyFile {
     let indicator = PredicateIndicator {
@@ -32,19 +29,11 @@ fn single_clause_policy(
         arity: 1,
     };
     PolicyFile {
-        schema_version: POLICY_SCHEMA_VERSION,
-        dialect: POLICY_DIALECT.to_owned(),
-        module: None,
-        directives: Vec::new(),
         predicates: vec![PredicateDef {
             indicator: indicator.clone(),
             clauses: vec![Clause {
-                ordinal: 0,
                 variables,
-                head: Call {
-                    predicate: indicator,
-                    args: vec![head_argument],
-                },
+                head: vec![head_argument],
                 body,
             }],
         }],
@@ -223,18 +212,9 @@ fn typed_arithmetic_remains_one_child_and_keeps_its_ast_paths() {
     let policy = single_clause_policy(
         result.clone(),
         vec![
-            VariableDecl {
-                id: 0,
-                source_name: Some("R".to_owned()),
-            },
-            VariableDecl {
-                id: 1,
-                source_name: Some("A".to_owned()),
-            },
-            VariableDecl {
-                id: 2,
-                source_name: Some("B".to_owned()),
-            },
+            Some("R".to_owned()),
+            Some("A".to_owned()),
+            Some("B".to_owned()),
         ],
         Term::compound(
             "is",
@@ -307,10 +287,7 @@ fn typed_variable_equalities_are_the_minimal_n_minus_one_spanning_star() {
     let variable = Term::Variable { id: 0 };
     let policy = single_clause_policy(
         variable.clone(),
-        vec![VariableDecl {
-            id: 0,
-            source_name: Some("X".to_owned()),
-        }],
+        vec![Some("X".to_owned())],
         Term::compound(
             ",",
             vec![
@@ -345,10 +322,7 @@ fn typed_list_plan_collapses_a_maximal_ground_suffix_to_one_exact_check() {
             ],
             tail: None,
         },
-        vec![VariableDecl {
-            id: 0,
-            source_name: Some("X".to_owned()),
-        }],
+        vec![Some("X".to_owned())],
         Term::atom("true"),
     );
     let compiled = compile_policy_for_current_circuit(&policy, &limits()).unwrap();
@@ -434,10 +408,7 @@ fn representable_semantic_terms_are_never_silently_truncated() {
     let variable = Term::Variable { id: 0 };
     let right_nested_arithmetic = single_clause_policy(
         variable.clone(),
-        vec![VariableDecl {
-            id: 0,
-            source_name: Some("R".to_owned()),
-        }],
+        vec![Some("R".to_owned())],
         Term::compound(
             "is",
             vec![
@@ -492,10 +463,7 @@ fn nested_disjunctions_are_fully_distributed_and_true_is_an_identity() {
     let call = |name: &str| Term::compound(name, vec![variable.clone()]);
     let policy = single_clause_policy(
         variable.clone(),
-        vec![VariableDecl {
-            id: 0,
-            source_name: Some("X".to_owned()),
-        }],
+        vec![Some("X".to_owned())],
         Term::compound(
             ",",
             vec![
@@ -532,10 +500,7 @@ fn conjunction_uses_the_cartesian_product_of_disjunction_branches() {
     let call = |name: &str| Term::compound(name, vec![variable.clone()]);
     let policy = single_clause_policy(
         variable.clone(),
-        vec![VariableDecl {
-            id: 0,
-            source_name: Some("X".to_owned()),
-        }],
+        vec![Some("X".to_owned())],
         Term::compound(
             ",",
             vec![
@@ -574,10 +539,7 @@ fn prolog_less_than_or_equal_uses_the_shared_legacy_token() {
     let variable = Term::Variable { id: 0 };
     let policy = single_clause_policy(
         variable.clone(),
-        vec![VariableDecl {
-            id: 0,
-            source_name: Some("X".to_owned()),
-        }],
+        vec![Some("X".to_owned())],
         Term::compound(
             "=<",
             vec![

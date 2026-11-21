@@ -2,9 +2,11 @@
 
 use anyhow::{Result, bail};
 use common::{
-    circuit_dialect::CircuitLimits, policy_ir::PolicyFile, proof_tree::TrustedRootsV1,
+    circuit_dialect::{CircuitLimits, CircuitPolicyValidation},
+    proof_tree::TrustedRootsV1,
     witness_ir::GroundCall,
 };
+use policy_ir::PolicyFile;
 
 use super::parse_ground_predicate;
 
@@ -26,9 +28,9 @@ pub fn parse_trusted_root_goals(
         .map(|(index, source)| {
             let label = format!("{source_name}.root_goals[{index}]");
             let goal = parse_ground_predicate(source, &label, limits, "a trusted root")?;
-            if !analysis.exported_entry_points.contains(&goal.predicate) {
+            if !analysis.defined_predicates.contains(&goal.predicate) {
                 bail!(
-                    "{label}: predicate {}/{} is not exported by the policy module",
+                    "{label}: predicate {}/{} is not defined by the policy",
                     goal.predicate.name,
                     goal.predicate.arity
                 );
@@ -65,7 +67,7 @@ mod tests {
     }
 
     #[test]
-    fn accepts_the_exported_current_root() {
+    fn accepts_the_current_root() {
         let (policy, limits) = inputs();
         let roots = parse_trusted_root_goals(
             &statement("endPrice(931220)"),
@@ -78,7 +80,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_builtin_and_non_exported_roots() {
+    fn rejects_builtin_and_undefined_roots() {
         let (policy, limits) = inputs();
         assert!(
             parse_trusted_root_goals(&statement("1=1"), &policy, &limits, "trusted_roots").is_err()

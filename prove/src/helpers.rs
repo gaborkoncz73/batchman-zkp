@@ -3,7 +3,8 @@ use std::collections::BTreeSet;
 use anyhow::{Context, Result, bail};
 use common::{
     circuit_dialect::{
-        CircuitGoalKind, CircuitLimits, CircuitValidationError, validate_ground_goal_for_circuit,
+        CircuitGoalKind, CircuitLimits, CircuitPolicyValidation, CircuitValidationError,
+        validate_ground_goal_for_circuit,
     },
     data::ProofNode,
     policy_ir::{PolicyFile, PredicateIndicator},
@@ -74,7 +75,6 @@ pub(crate) fn validate_proof_tree(
         policy_predicates: analysis.defined_predicates,
         external_predicates: analysis.required_external_predicates,
         fact_predicates,
-        allowed_roots: analysis.exported_entry_points,
         limits,
     };
     let mut node_count = 0;
@@ -94,7 +94,6 @@ struct ProofValidationContext<'a> {
     policy_predicates: BTreeSet<PredicateIndicator>,
     external_predicates: BTreeSet<PredicateIndicator>,
     fact_predicates: BTreeSet<PredicateIndicator>,
-    allowed_roots: BTreeSet<PredicateIndicator>,
     limits: &'a CircuitLimits,
 }
 
@@ -150,9 +149,9 @@ fn validate_proof_node(
                             indicator.arity
                         );
                     }
-                    if is_root && !context.allowed_roots.contains(indicator) {
+                    if is_root && !is_policy {
                         bail!(
-                            "{label}: root predicate {}/{} is not exported by the policy module",
+                            "{label}: root predicate {}/{} is not defined by the policy",
                             indicator.name,
                             indicator.arity
                         );
@@ -168,7 +167,7 @@ fn validate_proof_node(
                     }
                 }
                 CircuitGoalKind::Builtin(_) if is_root => {
-                    bail!("{label}: a proof-tree root must be an exported policy predicate");
+                    bail!("{label}: a proof-tree root must be a policy-defined predicate");
                 }
                 CircuitGoalKind::Builtin(builtin) => GoalResolution::Builtin { builtin: *builtin },
             };
@@ -611,7 +610,8 @@ mod validation_tests {
     fn list_unification_uses_one_common_projection_for_both_operands() {
         let limits: CircuitLimits =
             serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
-        let policy = policy_parser::parse_policy("p(L) :- L = [a,b].", "list-unify-policy.pl").unwrap();
+        let policy =
+            policy_parser::parse_policy("p(L) :- L = [a,b].", "list-unify-policy.pl").unwrap();
         let raw = vec![ProofNode::GoalNode(GoalEntry {
             goal: "p([a,b])".to_owned(),
             subtree: vec![ProofNode::GoalNode(GoalEntry {

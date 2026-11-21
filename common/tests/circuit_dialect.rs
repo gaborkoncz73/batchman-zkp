@@ -1,10 +1,9 @@
 use std::collections::BTreeSet;
 
-use common::circuit_dialect::{BuiltinKind, CircuitLimits, validate_ground_goal_for_circuit};
-use common::policy_ir::{
-    Call, Clause, POLICY_DIALECT, POLICY_SCHEMA_VERSION, PolicyFile, PredicateDef,
-    PredicateIndicator, Term,
+use common::circuit_dialect::{
+    BuiltinKind, CircuitLimits, CircuitPolicyValidation, validate_ground_goal_for_circuit,
 };
+use common::policy_ir::{Clause, PolicyFile, PredicateDef, PredicateIndicator, Term};
 
 fn limits() -> CircuitLimits {
     serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap()
@@ -16,19 +15,11 @@ fn policy_with_body(body: Term) -> PolicyFile {
         arity: 0,
     };
     PolicyFile {
-        schema_version: POLICY_SCHEMA_VERSION,
-        dialect: POLICY_DIALECT.to_owned(),
-        module: None,
-        directives: Vec::new(),
         predicates: vec![PredicateDef {
             indicator: indicator.clone(),
             clauses: vec![Clause {
-                ordinal: 0,
                 variables: Vec::new(),
-                head: Call {
-                    predicate: indicator,
-                    args: Vec::new(),
-                },
+                head: Vec::new(),
                 body,
             }],
         }],
@@ -96,33 +87,6 @@ fn semantic_ir_can_preserve_but_circuit_rejects_unsupported_constructs() {
         (
             Term::compound("->", vec![Term::atom("q"), Term::atom("r")]),
             "control operator",
-        ),
-        (
-            Term::compound(
-                "q",
-                vec![Term::Float {
-                    lexeme: "1.5".to_owned(),
-                }],
-            ),
-            "float",
-        ),
-        (
-            Term::compound(
-                "q",
-                vec![Term::String {
-                    value: "x".to_owned(),
-                }],
-            ),
-            "strings",
-        ),
-        (
-            Term::compound(
-                "q",
-                vec![Term::BackQuoted {
-                    value: "x".to_owned(),
-                }],
-            ),
-            "back-quoted",
         ),
     ] {
         let error = policy_with_body(body)
@@ -357,20 +321,6 @@ fn proof_goals_must_be_ground_single_goals() {
             .unwrap_err()
             .message
             .contains("not supported")
-    );
-}
-
-#[test]
-fn module_directive_and_normalized_exports_must_match() {
-    let mut policy: PolicyFile = serde_json::from_str(include_str!(
-        "../../tests/fixtures/current-policy.rules.json"
-    ))
-    .unwrap();
-    policy.module.as_mut().unwrap().exports[0].name = "missing".to_owned();
-    let error = policy.validate_for_circuit(&limits()).unwrap_err();
-    assert!(
-        error.message.contains("does not match")
-            || error.message.contains("no predicate definition")
     );
 }
 

@@ -7,8 +7,8 @@ use antlr4rust::parser_rule_context::ParserRuleContext;
 use antlr4rust::token::Token;
 use antlr4rust::token_factory::TokenFactory;
 use antlr4rust::tree::ParseTree;
-use anyhow::{Context, Result, bail};
-use common::policy_ir::{Call, Clause, PredicateIndicator, Term, VariableDecl};
+use anyhow::{Context, Result, anyhow, bail};
+use policy_ir::{Clause, PredicateIndicator, Term};
 
 use super::literals::{canonical_integer, decode_character_code, decode_quoted};
 use super::required;
@@ -17,7 +17,7 @@ use crate::parser::prologparser::*;
 #[derive(Default)]
 struct ClauseVariables {
     named: BTreeMap<String, u32>,
-    declarations: Vec<VariableDecl>,
+    names: Vec<Option<String>>,
 }
 
 impl ClauseVariables {
@@ -35,8 +35,8 @@ impl ClauseVariables {
     }
 
     fn declare(&mut self, source_name: Option<String>) -> u32 {
-        let id = self.declarations.len() as u32;
-        self.declarations.push(VariableDecl { id, source_name });
+        let id = self.names.len() as u32;
+        self.names.push(source_name);
         id
     }
 }
@@ -46,31 +46,35 @@ pub(super) fn build_goal(ctx: &BodyContextAll<'_>) -> Result<Term> {
     build_body(ctx, &mut ClauseVariables::default())
 }
 
-/// Builds a directive body and reports whether it mentions any variable.
-pub(crate) fn build_directive(ctx: &DirectiveContextAll<'_>) -> Result<(Term, bool)> {
-    let mut variables = ClauseVariables::default();
-    let body = build_body(&*required(ctx.body(), "directive body")?, &mut variables)?;
-    Ok((body, !variables.declarations.is_empty()))
+/// Builds a directive body.
+pub(crate) fn build_directive(ctx: &DirectiveContextAll<'_>) -> Result<Term> {
+    build_body(
+        &*required(ctx.body(), "directive body")?,
+        &mut ClauseVariables::default(),
+    )
 }
 
-/// Builds a clause with a placeholder ordinal; `parse_policy` numbers clauses
-/// per predicate in source order.
-pub(crate) fn build_clause(ctx: &ClauseContextAll<'_>) -> Result<Clause> {
+/// Builds a clause together with the predicate it belongs to.
+pub(crate) fn build_clause(ctx: &ClauseContextAll<'_>) -> Result<(PredicateIndicator, Clause)> {
     let mut variables = ClauseVariables::default();
-    let head = build_callable(&*required(ctx.callable(), "clause head")?, &mut variables)?;
+    let (predicate, head) =
+        build_callable(&*required(ctx.callable(), "clause head")?, &mut variables)?;
     let body = match ctx.body() {
         Some(body) => build_body(&body, &mut variables)?,
         None => Term::atom("true"),
     };
-    Ok(Clause {
-        ordinal: 0,
-        variables: variables.declarations,
+    let clause = Clause {
+        variables: variables.names,
         head,
         body,
-    })
+    };
+    Ok((predicate, clause))
 }
 
-fn build_callable(ctx: &CallableContextAll<'_>, variables: &mut ClauseVariables) -> Result<Call> {
+fn build_callable(
+    ctx: &CallableContextAll<'_>,
+    variables: &mut ClauseVariables,
+) -> Result<(PredicateIndicator, Vec<Term>)> {
     let atom = required(ctx.atom(), "callable atom")?;
     let name = build_atom(&atom)?;
     let args = match ctx.term_list() {
@@ -81,13 +85,11 @@ fn build_callable(ctx: &CallableContextAll<'_>, variables: &mut ClauseVariables)
         }
         None => Vec::new(),
     };
-    Ok(Call {
-        predicate: PredicateIndicator {
-            name,
-            arity: args.len(),
-        },
-        args,
-    })
+    let predicate = PredicateIndicator {
+        name,
+        arity: args.len(),
+    };
+    Ok((predicate, args))
 }
 
 /// Completes a `left (OPERATOR right)?` rule: `OPERATOR(left, right)` when the
@@ -251,7 +253,11 @@ fn build_power_operand(
     }
     let number = match number.integer() {
         Some(integer) => build_integer(&integer)?,
-        None => build_float(required(number.FLOAT(), "float token")?.get_text()),
+        None => {
+            return Err(unsupported_float(
+                &*required(number.FLOAT(), "float token")?.symbol,
+            ));
+        }
     };
     Ok(negate(number))
 }
@@ -263,9 +269,9 @@ fn number_literal(ctx: &PrimaryContextAll<'_>) -> Result<Option<Term>> {
             integer.integer(),
             "integer token",
         )?)?)),
-        PrimaryContextAll::FloatTermContext(float) => Ok(Some(build_float(
-            required(float.FLOAT(), "float token")?.get_text(),
-        ))),
+        PrimaryContextAll::FloatTermContext(float) => Err(unsupported_float(
+            &*required(float.FLOAT(), "float token")?.symbol,
+        )),
         _ => Ok(None),
     }
 }
@@ -276,9 +282,6 @@ fn negate(number: Term) -> Term {
         Term::Integer { decimal } if decimal == "0" => Term::Integer { decimal },
         Term::Integer { decimal } => Term::Integer {
             decimal: format!("-{decimal}"),
-        },
-        Term::Float { lexeme } => Term::Float {
-            lexeme: format!("-{lexeme}"),
         },
         other => unreachable!("negate called on non-number {other:?}"),
     }
@@ -321,25 +324,19 @@ fn build_primary(ctx: &PrimaryContextAll<'_>, variables: &mut ClauseVariables) -
         PrimaryContextAll::IntegerTermContext(integer) => {
             build_integer(&*required(integer.integer(), "integer token")?)
         }
-        PrimaryContextAll::FloatTermContext(float) => Ok(build_float(
-            required(float.FLOAT(), "float token")?.get_text(),
+        PrimaryContextAll::FloatTermContext(float) => Err(unsupported_float(
+            &*required(float.FLOAT(), "float token")?.symbol,
         )),
         PrimaryContextAll::AtomTermContext(atom) => Ok(Term::atom(build_atom(&*required(
             atom.atom(),
             "atom token",
         )?)?)),
-        PrimaryContextAll::StringTermContext(string) => Ok(Term::String {
-            value: decode_quoted(
-                &required(string.DOUBLE_QUOTED_STRING(), "string token")?.get_text(),
-                '"',
-            )?,
-        }),
-        PrimaryContextAll::BackStringTermContext(string) => Ok(Term::BackQuoted {
-            value: decode_quoted(
-                &required(string.BACK_QUOTED_STRING(), "back-quoted token")?.get_text(),
-                '`',
-            )?,
-        }),
+        PrimaryContextAll::StringTermContext(string) => Err(unsupported_text(
+            &*required(string.DOUBLE_QUOTED_STRING(), "string token")?.symbol,
+        )),
+        PrimaryContextAll::BackStringTermContext(string) => Err(unsupported_text(
+            &*required(string.BACK_QUOTED_STRING(), "back-quoted token")?.symbol,
+        )),
         PrimaryContextAll::ListTermContext(list) => {
             build_list(&*required(list.list(), "list")?, variables)
         }
@@ -392,8 +389,24 @@ fn build_atom(ctx: &AtomContextAll<'_>) -> Result<String> {
     }
 }
 
-fn build_float(lexeme: String) -> Term {
-    Term::Float { lexeme }
+/// Floats have no exact field representation; policies use fixed-point integers.
+fn unsupported_float(token: &impl Token<Data = str>) -> anyhow::Error {
+    anyhow!(
+        "{}:{}: float {} is not supported; write it as a fixed-point integer (e.g. 1.25 as 125 hundredths)",
+        token.get_line(),
+        token.get_column(),
+        token.get_text()
+    )
+}
+
+/// `"..."` strings and `` `...` `` code lists are not supported; identifiers are atoms.
+fn unsupported_text(token: &impl Token<Data = str>) -> anyhow::Error {
+    anyhow!(
+        "{}:{}: {} is not supported; write identifiers as atoms in single quotes",
+        token.get_line(),
+        token.get_column(),
+        token.get_text()
+    )
 }
 
 fn build_integer(ctx: &IntegerContextAll<'_>) -> Result<Term> {

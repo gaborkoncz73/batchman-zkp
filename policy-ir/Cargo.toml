@@ -1,0 +1,8 @@
+[package]
+name = "policy-ir"
+version = "0.1.0"
+edition = "2024"
+description = "Semantic IR of a parsed policy (the format of input/rules.json)"
+
+[dependencies]
+serde = { workspace = true, features = ["derive", "std"] }

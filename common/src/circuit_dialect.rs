@@ -11,7 +11,7 @@ use std::fmt::{self, Display, Formatter};
 
 use serde::{Deserialize, Serialize};
 
-use crate::policy_ir::{ModuleDecl, PolicyFile, PredicateIndicator, Term};
+use crate::policy_ir::{PolicyFile, PredicateIndicator, Term};
 
 pub const CIRCUIT_DIALECT: &str = "batchman_local_step_circuit_v1";
 
@@ -150,7 +150,6 @@ pub enum CircuitGoalKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PolicyAnalysis {
     pub defined_predicates: BTreeSet<PredicateIndicator>,
-    pub exported_entry_points: BTreeSet<PredicateIndicator>,
     pub required_external_predicates: BTreeSet<PredicateIndicator>,
     pub used_builtins: BTreeSet<BuiltinKind>,
     pub used_arithmetic_operators: BTreeSet<String>,
@@ -168,16 +167,23 @@ enum VariableMode {
     Forbid,
 }
 
-impl PolicyFile {
+/// Validation of a policy against the legacy circuit dialect.
+pub trait CircuitPolicyValidation {
+    fn validate_for_circuit(
+        &self,
+        limits: &CircuitLimits,
+    ) -> Result<PolicyAnalysis, CircuitValidationError>;
+}
+
+impl CircuitPolicyValidation for PolicyFile {
     /// Validates this policy without lowering or mutating it.
-    pub fn validate_for_circuit(
+    fn validate_for_circuit(
         &self,
         limits: &CircuitLimits,
     ) -> Result<PolicyAnalysis, CircuitValidationError> {
         limits.validate()?;
         self.validate()
             .map_err(|message| CircuitValidationError::new("policy", message))?;
-        validate_module_contract(self)?;
         if self.predicates.is_empty() {
             return Err(CircuitValidationError::new(
                 "predicates",
@@ -215,27 +221,8 @@ impl PolicyFile {
 
             for (clause_index, clause) in predicate.clauses.iter().enumerate() {
                 let clause_path = format!("{predicate_path}.clauses[{clause_index}]");
-                let mut source_names = BTreeSet::new();
-                for (variable_index, variable) in clause.variables.iter().enumerate() {
-                    if let Some(source_name) = &variable.source_name {
-                        if source_name.is_empty() {
-                            return Err(CircuitValidationError::new(
-                                format!("{clause_path}.variables[{variable_index}].source_name"),
-                                "named variable source name must not be empty",
-                            ));
-                        }
-                        if !source_names.insert(source_name) {
-                            return Err(CircuitValidationError::new(
-                                format!("{clause_path}.variables[{variable_index}].source_name"),
-                                format!(
-                                    "named variable {source_name:?} is assigned to multiple IDs"
-                                ),
-                            ));
-                        }
-                    }
-                }
-                for (argument_index, argument) in clause.head.args.iter().enumerate() {
-                    let path = format!("{clause_path}.head.args[{argument_index}]");
+                for (argument_index, argument) in clause.head.iter().enumerate() {
+                    let path = format!("{clause_path}.head[{argument_index}]");
                     validate_term_shape(argument, limits, &path)?;
                     validate_data_term(argument, VariableMode::Allow, limits, &path)?;
                 }
@@ -269,160 +256,6 @@ pub fn validate_ground_goal_for_circuit(
     limits.validate()?;
     validate_term_shape(term, limits, "goal")?;
     validate_single_goal(term, VariableMode::Forbid, limits, "goal")
-}
-
-fn validate_module_contract(policy: &PolicyFile) -> Result<(), CircuitValidationError> {
-    match (&policy.module, policy.directives.as_slice()) {
-        (None, []) => {}
-        (None, _) => {
-            return Err(CircuitValidationError::new(
-                "directives",
-                "directives are present but the normalized module declaration is missing",
-            ));
-        }
-        (Some(_), []) => {
-            return Err(CircuitValidationError::new(
-                "module",
-                "a normalized module declaration requires exactly one module/2 directive",
-            ));
-        }
-        (Some(module), [directive]) => validate_module_directive(module, directive)?,
-        (Some(_), directives) => {
-            return Err(CircuitValidationError::new(
-                "directives",
-                format!(
-                    "{CIRCUIT_DIALECT} accepts exactly one module/2 directive, got {}",
-                    directives.len()
-                ),
-            ));
-        }
-    }
-
-    let defined: BTreeSet<_> = policy
-        .predicates
-        .iter()
-        .map(|predicate| &predicate.indicator)
-        .collect();
-    if let Some(module) = &policy.module {
-        if module.name.is_empty() {
-            return Err(CircuitValidationError::new(
-                "module.name",
-                "module name must not be empty",
-            ));
-        }
-        for (index, export) in module.exports.iter().enumerate() {
-            validate_indicator(export, &format!("module.exports[{index}]"))?;
-            if !defined.contains(export) {
-                return Err(CircuitValidationError::new(
-                    format!("module.exports[{index}]"),
-                    format!(
-                        "module export {}/{} has no predicate definition",
-                        export.name, export.arity
-                    ),
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn validate_module_directive(
-    module: &ModuleDecl,
-    directive: &Term,
-) -> Result<(), CircuitValidationError> {
-    let Term::Compound { functor, args } = directive else {
-        return Err(CircuitValidationError::new(
-            "directives[0]",
-            "only module/2 is supported",
-        ));
-    };
-    if functor != "module" || args.len() != 2 {
-        return Err(CircuitValidationError::new(
-            "directives[0]",
-            format!("only module/2 is supported, got {functor}/{}", args.len()),
-        ));
-    }
-
-    let Term::Atom { value: name } = &args[0] else {
-        return Err(CircuitValidationError::new(
-            "directives[0].args[0]",
-            "module name must be an atom",
-        ));
-    };
-    if name != &module.name {
-        return Err(CircuitValidationError::new(
-            "module.name",
-            "normalized module name does not match the module/2 directive",
-        ));
-    }
-
-    let Term::List {
-        items: exports,
-        tail: None,
-    } = &args[1]
-    else {
-        return Err(CircuitValidationError::new(
-            "directives[0].args[1]",
-            "module exports must be a proper list",
-        ));
-    };
-    if exports.len() != module.exports.len() {
-        return Err(CircuitValidationError::new(
-            "module.exports",
-            "normalized exports do not match the module/2 directive",
-        ));
-    }
-    for (index, (encoded, normalized)) in exports.iter().zip(&module.exports).enumerate() {
-        let decoded =
-            decode_predicate_indicator(encoded, &format!("directives[0].args[1].items[{index}]"))?;
-        if &decoded != normalized {
-            return Err(CircuitValidationError::new(
-                format!("module.exports[{index}]"),
-                "normalized export does not match the module/2 directive",
-            ));
-        }
-    }
-    Ok(())
-}
-
-fn decode_predicate_indicator(
-    term: &Term,
-    path: &str,
-) -> Result<PredicateIndicator, CircuitValidationError> {
-    let Term::Compound { functor, args } = term else {
-        return Err(CircuitValidationError::new(
-            path,
-            "module export must be encoded as Name/Arity",
-        ));
-    };
-    if functor != "/" || args.len() != 2 {
-        return Err(CircuitValidationError::new(
-            path,
-            "module export must be encoded as Name/Arity",
-        ));
-    }
-    let Term::Atom { value: name } = &args[0] else {
-        return Err(CircuitValidationError::new(
-            format!("{path}.args[0]"),
-            "predicate-indicator name must be an atom",
-        ));
-    };
-    let Term::Integer { decimal } = &args[1] else {
-        return Err(CircuitValidationError::new(
-            format!("{path}.args[1]"),
-            "predicate-indicator arity must be an integer",
-        ));
-    };
-    let arity = decimal.parse::<usize>().map_err(|_| {
-        CircuitValidationError::new(
-            format!("{path}.args[1]"),
-            "predicate-indicator arity does not fit usize",
-        )
-    })?;
-    Ok(PredicateIndicator {
-        name: name.clone(),
-        arity,
-    })
 }
 
 fn validate_indicator(
@@ -639,18 +472,6 @@ fn validate_data_term(
         )),
         Term::Atom { .. } => Ok(()),
         Term::Integer { decimal } => validate_integer(decimal, limits, path),
-        Term::Float { .. } => Err(CircuitValidationError::new(
-            path,
-            "float literals are not supported by the circuit",
-        )),
-        Term::String { .. } => Err(CircuitValidationError::new(
-            path,
-            "double-quoted strings are not supported by the circuit",
-        )),
-        Term::BackQuoted { .. } => Err(CircuitValidationError::new(
-            path,
-            "back-quoted strings are not supported by the circuit",
-        )),
         Term::Compound { functor, args } => {
             if functor.is_empty() {
                 return Err(CircuitValidationError::new(
@@ -853,12 +674,7 @@ fn validate_term_shape(
                     visit(tail, depth + 1, nodes, limits, path)?;
                 }
             }
-            Term::Variable { .. }
-            | Term::Atom { .. }
-            | Term::Integer { .. }
-            | Term::Float { .. }
-            | Term::String { .. }
-            | Term::BackQuoted { .. } => {}
+            Term::Variable { .. } | Term::Atom { .. } | Term::Integer { .. } => {}
         }
         Ok(())
     }
@@ -897,11 +713,6 @@ fn analyze_policy(policy: &PolicyFile) -> PolicyAnalysis {
         .iter()
         .map(|predicate| predicate.indicator.clone())
         .collect();
-    let exported_entry_points = policy
-        .module
-        .as_ref()
-        .map(|module| module.exports.iter().cloned().collect())
-        .unwrap_or_else(|| defined_predicates.clone());
 
     let mut required_external_predicates = BTreeSet::new();
     let mut used_builtins = BTreeSet::new();
@@ -938,7 +749,6 @@ fn analyze_policy(policy: &PolicyFile) -> PolicyAnalysis {
     PolicyAnalysis {
         predicate_count: defined_predicates.len(),
         defined_predicates,
-        exported_entry_points,
         required_external_predicates,
         used_builtins,
         used_arithmetic_operators,
@@ -1003,12 +813,7 @@ fn collect_body_analysis(
                 external.insert(indicator);
             }
         }
-        Term::Variable { .. }
-        | Term::Integer { .. }
-        | Term::Float { .. }
-        | Term::String { .. }
-        | Term::BackQuoted { .. }
-        | Term::List { .. } => {}
+        Term::Variable { .. } | Term::Integer { .. } | Term::List { .. } => {}
     }
 }
 
@@ -1065,9 +870,6 @@ fn term_kind(term: &Term) -> &'static str {
         Term::Variable { .. } => "variable",
         Term::Atom { .. } => "atom",
         Term::Integer { .. } => "integer",
-        Term::Float { .. } => "float",
-        Term::String { .. } => "string",
-        Term::BackQuoted { .. } => "back-quoted string",
         Term::Compound { .. } => "compound",
         Term::List { .. } => "list",
     }

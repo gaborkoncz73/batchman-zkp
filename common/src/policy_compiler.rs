@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
-use crate::circuit_dialect::{BuiltinKind, CircuitLimits, PolicyAnalysis};
+use crate::circuit_dialect::{BuiltinKind, CircuitLimits, CircuitPolicyValidation, PolicyAnalysis};
 use crate::data::{
     ChildSig, ClauseTemplate, Equality, PredicateTemplate, RuleTemplateFile, RuleTemplateFileFp,
     TermRefComplex, TermSide,
 };
-use crate::policy_ir::{Call, Clause, PolicyFile, Term};
+use crate::policy_ir::{Clause, PolicyFile, Term};
 use crate::typed_policy::{
     TypedCandidateId, TypedClausePlan, TypedEquality, TypedGoalSignature, TypedGoalSlot,
     TypedPatternCheck, TypedPolicyPlan, TypedPredicatePlan, TypedTermRef,
@@ -162,7 +162,6 @@ impl From<Location> for TermRefComplex {
 }
 
 fn lower_validated_policy(policy: &PolicyFile) -> Result<(RuleTemplateFile, TypedPolicyPlan)> {
-    validate_directives_for_circuit_v1(policy)?;
     let mut predicates = Vec::with_capacity(policy.predicates.len());
     let mut typed_predicates = Vec::with_capacity(policy.predicates.len());
 
@@ -180,14 +179,19 @@ fn lower_validated_policy(policy: &PolicyFile) -> Result<(RuleTemplateFile, Type
 
         let mut clauses = Vec::with_capacity(candidate_count);
         let mut typed_candidates = Vec::with_capacity(candidate_count);
-        for clause in &predicate.clauses {
+        for (clause_ordinal, clause) in predicate.clauses.iter().enumerate() {
             let branches = body_branches(&clause.body);
             for (branch_ordinal, branch) in branches.into_iter().enumerate() {
                 // Both views are derived in this single loop. Their candidate
                 // order therefore cannot drift through an independent branch
                 // normalization pass.
                 clauses.push(lower_clause(clause, branch.clone())?);
-                typed_candidates.push(lower_typed_clause(clause, branch_ordinal, branch)?);
+                typed_candidates.push(lower_typed_clause(
+                    clause,
+                    clause_ordinal,
+                    branch_ordinal,
+                    branch,
+                )?);
             }
         }
 
@@ -226,18 +230,6 @@ pub fn to_circuit_v1_json(rules: &RuleTemplateFile) -> Result<String> {
     Ok(json)
 }
 
-fn validate_directives_for_circuit_v1(policy: &PolicyFile) -> Result<()> {
-    for directive in &policy.directives {
-        if !matches!(
-            directive,
-            Term::Compound { functor, args } if functor == "module" && args.len() == 2
-        ) {
-            bail!("directive {directive:?} cannot be represented by circuit-v1");
-        }
-    }
-    Ok(())
-}
-
 fn lower_clause(source_clause: &Clause, goals: Vec<&Term>) -> Result<ClauseTemplate> {
     let mut occurrences = Occurrences::default();
     collect_call_arguments(&source_clause.head, 0, 0, &mut occurrences)?;
@@ -255,11 +247,12 @@ fn lower_clause(source_clause: &Clause, goals: Vec<&Term>) -> Result<ClauseTempl
 
 fn lower_typed_clause(
     source_clause: &Clause,
+    source_clause_ordinal: usize,
     branch_ordinal: usize,
     goals: Vec<&Term>,
 ) -> Result<TypedClausePlan> {
     let mut occurrences = TypedOccurrences::default();
-    for (argument, term) in source_clause.head.args.iter().enumerate() {
+    for (argument, term) in source_clause.head.iter().enumerate() {
         let at = TypedTermRef::root(TypedGoalSlot::Parent, argument).map_err(anyhow::Error::msg)?;
         collect_typed_pattern(term, at, &mut occurrences)?;
     }
@@ -271,7 +264,7 @@ fn lower_typed_clause(
 
     Ok(TypedClausePlan {
         id: TypedCandidateId {
-            source_clause_ordinal: source_clause.ordinal,
+            source_clause_ordinal,
             branch_ordinal,
         },
         children,
@@ -365,11 +358,7 @@ fn collect_typed_pattern(
         }
         // All non-variable leaves and variable-free constructors return in the
         // maximal-subtree fast path above.
-        Term::Atom { .. }
-        | Term::Integer { .. }
-        | Term::Float { .. }
-        | Term::String { .. }
-        | Term::BackQuoted { .. } => unreachable!("leaf cannot contain a variable"),
+        Term::Atom { .. } | Term::Integer { .. } => unreachable!("leaf cannot contain a variable"),
     }
 }
 
@@ -429,11 +418,7 @@ fn contains_variable(term: &Term) -> bool {
         Term::List { items, tail } => {
             items.iter().any(contains_variable) || tail.as_deref().is_some_and(contains_variable)
         }
-        Term::Atom { .. }
-        | Term::Integer { .. }
-        | Term::Float { .. }
-        | Term::String { .. }
-        | Term::BackQuoted { .. } => false,
+        Term::Atom { .. } | Term::Integer { .. } => false,
     }
 }
 
@@ -512,12 +497,12 @@ fn lower_goal(goal: &Term, row: usize, occurrences: &mut Occurrences) -> Result<
 }
 
 fn collect_call_arguments(
-    call: &Call,
+    args: &[Term],
     row: usize,
     predicate: usize,
     occurrences: &mut Occurrences,
 ) -> Result<()> {
-    for (argument, term) in call.args.iter().enumerate() {
+    for (argument, term) in args.iter().enumerate() {
         collect_argument(term, row, predicate, argument, occurrences)?;
     }
     Ok(())
@@ -585,18 +570,11 @@ fn collect_slot(term: &Term, location: Location, occurrences: &mut Occurrences) 
             occurrences.literal(location, decimal.clone());
             Ok(())
         }
-        Term::Float { lexeme } => {
-            occurrences.literal(location, lexeme.clone());
-            Ok(())
-        }
         Term::List { items, tail } if items.is_empty() && tail.is_none() => {
             occurrences.literal(location, "[]".to_owned());
             Ok(())
         }
-        Term::String { .. }
-        | Term::BackQuoted { .. }
-        | Term::Compound { .. }
-        | Term::List { .. } => bail!(
+        Term::Compound { .. } | Term::List { .. } => bail!(
             "nested term {term:?} cannot be represented in the circuit-v1 scalar slot at {location:?}"
         ),
     }

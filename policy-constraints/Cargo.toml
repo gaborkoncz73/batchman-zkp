@@ -1,0 +1,18 @@
+[package]
+name = "policy-constraints"
+version = "0.1.0"
+edition = "2024"
+description = "Translates a policy into the linear constraints that a proof-tree node must satisfy"
+
+[dependencies]
+policy-ir = { workspace = true }
+halo2_proofs = { workspace = true }
+halo2_gadgets = { workspace = true }
+ff = { version = "0.13", default-features = false }
+blake3 = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
+anyhow = { workspace = true }
+
+[dev-dependencies]
+policy-parser = { path = "../policy-parser" }
+rand_core = { workspace = true, features = ["getrandom"] }

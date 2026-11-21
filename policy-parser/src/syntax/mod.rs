@@ -14,7 +14,7 @@ use antlr4rust::token::{TOKEN_EOF, Token};
 use antlr4rust::token_factory::TokenFactory;
 use antlr4rust::{InputStream, common_token_stream::CommonTokenStream};
 use anyhow::{Context, Result, anyhow, bail};
-use common::policy_ir::Term;
+use policy_ir::Term;
 
 use crate::parser::prologlexer::prologLexer;
 use crate::parser::prologparser::prologParser;

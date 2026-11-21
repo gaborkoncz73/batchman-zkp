@@ -11,10 +11,7 @@ use common::{
     commitments::{append_local_step_public_inputs, local_step_commitments},
     data::{LocalStepKind, TermFp, UnificationInputFp},
     policy_compiler::compile_policy_for_current_circuit,
-    policy_ir::{
-        Call, Clause, POLICY_DIALECT, POLICY_SCHEMA_VERSION, PolicyFile, PredicateDef,
-        PredicateIndicator, Term, VariableDecl,
-    },
+    policy_ir::{Clause, PolicyFile, PredicateDef, PredicateIndicator, Term},
     unification_checker_circuit::UnificationCircuit,
     utils_2::common_helpers::{MAX_ARITY, MAX_FACTS_HASHES, MAX_PRED_LIST, to_fp_value},
     witness_ir::{GroundCall, GroundTerm},
@@ -45,22 +42,11 @@ fn one_rule_policy(parent: &str, child: &str) -> PolicyFile {
         arity: 1,
     };
     PolicyFile {
-        schema_version: POLICY_SCHEMA_VERSION,
-        dialect: POLICY_DIALECT.to_owned(),
-        module: None,
-        directives: Vec::new(),
         predicates: vec![PredicateDef {
             indicator: indicator.clone(),
             clauses: vec![Clause {
-                ordinal: 0,
-                variables: vec![VariableDecl {
-                    id: 0,
-                    source_name: Some("X".to_owned()),
-                }],
-                head: Call {
-                    predicate: indicator,
-                    args: vec![Term::Variable { id: 0 }],
-                },
+                variables: vec![Some("X".to_owned())],
+                head: vec![Term::Variable { id: 0 }],
                 body: Term::compound(child, vec![Term::Variable { id: 0 }]),
             }],
         }],

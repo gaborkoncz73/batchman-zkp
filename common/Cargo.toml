@@ -11,6 +11,7 @@ serde_json = { workspace = true, features = ["std"]}
 halo2curves = { workspace = true }
 halo2_gadgets = { workspace = true }
 anyhow = { workspace = true } 
+policy-ir = { workspace = true }
 num-bigint = { workspace = true, features = ["serde"]}
 
 

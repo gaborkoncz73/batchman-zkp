@@ -8,14 +8,13 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-use common::policy_ir::Term;
+use policy_ir::Term;
 use policy_parser::{parse_goal, parse_policy};
 
 const CASES: &[(&str, Option<&str>)] = &[
     // Negative number literals: '-' directly followed by a number.
     ("-1", Some("-1")),
     ("- 1", Some("-(1)")),
-    ("-1.5", Some("-1.5")),
     ("-0x10", Some("-16")),
     ("-0b101", Some("-5")),
     ("-0'a", Some("-97")),
@@ -93,7 +92,6 @@ fn swi_canonical(term: &Term) -> String {
     match term {
         Term::Variable { .. } => "_".to_owned(),
         Term::Integer { decimal } => decimal.clone(),
-        Term::Float { lexeme } => lexeme.clone(),
         Term::Atom { value } => quoted_atom(value),
         Term::Compound { functor, args } => format!(
             "{}({})",
@@ -107,7 +105,6 @@ fn swi_canonical(term: &Term) -> String {
                 None => format!("[{}]", items.join(",")),
             }
         }
-        other => panic!("swi_canonical does not cover {other:?}"),
     }
 }
 
@@ -142,9 +139,15 @@ fn layout_sensitive_terms_read_as_in_swi_prolog() {
 #[test]
 fn layout_errors_report_their_position() {
     let error = parse_goal("foo/**/(a)", "goal").unwrap_err().to_string();
-    assert!(error.contains("1:7") && error.contains("followed immediately by '('"), "{error}");
+    assert!(
+        error.contains("1:7") && error.contains("followed immediately by '('"),
+        "{error}"
+    );
     let error = parse_goal("2 ** - 1", "goal").unwrap_err().to_string();
-    assert!(error.contains("1:5") && error.contains("priority clash"), "{error}");
+    assert!(
+        error.contains("1:5") && error.contains("priority clash"),
+        "{error}"
+    );
 }
 
 #[test]
@@ -160,10 +163,14 @@ fn clause_layout_matches_swi_prolog() {
     }
     // ...and accepts these.
     let policy = parse_policy("p(-1).%c\np(- 1).\np :- q.\n", "case.pl").unwrap();
-    let p1 = policy.predicates.iter().find(|p| p.indicator.arity == 1).unwrap();
+    let p1 = policy
+        .predicates
+        .iter()
+        .find(|p| p.indicator.arity == 1)
+        .unwrap();
     let clauses = &p1.clauses;
-    assert_eq!(swi_canonical(&clauses[0].head.args[0]), "-1");
-    assert_eq!(swi_canonical(&clauses[1].head.args[0]), "-(1)");
+    assert_eq!(swi_canonical(&clauses[0].head[0]), "-1");
+    assert_eq!(swi_canonical(&clauses[1].head[0]), "-(1)");
 }
 
 /// Confirms `CASES` against the installed SWI-Prolog; skipped without `swipl`.

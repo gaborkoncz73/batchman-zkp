@@ -1,7 +1,7 @@
 use common::circuit_dialect::{CircuitLimits, validate_ground_goal_for_circuit};
 use common::data::{ClauseTemplate, ProofNode, RuleTemplateFile, TermSide};
 use common::policy_compiler::compile_policy_for_current_circuit;
-use common::policy_ir::{Clause, PolicyFile, PredicateDef, Term};
+use policy_ir::{Clause, PolicyFile, PredicateDef, Term};
 use policy_parser::{parse_goal, parse_policy, to_canonical_json};
 use std::fs;
 use std::path::PathBuf;
@@ -97,7 +97,7 @@ fn operator_precedence_and_associativity_are_structural() {
 fn lists_compounds_and_empty_list_are_lossless() {
     let source = "p([], [A,B], [H|T], [(_,S,V)|Tail], f(g(A), [B|T])).";
     let policy = parse_policy(source, "lists.pl").unwrap();
-    let args = &clause(&policy, "p", 5, 0).head.args;
+    let args = &clause(&policy, "p", 5, 0).head;
 
     assert!(matches!(
         &args[0],
@@ -133,41 +133,49 @@ fn variables_are_clause_local_and_only_bare_underscore_is_anonymous() {
     let policy = parse_policy(source, "variables.pl").unwrap();
     let first_clause = clause(&policy, "p", 6, 0);
 
-    assert_eq!(first_clause.variables[0].source_name.as_deref(), Some("X"));
-    assert_eq!(
-        first_clause.variables[1].source_name.as_deref(),
-        Some("_Named")
-    );
-    assert_eq!(first_clause.variables[2].source_name, None);
-    assert_eq!(first_clause.variables[3].source_name, None);
-    assert_eq!(first_clause.variables[4].source_name, None);
-    assert_eq!(first_clause.variables[5].source_name.as_deref(), Some("Y"));
-    assert_eq!(first_clause.head.args[0], first_clause.head.args[1]);
-    assert_eq!(first_clause.head.args[2], first_clause.head.args[3]);
-    assert_ne!(first_clause.head.args[4], first_clause.head.args[5]);
+    assert_eq!(first_clause.variables[0].as_deref(), Some("X"));
+    assert_eq!(first_clause.variables[1].as_deref(), Some("_Named"));
+    assert_eq!(first_clause.variables[2], None);
+    assert_eq!(first_clause.variables[3], None);
+    assert_eq!(first_clause.variables[4], None);
+    assert_eq!(first_clause.variables[5].as_deref(), Some("Y"));
+    assert_eq!(first_clause.head[0], first_clause.head[1]);
+    assert_eq!(first_clause.head[2], first_clause.head[3]);
+    assert_ne!(first_clause.head[4], first_clause.head[5]);
 
     let second = clause(&policy, "p", 6, 1);
-    assert_eq!(second.variables[0].id, 0);
-    assert_eq!(second.variables[0].source_name.as_deref(), Some("X"));
-    assert_eq!(second.variables[1].id, 1);
-    assert_eq!(second.variables[1].source_name.as_deref(), Some("N"));
+    assert_eq!(second.variables[0].as_deref(), Some("X"));
+    assert_eq!(second.variables[1].as_deref(), Some("N"));
+    assert_eq!(second.head[0], Term::Variable { id: 0 });
 }
 
 #[test]
 fn literal_types_and_integer_radices_stay_distinct() {
-    let source = r#"p(atom,'atom',1,'1',"1",0b10,0o10,0x10,1.25)."#;
+    let source = "p(atom,'atom',1,'1',0b10,0o10,0x10).";
     let policy = parse_policy(source, "literals.pl").unwrap();
-    let args = &clause(&policy, "p", 9, 0).head.args;
+    let args = &clause(&policy, "p", 7, 0).head;
 
     assert_eq!(args[0], Term::atom("atom"));
     assert_eq!(args[1], Term::atom("atom"));
     assert!(matches!(&args[2], Term::Integer { decimal } if decimal == "1"));
     assert_eq!(args[3], Term::atom("1"));
-    assert!(matches!(&args[4], Term::String { value } if value == "1"));
-    assert!(matches!(&args[5], Term::Integer { decimal } if decimal == "2"));
-    assert!(matches!(&args[6], Term::Integer { decimal } if decimal == "8"));
-    assert!(matches!(&args[7], Term::Integer { decimal } if decimal == "16"));
-    assert!(matches!(&args[8], Term::Float { lexeme } if lexeme == "1.25"));
+    assert!(matches!(&args[4], Term::Integer { decimal } if decimal == "2"));
+    assert!(matches!(&args[5], Term::Integer { decimal } if decimal == "8"));
+    assert!(matches!(&args[6], Term::Integer { decimal } if decimal == "16"));
+}
+
+#[test]
+fn floats_and_strings_are_rejected_with_a_hint() {
+    for (source, hint) in [
+        ("p(1.25).", "fixed-point integer"),
+        ("p(-1.25).", "fixed-point integer"),
+        ("p(X) :- X is 2 ** -1.5.", "fixed-point integer"),
+        ("p(\"HUF\").", "atoms in single quotes"),
+        ("p(`HUF`).", "atoms in single quotes"),
+    ] {
+        let error = parse_policy(source, "literals.pl").unwrap_err().to_string();
+        assert!(error.contains(hint), "{source}: {error}");
+    }
 }
 
 #[test]
@@ -186,19 +194,18 @@ fn current_policy_regressions_are_fixed() {
     let source = include_str!("../../prolog/policy.pl");
     let policy = parse_policy(source, "prolog/policy.pl").unwrap();
 
-    assert_eq!(policy.schema_version, 2);
     assert_eq!(policy.predicates.len(), 10);
     assert_eq!(predicate(&policy, "savingsClass", 3).clauses.len(), 1);
 
     let sum_base = clause(&policy, "sumOfMonthlyConsumptions", 2, 1);
     assert!(matches!(
-        &sum_base.head.args[0],
+        &sum_base.head[0],
         Term::List { items, tail: None } if items.is_empty()
     ));
 
     let social_base = clause(&policy, "applySocialSupports", 3, 1);
     assert!(matches!(
-        &social_base.head.args[1],
+        &social_base.head[1],
         Term::List { items, tail: None } if items.is_empty()
     ));
 

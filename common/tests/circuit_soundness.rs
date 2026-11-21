@@ -12,10 +12,7 @@ use common::{
     },
     data::{ChildSig, LocalStepKind, RuleTemplateFileFp, TermFp, UnificationInputFp},
     policy_compiler::compile_policy_for_current_circuit,
-    policy_ir::{
-        Call, Clause, POLICY_DIALECT, POLICY_SCHEMA_VERSION, PolicyFile, PredicateDef,
-        PredicateIndicator, Term, VariableDecl,
-    },
+    policy_ir::{Clause, PolicyFile, PredicateDef, PredicateIndicator, Term},
     typed_fact::typed_fact_hash,
     typed_policy::TypedPolicyPlan,
     unification_checker_circuit::UnificationCircuit,
@@ -136,7 +133,7 @@ fn compile_policy(policy: PolicyFile) -> CircuitPolicy {
 
 fn one_predicate_policy(
     head_args: Vec<Term>,
-    variables: Vec<VariableDecl>,
+    variables: Vec<Option<String>>,
     body: Term,
 ) -> PolicyFile {
     let indicator = PredicateIndicator {
@@ -144,19 +141,11 @@ fn one_predicate_policy(
         arity: head_args.len(),
     };
     PolicyFile {
-        schema_version: POLICY_SCHEMA_VERSION,
-        dialect: POLICY_DIALECT.to_owned(),
-        module: None,
-        directives: Vec::new(),
         predicates: vec![PredicateDef {
             indicator: indicator.clone(),
             clauses: vec![Clause {
-                ordinal: 0,
                 variables,
-                head: Call {
-                    predicate: indicator,
-                    args: head_args,
-                },
+                head: head_args,
                 body,
             }],
         }],
@@ -177,10 +166,7 @@ fn literal_policy(literal: &str) -> CircuitPolicy {
 
 fn variable_policy(arity: usize, children: Vec<Vec<ChildSig>>) -> CircuitPolicy {
     let variables = (0..arity)
-        .map(|id| VariableDecl {
-            id: id as u32,
-            source_name: Some(format!("X{id}")),
-        })
+        .map(|id| Some(format!("X{id}")))
         .collect::<Vec<_>>();
     let head_args = (0..arity)
         .map(|id| Term::Variable { id: id as u32 })
@@ -218,16 +204,7 @@ fn tuple_list_policy() -> CircuitPolicy {
             items: vec![Term::compound(",", vec![variable(0), variable(1)])],
             tail: None,
         }],
-        vec![
-            VariableDecl {
-                id: 0,
-                source_name: Some("A".to_owned()),
-            },
-            VariableDecl {
-                id: 1,
-                source_name: Some("B".to_owned()),
-            },
-        ],
+        vec![Some("A".to_owned()), Some("B".to_owned())],
         Term::compound("q", vec![variable(0), variable(1)]),
     ))
 }

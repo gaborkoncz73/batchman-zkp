@@ -2,7 +2,9 @@
 resolver = "3"
 members = ["common", "issue",
            "prove",
+           "policy-ir",
            "policy-parser",
+           "policy-constraints",
            "verify",
            ]
 
@@ -12,6 +14,7 @@ serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0", default-features = false }
 anyhow = { version = "1.0", default-features = false }
 common = { path = "./common", default-features = false }
+policy-ir = { path = "./policy-ir" }
 prove = { path = "./prove", default-features = false }
 halo2_proofs = { version = "0.3", default-features = false}
 rayon = { version = "1.11", default-features = false }
