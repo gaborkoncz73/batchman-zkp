@@ -46,16 +46,16 @@ struct RawNode {
 
 impl ProofTree {
     pub fn from_json(source: &str, label: &str) -> Result<Self> {
-        let roots: Vec<RawNode> =
+        let raw_roots: Vec<RawNode> =
             serde_json::from_str(source).with_context(|| format!("{label}: not a proof tree"))?;
-        if roots.is_empty() {
+        if raw_roots.is_empty() {
             bail!("{label}: the proof tree has no root");
         }
         let mut tree = Self {
             nodes: Vec::new(),
             roots: Vec::new(),
         };
-        for root in &roots {
+        for root in &raw_roots {
             let index = tree.add(root, None, label)?;
             tree.roots.push(index);
         }
