@@ -2,24 +2,26 @@
 //!
 //! ```text
 //! cargo run -p proof-witness -- [--policy input/rules.json] [--tree input/proof_tree.json]
-//!                               [--facts issue/src/facts.yaml] [--roots input/trusted_roots.json]
-//!                               [--nodes]
+//!                               [--facts registry/facts.yaml]
+//!                               [--commitments registry/commitments.json]
+//!                               [--roots input/trusted_roots.json] [--nodes]
 //! ```
 
 use std::collections::BTreeMap;
 
 use anyhow::{Context, Result, bail};
 use ff::Field;
-use halo2_proofs::pasta::Fp;
+use policy_constraints::Fp;
 use policy_constraints::compile;
 use policy_ir::PolicyFile;
-use proof_witness::{FactRegistry, ProofTree, TrustedRoots, build, check};
+use proof_witness::{FactRegistry, ProofTree, TrustedRoots, build, check, parse_commitments};
 use rand_core::OsRng;
 
 fn main() -> Result<()> {
     let mut policy = "input/rules.json".to_owned();
     let mut tree = "input/proof_tree.json".to_owned();
-    let mut facts = "issue/src/facts.yaml".to_owned();
+    let mut facts = "registry/facts.yaml".to_owned();
+    let mut commitments = "registry/commitments.json".to_owned();
     let mut roots = "input/trusted_roots.json".to_owned();
     let mut show_nodes = false;
     let mut arguments = std::env::args().skip(1);
@@ -32,6 +34,7 @@ fn main() -> Result<()> {
             "--policy" => &mut policy,
             "--tree" => &mut tree,
             "--facts" => &mut facts,
+            "--commitments" => &mut commitments,
             "--roots" => &mut roots,
             other => bail!("unknown argument {other}"),
         };
@@ -48,8 +51,9 @@ fn main() -> Result<()> {
     let tree = ProofTree::from_json(&read(&tree)?, &tree)?;
     let facts = FactRegistry::from_yaml(&read(&facts)?, &facts)?;
     let roots = TrustedRoots::from_json(&read(&roots)?, &roots)?;
+    let commitments = parse_commitments(&read(&commitments)?, &commitments)?;
     let witness = build(&system, &tree, &facts, &roots)?;
-    check(&system, &witness, &roots, Fp::random(OsRng)).context("reference check")?;
+    check(&system, &witness, &roots, &commitments, Fp::random(OsRng)).context("reference check")?;
 
     println!(
         "{} nodes, {} roots, {} cells per node, {} facts in the registry",

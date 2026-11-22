@@ -5,6 +5,7 @@ use policy_ir::Term;
 use super::body::Goal;
 use super::draft::BranchDraft;
 use super::show::show;
+use crate::arith::{StepOp, comparison_step};
 use crate::branch::{ArithmeticOp, BranchKind, BuiltinCheck, Comparison, Expression};
 use crate::error::ModelError;
 use crate::layout::Cell;
@@ -92,13 +93,53 @@ pub(super) fn builtin_branch(check: BuiltinCheck) -> BranchDraft {
         BuiltinCheck::Evaluate { result, expression } => {
             integer_operand(&mut draft, result);
             expression_rows(&mut draft, expression);
+            let value = operand(&mut draft, expression);
+            draft.require_equal(
+                RowKind::Arithmetic,
+                Cell::Payload(result.clone()),
+                value,
+                "the value of the expression",
+            );
         }
-        BuiltinCheck::Compare { left, right, .. } => {
+        BuiltinCheck::Compare {
+            relation,
+            left,
+            right,
+        } => {
             expression_rows(&mut draft, left);
             expression_rows(&mut draft, right);
+            let left = operand(&mut draft, left);
+            let right = operand(&mut draft, right);
+            match comparison_step(*relation) {
+                Some((op, false)) => {
+                    draft.push_step(op, left, right);
+                }
+                Some((op, true)) => {
+                    draft.push_step(op, right, left);
+                }
+                None => draft.require_equal(RowKind::Arithmetic, left, right, "=:="),
+            }
         }
     }
     draft
+}
+
+/// The cell holding the value of `expression`: an integer leaf's payload, or
+/// the result of the last step computing it (steps are appended in post-order).
+fn operand(draft: &mut BranchDraft, expression: &Expression) -> Cell {
+    match expression {
+        Expression::Integer { at } => Cell::Payload(at.clone()),
+        Expression::Apply {
+            operator,
+            left,
+            right,
+            ..
+        } => {
+            let x = operand(draft, left);
+            let y = operand(draft, right);
+            draft.push_step(StepOp::from(*operator), x, y)
+        }
+    }
 }
 
 fn integer_operand(draft: &mut BranchDraft, at: &Position) {

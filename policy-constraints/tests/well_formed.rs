@@ -4,7 +4,7 @@
 mod support;
 
 use ff::Field;
-use halo2_proofs::pasta::Fp;
+use policy_constraints::Fp;
 use policy_constraints::term::{hash_node, symbol};
 use policy_constraints::{Cell, ConstraintSystem, MAX_ARITY, Position, Slot, TermTag};
 use support::{assignment, system};
@@ -78,16 +78,69 @@ fn honest_assignments_are_well_formed() {
 #[test]
 fn a_digest_that_does_not_match_its_cells_is_rejected() {
     let system = system(POLICY);
-    // The payload says q(1), the digest is that of q(2): rows comparing the
-    // payload and rows linking the digest would talk about different goals.
+    // The cells say f(b), the digest is that of f(c): rows reading the cells
+    // and rows comparing the digest would talk about different terms.
     let mut cheat = honest(&system);
-    cheat[column(&system, Cell::Digest(at(Slot::Child(0), &[])))] =
-        support::ground("q(2)").digest();
+    cheat[column(&system, Cell::Digest(at(Slot::Parent, &[1])))] = support::ground("f(c)").digest();
+    // P's digest follows the forged one, so only P.1 is inconsistent.
+    rehash(&system, &mut cheat, &at(Slot::Parent, &[]));
     assert!(
-        error(&system, &cheat).contains("subterm C0: the digest is not the hash"),
+        error(&system, &cheat).contains("subterm P.1: the digest is not the hash"),
         "{}",
         error(&system, &cheat)
     );
+}
+
+#[test]
+fn child_slot_digests_are_left_to_the_child() {
+    // The same mismatch under a child slot passes here: the slot's cells are
+    // linked to the child node's parent-side cells, and the child hashes them
+    // (proof_witness::check rejects this cheat at the link).
+    let system = system(POLICY);
+    let mut cheat = honest(&system);
+    cheat[column(&system, Cell::Digest(at(Slot::Child(0), &[])))] =
+        support::ground("q(2)").digest();
+    system.layout().check_well_formed(&cheat).unwrap();
+}
+
+#[test]
+fn every_goal_slot_opens_the_same_paths() {
+    // Only the head opens P.0 and P.1, only q(H) and r(T, Y) open C0 and C1,
+    // yet every slot opens all of them: a child slot has exactly the cells of
+    // a parent goal, in the same order, so a body goal can be matched with the
+    // node that proves it as one list of cells.
+    let system = system(POLICY);
+    let layout = system.layout();
+    let slots = std::iter::once(Slot::Parent).chain((0..3).map(Slot::Child));
+    for slot in slots {
+        for node in layout.opened_nodes() {
+            let moved = node.position.in_slot(slot);
+            assert!(
+                layout.column(&Cell::Tag(moved.clone())).is_some(),
+                "{} is opened, {moved} is not",
+                node.position
+            );
+        }
+    }
+    let goal = layout.goal_columns();
+    for slot in 0..layout.child_slots() {
+        let links = layout.slot_links(slot);
+        assert_eq!(links.len(), goal.len());
+        for (link, &column) in links.iter().zip(goal) {
+            let child_cell = &layout.cells()[link.in_child];
+            assert_eq!(link.in_child, column);
+            assert_eq!(child_cell.position().unwrap().slot(), Slot::Parent);
+            assert_eq!(
+                child_cell.position().unwrap().path(),
+                link.cell.position().unwrap().path()
+            );
+            assert_eq!(layout.cells()[link.in_parent], link.cell);
+        }
+    }
+    // Four goal slots of equal size, the child count, the fact cells (q, r and
+    // s are external facts) and is_clause.
+    assert_eq!(layout.width(), 4 * goal.len() + 4);
+    assert_eq!(layout.cells()[layout.is_clause()], Cell::IsClause);
 }
 
 #[test]
@@ -188,4 +241,32 @@ fn the_assignment_must_have_the_layout_width() {
     let mut short = honest(&system);
     short.pop();
     assert!(error(&system, &short).contains("cells, the layout has"));
+}
+
+#[test]
+fn a_goal_alone_is_checked_like_a_parent_goal() {
+    // A link between two shards carries a goal's cells without its node: the
+    // cells must hash to their digests, so the digest fixes them all.
+    let system = system(POLICY);
+    let layout = system.layout();
+    let goal = layout.goal_of(&honest(&system));
+    assert_eq!(
+        layout.goal_digest(&goal),
+        support::ground("p([1,2], f(b))").digest()
+    );
+    layout.check_goal(&goal).unwrap();
+
+    let payload = column(&system, Cell::Payload(at(Slot::Parent, &[1])));
+    let index = layout
+        .goal_columns()
+        .iter()
+        .position(|&column| column == payload)
+        .unwrap();
+    let mut forged = goal.clone();
+    forged[index] = symbol("g");
+    assert_eq!(
+        layout.check_goal(&forged).unwrap_err().to_string(),
+        "subterm P.1: the digest is not the hash of the other cells"
+    );
+    assert!(layout.check_goal(&goal[1..]).is_err());
 }

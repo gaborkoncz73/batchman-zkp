@@ -1,0 +1,13 @@
+tree,nodes,k,threads,repetition,prove_s
+energy,50,16,1,0,28.462
+energy,50,16,1,1,28.399
+energy,50,16,2,0,16.315
+energy,50,16,2,1,16.370
+energy,50,16,4,0,10.228
+energy,50,16,4,1,10.291
+energy,50,16,8,0,7.669
+energy,50,16,8,1,7.461
+energy,50,16,16,0,6.234
+energy,50,16,16,1,6.259
+energy,50,16,32,0,5.795
+energy,50,16,32,1,5.751

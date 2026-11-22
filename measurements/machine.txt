@@ -1,0 +1,6 @@
+cpu: AMD Ryzen 9 9950X 16-Core Processor
+logical cpus: 32
+MemTotal:       62307288 kB
+rayon threads: 32
+rustc 1.95.0 (59807616e 2026-04-14)
+profile: release

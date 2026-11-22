@@ -6,8 +6,8 @@ description = "Translates a policy into the linear constraints that a proof-tree
 
 [dependencies]
 policy-ir = { workspace = true }
-halo2_proofs = { workspace = true }
-halo2_gadgets = { workspace = true }
+pasta_curves = { workspace = true }
+halo2_poseidon = { workspace = true }
 ff = { version = "0.13", default-features = false }
 blake3 = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }

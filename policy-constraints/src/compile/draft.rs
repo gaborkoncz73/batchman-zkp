@@ -2,9 +2,10 @@
 
 use std::fmt::Display;
 
+use crate::Fp;
 use ff::Field;
-use halo2_proofs::pasta::Fp;
 
+use crate::arith::{Step, StepCell, StepOp};
 use crate::branch::{Branch, BranchKind};
 use crate::error::ModelError;
 use crate::layout::{Cell, Layout};
@@ -19,10 +20,18 @@ struct RowDraft {
     constant: Fp,
 }
 
+/// A step with its operands as cells: an integer payload or an earlier `z`.
+struct StepDraft {
+    op: StepOp,
+    x: Cell,
+    y: Cell,
+}
+
 pub(super) struct BranchDraft {
     kind: BranchKind,
     children: usize,
     rows: Vec<RowDraft>,
+    steps: Vec<StepDraft>,
 }
 
 impl BranchDraft {
@@ -31,7 +40,75 @@ impl BranchDraft {
             kind,
             children,
             rows: Vec::new(),
+            steps: Vec::new(),
         }
+    }
+
+    /// Number of arithmetic steps the branch uses.
+    pub(super) fn steps(&self) -> usize {
+        self.steps.len()
+    }
+
+    /// Appends the step `x op y`; returns the cell of its result `z`.
+    pub(super) fn push_step(&mut self, op: StepOp, x: Cell, y: Cell) -> Cell {
+        let step = u8::try_from(self.steps.len()).expect("fewer than 256 steps");
+        self.steps.push(StepDraft { op, x, y });
+        Cell::Step {
+            step,
+            part: StepCell::Z,
+        }
+    }
+
+    /// Rows of the `slots` step slots: the branch's steps copy their operands
+    /// and set their flag, a comparison's `z` and all unused cells are zero.
+    pub(super) fn step_rows(&mut self, slots: usize) {
+        for index in 0..slots {
+            let step = u8::try_from(index).expect("fewer than 256 steps");
+            let cell = |part| Cell::Step { step, part };
+            let used = self
+                .steps
+                .get(index)
+                .map(|draft| (draft.op, draft.x.clone(), draft.y.clone()));
+            match used {
+                Some((op, x, y)) => {
+                    self.require_equal(RowKind::Arithmetic, cell(StepCell::X), x, "operand");
+                    self.require_equal(RowKind::Arithmetic, cell(StepCell::Y), y, "operand");
+                    if !op.has_result() {
+                        self.require(RowKind::Arithmetic, cell(StepCell::Z), Fp::ZERO, 0);
+                    }
+                    for flag in StepOp::ALL {
+                        let set = u64::from(flag == op);
+                        self.require(
+                            RowKind::Arithmetic,
+                            cell(StepCell::Flag(flag)),
+                            Fp::from(set),
+                            set,
+                        );
+                    }
+                }
+                None => {
+                    for part in StepCell::all() {
+                        self.require(RowKind::Arithmetic, cell(part), Fp::ZERO, 0);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Row `is_fact = 1` for an external fact branch, `is_fact = 0` otherwise.
+    pub(super) fn fact_row(&mut self) {
+        let fact = u64::from(matches!(self.kind, BranchKind::ExternalFact { .. }));
+        self.require(RowKind::Fact, Cell::IsFact, Fp::from(fact), fact);
+    }
+
+    /// Row `is_clause = 1` for a clause branch, `is_clause = 0` otherwise.
+    pub(super) fn clause_row(&mut self) {
+        let clause = u64::from(matches!(self.kind, BranchKind::Clause { .. }));
+        self.require(RowKind::Clause, Cell::IsClause, Fp::from(clause), clause);
+    }
+
+    pub(super) fn kind(&self) -> &BranchKind {
+        &self.kind
     }
 
     pub(super) fn children(&self) -> usize {
@@ -154,10 +231,25 @@ impl BranchDraft {
                 constant: row.constant,
             })
             .collect();
+        let column = |cell: &Cell| {
+            layout
+                .column(cell)
+                .unwrap_or_else(|| panic!("the layout covers every operand, {cell} is missing"))
+        };
+        let steps = self
+            .steps
+            .iter()
+            .map(|draft| Step {
+                op: draft.op,
+                x: column(&draft.x),
+                y: column(&draft.y),
+            })
+            .collect();
         Branch {
             id,
             kind: self.kind,
             rows,
+            steps,
         }
     }
 }

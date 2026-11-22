@@ -1,0 +1,1341 @@
+{
+  "predicates": [
+    {
+      "indicator": {
+        "name": "applySavingsSupport",
+        "arity": 4
+      },
+      "clauses": [
+        {
+          "variables": [
+            "ApplySavingsSupportInput",
+            "ApplySavingsSupportSavingsClass",
+            "ApplySavingsSupportRollingClass",
+            "ApplySavingsSupportOutput",
+            "ApplySavingsSupportType",
+            "ApplySavingsSupportValue"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            },
+            {
+              "kind": "variable",
+              "id": 1
+            },
+            {
+              "kind": "variable",
+              "id": 2
+            },
+            {
+              "kind": "variable",
+              "id": 3
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": ",",
+            "args": [
+              {
+                "kind": "compound",
+                "functor": "support_matrix",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 2
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 1
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 4
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 5
+                  }
+                ]
+              },
+              {
+                "kind": "compound",
+                "functor": "applySupport",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 0
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 4
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 5
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 3
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "indicator": {
+        "name": "applySocialSupports",
+        "arity": 3
+      },
+      "clauses": [
+        {
+          "variables": [
+            "Input",
+            null,
+            "SupportType",
+            "SupportValue",
+            "CredsTail",
+            "Result",
+            "Output"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            },
+            {
+              "kind": "list",
+              "items": [
+                {
+                  "kind": "compound",
+                  "functor": ",",
+                  "args": [
+                    {
+                      "kind": "variable",
+                      "id": 1
+                    },
+                    {
+                      "kind": "compound",
+                      "functor": ",",
+                      "args": [
+                        {
+                          "kind": "variable",
+                          "id": 2
+                        },
+                        {
+                          "kind": "variable",
+                          "id": 3
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "tail": {
+                "kind": "variable",
+                "id": 4
+              }
+            },
+            {
+              "kind": "variable",
+              "id": 5
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": ",",
+            "args": [
+              {
+                "kind": "compound",
+                "functor": "applySupport",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 0
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 2
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 3
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 6
+                  }
+                ]
+              },
+              {
+                "kind": "compound",
+                "functor": "applySocialSupports",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 6
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 4
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 5
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "variables": [
+            "Input"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            },
+            {
+              "kind": "list",
+              "items": [],
+              "tail": null
+            },
+            {
+              "kind": "variable",
+              "id": 0
+            }
+          ],
+          "body": {
+            "kind": "atom",
+            "value": "true"
+          }
+        }
+      ]
+    },
+    {
+      "indicator": {
+        "name": "applySupport",
+        "arity": 4
+      },
+      "clauses": [
+        {
+          "variables": [
+            "ApplySupportInput",
+            "ApplySupportValue",
+            "ApplySupportOutput"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            },
+            {
+              "kind": "atom",
+              "value": "nominal"
+            },
+            {
+              "kind": "variable",
+              "id": 1
+            },
+            {
+              "kind": "variable",
+              "id": 2
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": "is",
+            "args": [
+              {
+                "kind": "variable",
+                "id": 2
+              },
+              {
+                "kind": "compound",
+                "functor": "-",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 0
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 1
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "variables": [
+            "ApplySupportInput",
+            "ApplySupportValue",
+            "ApplySupportOutput",
+            "AmountToBeSubtracted"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            },
+            {
+              "kind": "atom",
+              "value": "percent"
+            },
+            {
+              "kind": "variable",
+              "id": 1
+            },
+            {
+              "kind": "variable",
+              "id": 2
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": ",",
+            "args": [
+              {
+                "kind": "compound",
+                "functor": "is",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 3
+                  },
+                  {
+                    "kind": "compound",
+                    "functor": "div",
+                    "args": [
+                      {
+                        "kind": "compound",
+                        "functor": "*",
+                        "args": [
+                          {
+                            "kind": "variable",
+                            "id": 0
+                          },
+                          {
+                            "kind": "variable",
+                            "id": 1
+                          }
+                        ]
+                      },
+                      {
+                        "kind": "integer",
+                        "decimal": "100"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "kind": "compound",
+                "functor": "is",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 2
+                  },
+                  {
+                    "kind": "compound",
+                    "functor": "-",
+                    "args": [
+                      {
+                        "kind": "variable",
+                        "id": 0
+                      },
+                      {
+                        "kind": "variable",
+                        "id": 3
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "indicator": {
+        "name": "consumptionClass",
+        "arity": 2
+      },
+      "clauses": [
+        {
+          "variables": [
+            "RollingConsumptionVar",
+            "Class",
+            "Treshold"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            },
+            {
+              "kind": "variable",
+              "id": 1
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": ",",
+            "args": [
+              {
+                "kind": "compound",
+                "functor": "rolling_treshold",
+                "args": [
+                  {
+                    "kind": "atom",
+                    "value": "high"
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 2
+                  }
+                ]
+              },
+              {
+                "kind": "compound",
+                "functor": ",",
+                "args": [
+                  {
+                    "kind": "compound",
+                    "functor": ">",
+                    "args": [
+                      {
+                        "kind": "variable",
+                        "id": 0
+                      },
+                      {
+                        "kind": "variable",
+                        "id": 2
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "compound",
+                    "functor": "=",
+                    "args": [
+                      {
+                        "kind": "variable",
+                        "id": 1
+                      },
+                      {
+                        "kind": "atom",
+                        "value": "high"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "variables": [
+            "RollingConsumptionVar",
+            "Class",
+            "Treshold"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            },
+            {
+              "kind": "variable",
+              "id": 1
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": ",",
+            "args": [
+              {
+                "kind": "compound",
+                "functor": "rolling_treshold",
+                "args": [
+                  {
+                    "kind": "atom",
+                    "value": "mid"
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 2
+                  }
+                ]
+              },
+              {
+                "kind": "compound",
+                "functor": ",",
+                "args": [
+                  {
+                    "kind": "compound",
+                    "functor": ">",
+                    "args": [
+                      {
+                        "kind": "variable",
+                        "id": 0
+                      },
+                      {
+                        "kind": "variable",
+                        "id": 2
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "compound",
+                    "functor": "=",
+                    "args": [
+                      {
+                        "kind": "variable",
+                        "id": 1
+                      },
+                      {
+                        "kind": "atom",
+                        "value": "mid"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "variables": [
+            "_RollingConsumptionVar"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            },
+            {
+              "kind": "atom",
+              "value": "low"
+            }
+          ],
+          "body": {
+            "kind": "atom",
+            "value": "true"
+          }
+        }
+      ]
+    },
+    {
+      "indicator": {
+        "name": "endPrice",
+        "arity": 1
+      },
+      "clauses": [
+        {
+          "variables": [
+            "Price",
+            "MonthlyConsumptions",
+            "Sum",
+            "RollingConsumptionVar",
+            "Consumption",
+            "ConsumptionClassVar",
+            "SavingsClass",
+            "PriceBase",
+            "PriceAfterSavings",
+            "Creds"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": ",",
+            "args": [
+              {
+                "kind": "compound",
+                "functor": "monthlyConsumptions",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 1
+                  }
+                ]
+              },
+              {
+                "kind": "compound",
+                "functor": ",",
+                "args": [
+                  {
+                    "kind": "compound",
+                    "functor": "sumOfMonthlyConsumptions",
+                    "args": [
+                      {
+                        "kind": "variable",
+                        "id": 1
+                      },
+                      {
+                        "kind": "variable",
+                        "id": 2
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "compound",
+                    "functor": ",",
+                    "args": [
+                      {
+                        "kind": "compound",
+                        "functor": "rollingConsumption",
+                        "args": [
+                          {
+                            "kind": "variable",
+                            "id": 2
+                          },
+                          {
+                            "kind": "variable",
+                            "id": 3
+                          }
+                        ]
+                      },
+                      {
+                        "kind": "compound",
+                        "functor": ",",
+                        "args": [
+                          {
+                            "kind": "compound",
+                            "functor": "currentConsumption",
+                            "args": [
+                              {
+                                "kind": "variable",
+                                "id": 4
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "compound",
+                            "functor": ",",
+                            "args": [
+                              {
+                                "kind": "compound",
+                                "functor": "consumptionClass",
+                                "args": [
+                                  {
+                                    "kind": "variable",
+                                    "id": 3
+                                  },
+                                  {
+                                    "kind": "variable",
+                                    "id": 5
+                                  }
+                                ]
+                              },
+                              {
+                                "kind": "compound",
+                                "functor": ",",
+                                "args": [
+                                  {
+                                    "kind": "compound",
+                                    "functor": "savingsClass",
+                                    "args": [
+                                      {
+                                        "kind": "variable",
+                                        "id": 3
+                                      },
+                                      {
+                                        "kind": "variable",
+                                        "id": 4
+                                      },
+                                      {
+                                        "kind": "variable",
+                                        "id": 6
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "kind": "compound",
+                                    "functor": ",",
+                                    "args": [
+                                      {
+                                        "kind": "compound",
+                                        "functor": "priceBase",
+                                        "args": [
+                                          {
+                                            "kind": "variable",
+                                            "id": 7
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "kind": "compound",
+                                        "functor": ",",
+                                        "args": [
+                                          {
+                                            "kind": "compound",
+                                            "functor": "applySavingsSupport",
+                                            "args": [
+                                              {
+                                                "kind": "variable",
+                                                "id": 7
+                                              },
+                                              {
+                                                "kind": "variable",
+                                                "id": 6
+                                              },
+                                              {
+                                                "kind": "variable",
+                                                "id": 5
+                                              },
+                                              {
+                                                "kind": "variable",
+                                                "id": 8
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "kind": "compound",
+                                            "functor": ",",
+                                            "args": [
+                                              {
+                                                "kind": "compound",
+                                                "functor": "socialCreds",
+                                                "args": [
+                                                  {
+                                                    "kind": "variable",
+                                                    "id": 9
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "kind": "compound",
+                                                "functor": "applySocialSupports",
+                                                "args": [
+                                                  {
+                                                    "kind": "variable",
+                                                    "id": 8
+                                                  },
+                                                  {
+                                                    "kind": "variable",
+                                                    "id": 9
+                                                  },
+                                                  {
+                                                    "kind": "variable",
+                                                    "id": 0
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "indicator": {
+        "name": "inputPriceOk",
+        "arity": 0
+      },
+      "clauses": [
+        {
+          "variables": [
+            "Price"
+          ],
+          "head": [],
+          "body": {
+            "kind": "compound",
+            "functor": ",",
+            "args": [
+              {
+                "kind": "compound",
+                "functor": "endPrice",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 0
+                  }
+                ]
+              },
+              {
+                "kind": "compound",
+                "functor": "inputPayment",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 0
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "indicator": {
+        "name": "priceBase",
+        "arity": 1
+      },
+      "clauses": [
+        {
+          "variables": [
+            "PriceBase",
+            "Amount",
+            "Price"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": ",",
+            "args": [
+              {
+                "kind": "compound",
+                "functor": "currentConsumption",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 1
+                  }
+                ]
+              },
+              {
+                "kind": "compound",
+                "functor": ",",
+                "args": [
+                  {
+                    "kind": "compound",
+                    "functor": "currentPrice",
+                    "args": [
+                      {
+                        "kind": "variable",
+                        "id": 2
+                      },
+                      {
+                        "kind": "atom",
+                        "value": "HUF"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "compound",
+                    "functor": "is",
+                    "args": [
+                      {
+                        "kind": "variable",
+                        "id": 0
+                      },
+                      {
+                        "kind": "compound",
+                        "functor": "*",
+                        "args": [
+                          {
+                            "kind": "variable",
+                            "id": 2
+                          },
+                          {
+                            "kind": "variable",
+                            "id": 1
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "indicator": {
+        "name": "rollingConsumption",
+        "arity": 2
+      },
+      "clauses": [
+        {
+          "variables": [
+            "Sum",
+            "Result"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            },
+            {
+              "kind": "variable",
+              "id": 1
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": "is",
+            "args": [
+              {
+                "kind": "variable",
+                "id": 1
+              },
+              {
+                "kind": "compound",
+                "functor": "div",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 0
+                  },
+                  {
+                    "kind": "integer",
+                    "decimal": "12"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "indicator": {
+        "name": "savingsClass",
+        "arity": 3
+      },
+      "clauses": [
+        {
+          "variables": [
+            "RollingConsumptionVar",
+            "Consumption",
+            "Class",
+            "Treshold",
+            "CurrentSaving"
+          ],
+          "head": [
+            {
+              "kind": "variable",
+              "id": 0
+            },
+            {
+              "kind": "variable",
+              "id": 1
+            },
+            {
+              "kind": "variable",
+              "id": 2
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": ";",
+            "args": [
+              {
+                "kind": "compound",
+                "functor": ",",
+                "args": [
+                  {
+                    "kind": "compound",
+                    "functor": "savings_treshold",
+                    "args": [
+                      {
+                        "kind": "atom",
+                        "value": "high"
+                      },
+                      {
+                        "kind": "variable",
+                        "id": 3
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "compound",
+                    "functor": ",",
+                    "args": [
+                      {
+                        "kind": "compound",
+                        "functor": "is",
+                        "args": [
+                          {
+                            "kind": "variable",
+                            "id": 4
+                          },
+                          {
+                            "kind": "compound",
+                            "functor": "-",
+                            "args": [
+                              {
+                                "kind": "variable",
+                                "id": 0
+                              },
+                              {
+                                "kind": "variable",
+                                "id": 1
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "kind": "compound",
+                        "functor": ",",
+                        "args": [
+                          {
+                            "kind": "compound",
+                            "functor": ">",
+                            "args": [
+                              {
+                                "kind": "variable",
+                                "id": 4
+                              },
+                              {
+                                "kind": "variable",
+                                "id": 3
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "compound",
+                            "functor": "=",
+                            "args": [
+                              {
+                                "kind": "variable",
+                                "id": 2
+                              },
+                              {
+                                "kind": "atom",
+                                "value": "high"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "kind": "compound",
+                "functor": ";",
+                "args": [
+                  {
+                    "kind": "compound",
+                    "functor": ",",
+                    "args": [
+                      {
+                        "kind": "compound",
+                        "functor": "savings_treshold",
+                        "args": [
+                          {
+                            "kind": "atom",
+                            "value": "mid"
+                          },
+                          {
+                            "kind": "variable",
+                            "id": 3
+                          }
+                        ]
+                      },
+                      {
+                        "kind": "compound",
+                        "functor": ",",
+                        "args": [
+                          {
+                            "kind": "compound",
+                            "functor": "is",
+                            "args": [
+                              {
+                                "kind": "variable",
+                                "id": 4
+                              },
+                              {
+                                "kind": "compound",
+                                "functor": "-",
+                                "args": [
+                                  {
+                                    "kind": "variable",
+                                    "id": 0
+                                  },
+                                  {
+                                    "kind": "variable",
+                                    "id": 1
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "compound",
+                            "functor": ",",
+                            "args": [
+                              {
+                                "kind": "compound",
+                                "functor": ">",
+                                "args": [
+                                  {
+                                    "kind": "variable",
+                                    "id": 4
+                                  },
+                                  {
+                                    "kind": "variable",
+                                    "id": 3
+                                  }
+                                ]
+                              },
+                              {
+                                "kind": "compound",
+                                "functor": "=",
+                                "args": [
+                                  {
+                                    "kind": "variable",
+                                    "id": 2
+                                  },
+                                  {
+                                    "kind": "atom",
+                                    "value": "mid"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "compound",
+                    "functor": ";",
+                    "args": [
+                      {
+                        "kind": "compound",
+                        "functor": ",",
+                        "args": [
+                          {
+                            "kind": "compound",
+                            "functor": "savings_treshold",
+                            "args": [
+                              {
+                                "kind": "atom",
+                                "value": "low"
+                              },
+                              {
+                                "kind": "variable",
+                                "id": 3
+                              }
+                            ]
+                          },
+                          {
+                            "kind": "compound",
+                            "functor": ",",
+                            "args": [
+                              {
+                                "kind": "compound",
+                                "functor": "is",
+                                "args": [
+                                  {
+                                    "kind": "variable",
+                                    "id": 4
+                                  },
+                                  {
+                                    "kind": "compound",
+                                    "functor": "-",
+                                    "args": [
+                                      {
+                                        "kind": "variable",
+                                        "id": 0
+                                      },
+                                      {
+                                        "kind": "variable",
+                                        "id": 1
+                                      }
+                                    ]
+                                  }
+                                ]
+                              },
+                              {
+                                "kind": "compound",
+                                "functor": ",",
+                                "args": [
+                                  {
+                                    "kind": "compound",
+                                    "functor": ">",
+                                    "args": [
+                                      {
+                                        "kind": "variable",
+                                        "id": 4
+                                      },
+                                      {
+                                        "kind": "variable",
+                                        "id": 3
+                                      }
+                                    ]
+                                  },
+                                  {
+                                    "kind": "compound",
+                                    "functor": "=",
+                                    "args": [
+                                      {
+                                        "kind": "variable",
+                                        "id": 2
+                                      },
+                                      {
+                                        "kind": "atom",
+                                        "value": "low"
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "kind": "compound",
+                        "functor": "=",
+                        "args": [
+                          {
+                            "kind": "variable",
+                            "id": 2
+                          },
+                          {
+                            "kind": "atom",
+                            "value": "none"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "indicator": {
+        "name": "sumOfMonthlyConsumptions",
+        "arity": 2
+      },
+      "clauses": [
+        {
+          "variables": [
+            "Amount",
+            "Tail",
+            "Sum",
+            "SumOfTail"
+          ],
+          "head": [
+            {
+              "kind": "list",
+              "items": [
+                {
+                  "kind": "variable",
+                  "id": 0
+                }
+              ],
+              "tail": {
+                "kind": "variable",
+                "id": 1
+              }
+            },
+            {
+              "kind": "variable",
+              "id": 2
+            }
+          ],
+          "body": {
+            "kind": "compound",
+            "functor": ",",
+            "args": [
+              {
+                "kind": "compound",
+                "functor": "sumOfMonthlyConsumptions",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 1
+                  },
+                  {
+                    "kind": "variable",
+                    "id": 3
+                  }
+                ]
+              },
+              {
+                "kind": "compound",
+                "functor": "is",
+                "args": [
+                  {
+                    "kind": "variable",
+                    "id": 2
+                  },
+                  {
+                    "kind": "compound",
+                    "functor": "+",
+                    "args": [
+                      {
+                        "kind": "variable",
+                        "id": 3
+                      },
+                      {
+                        "kind": "variable",
+                        "id": 0
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "variables": [],
+          "head": [
+            {
+              "kind": "list",
+              "items": [],
+              "tail": null
+            },
+            {
+              "kind": "integer",
+              "decimal": "0"
+            }
+          ],
+          "body": {
+            "kind": "atom",
+            "value": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -8,7 +8,6 @@ description = "Turns a proof tree into the per-node assignments and branch choic
 policy-ir = { workspace = true }
 policy-parser = { path = "../policy-parser" }
 policy-constraints = { path = "../policy-constraints" }
-halo2_proofs = { workspace = true }
 ff = { version = "0.13", default-features = false }
 serde = { workspace = true, features = ["derive", "std"] }
 serde_json = { workspace = true, features = ["std"] }

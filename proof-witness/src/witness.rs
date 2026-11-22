@@ -1,9 +1,10 @@
 //! Node assignments and branch choices.
 
 use anyhow::{Result, bail};
-use halo2_proofs::pasta::Fp;
+use ff::Field;
+use policy_constraints::Fp;
 use policy_constraints::term::symbol;
-use policy_constraints::{Branch, BranchKind, ConstraintSystem, GroundTerm};
+use policy_constraints::{Branch, BranchKind, ConstraintSystem, GroundTerm, ModelError, RowKind};
 use rayon::prelude::*;
 
 use crate::facts::FactRegistry;
@@ -50,11 +51,11 @@ pub fn build(
                 .iter()
                 .map(|&child| tree.nodes()[child].goal.clone())
                 .collect();
-            let assignment = system
+            let goals = system
                 .layout()
                 .assign(&node.goal, &children)
                 .map_err(|error| anyhow::anyhow!("node {index} {}: {error}", node.text))?;
-            let branch = choose_branch(system, facts, &node.goal, &assignment)
+            let (branch, assignment) = choose_branch(system, facts, &node.goal, &goals)
                 .map_err(|reason| anyhow::anyhow!("node {index} {}: {reason}", node.text))?;
             Ok(NodeWitness {
                 text: node.text.clone(),
@@ -118,28 +119,45 @@ fn check_roots(tree: &ProofTree, trusted: &TrustedRoots) -> Result<()> {
     Ok(())
 }
 
-/// The first branch that proves the node, or why none does.
+/// The first branch that proves the node, with the node's assignment
+/// completed for it (`goals` holds only the goal cells), or why none does.
 fn choose_branch(
     system: &ConstraintSystem,
     facts: &FactRegistry,
     goal: &GroundTerm,
-    assignment: &[Fp],
-) -> Result<usize, String> {
+    goals: &[Fp],
+) -> Result<(usize, Vec<Fp>), String> {
+    let salt = facts.salt(goal).unwrap_or(Fp::ZERO);
     let mut refusals = Vec::new();
     for branch in system.branches() {
-        if !branch.is_satisfied_by(assignment) {
+        let assignment = match completed(system, branch, goals, salt) {
+            Ok(assignment) => assignment,
+            Err(error) => {
+                // The steps cannot be computed (division by zero, overflow):
+                // worth reporting if the call has this branch's form.
+                if has_form(branch, goals) {
+                    refusals.push(format!("{}: {error}", branch.kind));
+                }
+                continue;
+            }
+        };
+        if !branch.is_satisfied_by(&assignment) {
+            // A call of this form whose result is not the computed one.
+            if matches!(branch.kind, BranchKind::Builtin(_)) && has_form(branch, goals) {
+                refusals.push(format!("{}: the builtin is false", branch.kind));
+            }
             continue;
         }
         match &branch.kind {
-            BranchKind::Clause { .. } => return Ok(branch.id),
+            BranchKind::Clause { .. } => return Ok((branch.id, assignment)),
             BranchKind::Builtin(check) => match check.holds(goal) {
-                Ok(true) => return Ok(branch.id),
+                Ok(true) => return Ok((branch.id, assignment)),
                 Ok(false) => refusals.push(format!("{}: the builtin is false", branch.kind)),
                 Err(error) => refusals.push(format!("{}: {error}", branch.kind)),
             },
             BranchKind::ExternalFact { .. } => {
                 if facts.contains(goal) {
-                    return Ok(branch.id);
+                    return Ok((branch.id, assignment));
                 }
                 refusals.push(format!("{}: not in the fact registry", branch.kind));
             }
@@ -148,21 +166,44 @@ fn choose_branch(
     if refusals.is_empty() {
         Err(format!(
             "no branch matches; {}",
-            closest(system, goal, assignment)
+            closest(system, goal, goals)
         ))
     } else {
         Err(refusals.join("; "))
     }
 }
 
+/// `goals` completed for `branch` (its arithmetic steps and fact cells).
+fn completed(
+    system: &ConstraintSystem,
+    branch: &Branch,
+    goals: &[Fp],
+    salt: Fp,
+) -> Result<Vec<Fp>, ModelError> {
+    let mut assignment = goals.to_vec();
+    system.complete(branch.id, &mut assignment, salt)?;
+    Ok(assignment)
+}
+
+/// The branch's rows other than the arithmetic and fact ones hold on `goals`.
+fn has_form(branch: &Branch, goals: &[Fp]) -> bool {
+    branch
+        .rows
+        .iter()
+        .filter(|row| !matches!(row.kind, RowKind::Arithmetic | RowKind::Fact))
+        .all(|row| row.is_satisfied_by(goals))
+}
+
 /// Among the branches for the goal's predicate, the one with the fewest
 /// violated rows, for the error message.
-fn closest(system: &ConstraintSystem, goal: &GroundTerm, assignment: &[Fp]) -> String {
+fn closest(system: &ConstraintSystem, goal: &GroundTerm, goals: &[Fp]) -> String {
     let violated = |branch: &Branch| -> Vec<String> {
+        let assignment =
+            completed(system, branch, goals, Fp::ZERO).unwrap_or_else(|_| goals.to_vec());
         branch
             .rows
             .iter()
-            .filter(|row| !row.is_satisfied_by(assignment))
+            .filter(|row| !row.is_satisfied_by(&assignment))
             .map(|row| row.description.clone())
             .collect()
     };

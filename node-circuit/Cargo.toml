@@ -1,0 +1,24 @@
+[package]
+name = "node-circuit"
+version = "0.1.0"
+edition = "2024"
+description = "Halo2 circuit for a proof tree: the per-node checks and the links between the nodes"
+
+[dependencies]
+# PSE fork: multi-phase advice columns and challenges (needed from step 3b on).
+halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2", tag = "v0.3.0" }
+halo2_poseidon = { workspace = true }
+ff = { version = "0.13" }
+policy-constraints = { path = "../policy-constraints" }
+# The prover's witness, laid out as a tree circuit (TreeCircuit::from_witness).
+proof-witness = { path = "../proof-witness" }
+anyhow = { workspace = true, features = ["std"] }
+serde = { workspace = true, features = ["derive", "std"] }
+serde_json = { workspace = true, features = ["std"] }
+rand_core = { workspace = true, features = ["getrandom"] }
+
+[dev-dependencies]
+# The measurements run shards side by side, each in a thread pool of its own.
+rayon = { workspace = true }
+policy-ir = { workspace = true }
+policy-parser = { path = "../policy-parser" }

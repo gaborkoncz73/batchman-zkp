@@ -2,17 +2,13 @@
 name = "prove"
 version = "0.1.0"
 edition = "2024"
+description = "The prover: splits a proof tree into shards and proves each shard"
 
 [dependencies]
-serde = { workspace = true , features = ["derive", "std"] }
-serde_json = { workspace = true, features = ["std"]}
-anyhow = { workspace = true } 
-common = { workspace = true }
-policy-parser = { path = "../policy-parser", features = ["legacy"] }
-halo2_proofs = { workspace = true }
-rayon = { workspace = true }
-base64 = { workspace = true }
-halo2curves = { workspace = true }
-halo2_gadgets = { workspace = true }
-rand_core  = { workspace = true, features = ["getrandom"] }
-serde_yaml = { workspace = true }
+anyhow = { workspace = true, features = ["std"] }
+ff = { version = "0.13" }
+rand_core = { workspace = true, features = ["getrandom"] }
+policy-parser = { path = "../policy-parser" }
+policy-constraints = { path = "../policy-constraints" }
+proof-witness = { path = "../proof-witness" }
+node-circuit = { path = "../node-circuit" }

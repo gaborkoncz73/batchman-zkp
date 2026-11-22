@@ -33,6 +33,7 @@
 mod compile;
 mod error;
 
+pub mod arith;
 pub mod branch;
 pub mod layout;
 pub mod position;
@@ -44,7 +45,10 @@ pub use branch::{
 };
 pub use compile::{ConstraintSystem, compile};
 pub use error::ModelError;
-pub use layout::{Cell, Layout, OpenedNode};
+pub use layout::{Cell, Layout, OpenedNode, SlotLink};
+/// The field every cell, coefficient and digest lives in (the Pallas base
+/// field; the scalar field of the Vesta curve the circuits commit with).
+pub use pasta_curves::Fp;
 pub use position::{Position, Slot};
 pub use row::{LinearRow, RowKind};
 pub use term::{GroundTerm, MAX_ARITY, TermTag};

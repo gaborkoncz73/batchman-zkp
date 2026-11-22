@@ -6,19 +6,7 @@ edition = "2024"
 [dependencies]
 serde_json = { workspace = true, features = ["std"] }
 anyhow = { workspace = true } 
-common = { workspace = true, optional = true }
 policy-ir = { workspace = true }
 antlr4rust = "0.5.2"
 num-bigint = { workspace = true }
 
-[features]
-# Ground-goal, fact-registry and trusted-root parsing into the types of the
-# legacy `common` crate. Only the legacy prove/verify/issue binaries use it.
-legacy = ["dep:common"]
-
-[dev-dependencies]
-common = { workspace = true }
-
-[[test]]
-name = "fact_registry"
-required-features = ["legacy"]

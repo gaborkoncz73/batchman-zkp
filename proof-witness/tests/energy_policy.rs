@@ -6,7 +6,7 @@ use proof_witness::{FactRegistry, ProofTree, ProofWitness, TrustedRoots, build};
 
 const POLICY: &str = include_str!("../../prolog/policy.pl");
 const TREE: &str = include_str!("../../input/proof_tree.json");
-const FACTS: &str = include_str!("../../issue/src/facts.yaml");
+const FACTS: &str = include_str!("../../registry/facts.yaml");
 const ROOTS: &str = include_str!("../../input/trusted_roots.json");
 
 fn system() -> ConstraintSystem {

@@ -2,8 +2,9 @@
 
 use std::fmt::{self, Display, Formatter};
 
+use crate::Fp;
+use crate::arith::Step;
 use ff::Field;
-use halo2_proofs::pasta::Fp;
 use policy_ir::PredicateIndicator;
 
 use crate::error::ModelError;
@@ -17,6 +18,9 @@ pub struct Branch {
     pub id: usize,
     pub kind: BranchKind,
     pub rows: Vec<LinearRow>,
+    /// The arithmetic program of a builtin branch, one step per used step
+    /// slot (empty for the other branches); see [`crate::arith`].
+    pub steps: Vec<Step>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -224,7 +224,7 @@ fn current_policy_outputs_match_the_golden_files() {
     let policy = parse_policy(include_str!("../../prolog/policy.pl"), "prolog/policy.pl").unwrap();
     assert_eq!(
         to_canonical_json(&policy).unwrap(),
-        include_str!("../../tests/fixtures/current-policy.rules.json")
+        include_str!("fixtures/policy.rules.json")
     );
 }
 

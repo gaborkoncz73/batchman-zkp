@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use ff::Field;
-use halo2_proofs::pasta::Fp;
+use policy_constraints::Fp;
 use policy_constraints::{Branch, ConstraintSystem, GroundTerm, compile};
 use policy_parser::{parse_goal, parse_policy};
 use rand_core::OsRng;
@@ -31,12 +31,26 @@ pub fn assignment(system: &ConstraintSystem, parent: &str, children: &[&str]) ->
         .expect("node fits the layout")
 }
 
-/// Labels of the branches the assignment satisfies.
+/// The assignment completed for `branch` (its step and fact cells, with a
+/// zero fact salt), as the prover would fill it; `None` if the branch's steps
+/// cannot be computed on it.
+pub fn completed(system: &ConstraintSystem, branch: &Branch, assignment: &[Fp]) -> Option<Vec<Fp>> {
+    let mut assignment = assignment.to_vec();
+    system
+        .complete(branch.id, &mut assignment, Fp::ZERO)
+        .ok()
+        .map(|()| assignment)
+}
+
+/// Labels of the branches the assignment satisfies once completed for them.
 pub fn satisfied(system: &ConstraintSystem, assignment: &[Fp]) -> Vec<String> {
     system
         .branches()
         .iter()
-        .filter(|branch| branch.is_satisfied_by(assignment))
+        .filter(|branch| {
+            completed(system, branch, assignment)
+                .is_some_and(|completed| branch.is_satisfied_by(&completed))
+        })
         .map(|branch| branch.kind.to_string())
         .collect()
 }

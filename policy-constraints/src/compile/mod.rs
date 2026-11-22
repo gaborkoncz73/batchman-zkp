@@ -12,11 +12,15 @@ use policy_ir::{PolicyFile, PredicateIndicator};
 
 use self::body::Callee;
 use self::draft::BranchDraft;
+use ff::Field;
+
+use crate::Fp;
+use crate::arith::{self, StepCell};
 use crate::branch::{Branch, BranchKind, BuiltinCheck};
 use crate::error::ModelError;
 use crate::layout::Layout;
 use crate::position::Slot;
-use crate::term::MAX_ARITY;
+use crate::term::{self, MAX_ARITY};
 
 /// The constraint model of a policy: the shared layout and every branch.
 ///
@@ -47,6 +51,51 @@ impl ConstraintSystem {
             matches!(&branch.kind, BranchKind::Clause { predicate, .. }
                 if predicate.name == name && predicate.arity == arity)
         })
+    }
+
+    /// Fills the cells of `assignment` that depend on the branch: the
+    /// arithmetic step slots with the values of `branch`'s steps, `is_clause`,
+    /// and the fact cells (`salt` is the salt of the fact's commitment; it is ignored
+    /// unless `branch` is an external fact). Fails if an operand is not a
+    /// 64-bit integer or a step overflows or divides by zero.
+    pub fn complete(
+        &self,
+        branch: usize,
+        assignment: &mut [Fp],
+        salt: Fp,
+    ) -> Result<(), ModelError> {
+        let layout = &self.layout;
+        for step in 0..layout.steps() {
+            for part in StepCell::all() {
+                assignment[layout.step_column(step, part)] = Fp::ZERO;
+            }
+        }
+        let branch = &self.branches[branch];
+        for (index, step) in branch.steps.iter().enumerate() {
+            let (x, y) = (assignment[step.x], assignment[step.y]);
+            let decode = |value: Fp| {
+                arith::decode(value).ok_or_else(|| {
+                    ModelError::new(format!("step {index}: an operand is not a 64-bit integer"))
+                })
+            };
+            let (left, right) = (decode(x)?, decode(y)?);
+            let z = match step.op.arithmetic() {
+                Some(operator) => term::integer(operator.apply(left, right)?),
+                None => Fp::ZERO,
+            };
+            assignment[layout.step_column(index, StepCell::X)] = x;
+            assignment[layout.step_column(index, StepCell::Y)] = y;
+            assignment[layout.step_column(index, StepCell::Z)] = z;
+            assignment[layout.step_column(index, StepCell::Flag(step.op))] = Fp::ONE;
+        }
+        if let Some((is_fact, fact_salt)) = layout.fact_cells() {
+            let fact = matches!(branch.kind, BranchKind::ExternalFact { .. });
+            assignment[is_fact] = Fp::from(u64::from(fact));
+            assignment[fact_salt] = if fact { salt } else { Fp::ZERO };
+        }
+        let clause = matches!(branch.kind, BranchKind::Clause { .. });
+        assignment[layout.is_clause()] = Fp::from(u64::from(clause));
+        Ok(())
     }
 
     pub fn builtin_checks(&self) -> impl Iterator<Item = &BuiltinCheck> {
@@ -127,10 +176,24 @@ pub fn compile(policy: &PolicyFile) -> Result<ConstraintSystem, ModelError> {
     }
 
     let child_slots = drafts.iter().map(BranchDraft::children).max().unwrap_or(0);
+    let steps = drafts.iter().map(BranchDraft::steps).max().unwrap_or(0);
+    let facts = drafts
+        .iter()
+        .any(|draft| matches!(draft.kind(), BranchKind::ExternalFact { .. }));
     for draft in &mut drafts {
         draft.empty_slots(child_slots)?;
+        draft.step_rows(steps);
+        if facts {
+            draft.fact_row();
+        }
+        draft.clause_row();
     }
-    let layout = Layout::covering(child_slots, drafts.iter().flat_map(BranchDraft::cells))?;
+    let layout = Layout::covering(
+        child_slots,
+        steps,
+        facts,
+        drafts.iter().flat_map(BranchDraft::cells),
+    )?;
     let branches = drafts
         .into_iter()
         .enumerate()

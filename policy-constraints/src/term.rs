@@ -22,9 +22,9 @@
 //! a zero-arity goal is an atom.
 
 use ff::{Field, FromUniformBytes, PrimeField};
-use halo2_gadgets::poseidon::primitives::{ConstantLength, Hash, P128Pow5T3};
-use halo2_proofs::pasta::Fp;
-use policy_ir::Term;     
+use halo2_poseidon::poseidon::primitives::{ConstantLength, Hash, P128Pow5T3};
+use pasta_curves::Fp;
+use policy_ir::Term;
 
 use crate::error::ModelError;
 
@@ -32,8 +32,13 @@ use crate::error::ModelError;
 pub const MAX_ARITY: usize = 4;
 
 const NODE_HASH_INPUTS: usize = 4 + MAX_ARITY;
-/// Domain separator of node digests (ASCII `BMNODE` + version 1).
-const NODE_DOMAIN: u64 = 0x424d_4e4f_4445_0001;
+/// Domain separator of node digests (ASCII `BMNODE` + version 1): the first
+/// of the eight hashed words.
+pub const NODE_DOMAIN: u64 = 0x424d_4e4f_4445_0001;
+/// Domain separator of fact commitments (ASCII `BMFACT` + version 1).
+pub const FACT_DOMAIN: u64 = 0x424d_4641_4354_0001;
+/// Domain separator of link commitments (ASCII `BMLINK` + version 1).
+pub const LINK_DOMAIN: u64 = 0x424d_4c49_4e4b_0001;
 const SYMBOL_DOMAIN: &[u8] = b"batchman-zkp/policy-constraints/symbol/v1";
 
 /// The kind of a node. `Absent` marks a position that does not exist in the
@@ -50,6 +55,15 @@ pub enum TermTag {
 }
 
 impl TermTag {
+    pub const ALL: [Self; 6] = [
+        Self::Absent,
+        Self::Atom,
+        Self::Integer,
+        Self::Nil,
+        Self::Cons,
+        Self::Compound,
+    ];
+
     pub fn field(self) -> Fp {
         Fp::from(self as u64)
     }
@@ -67,16 +81,7 @@ impl TermTag {
 
     /// The tag whose [`field`](Self::field) encoding is `value`, if any.
     pub fn from_field(value: Fp) -> Option<Self> {
-        [
-            Self::Absent,
-            Self::Atom,
-            Self::Integer,
-            Self::Nil,
-            Self::Cons,
-            Self::Compound,
-        ]
-        .into_iter()
-        .find(|tag| tag.field() == value)
+        Self::ALL.into_iter().find(|tag| tag.field() == value)
     }
 
     /// The smallest and largest arity of a present node with this tag.
@@ -123,6 +128,36 @@ pub fn hash_node(tag: Fp, payload: Fp, arity: Fp, children: &[Fp; MAX_ARITY]) ->
     input[3] = arity;
     input[4..].copy_from_slice(children);
     Hash::<Fp, P128Pow5T3, ConstantLength<NODE_HASH_INPUTS>, 3, 2>::init().hash(input)
+}
+
+/// The commitment the fact registry publishes for a fact: the digest of its
+/// goal hashed with a secret, random salt, so the published list does not
+/// reveal the facts.
+///
+/// The fourth word is zero, so the message is a whole number of rate-2 blocks
+/// and the Poseidon chip needs no padding words (it loads those through fixed
+/// cells, whose values the PSE prover does not compute).
+pub fn fact_commitment(digest: Fp, salt: Fp) -> Fp {
+    Hash::<Fp, P128Pow5T3, ConstantLength<4>, 3, 2>::init().hash([
+        Fp::from(FACT_DOMAIN),
+        digest,
+        salt,
+        Fp::ZERO,
+    ])
+}
+
+/// The commitment two shard proofs publish for a link between them: the
+/// digest of the goal that a body goal in one shard and a node in the other
+/// share, hashed with a secret, random salt (one per link), so the public
+/// value does not reveal the goal. As in [`fact_commitment`], the message is
+/// four words.
+pub fn link_commitment(digest: Fp, salt: Fp) -> Fp {
+    Hash::<Fp, P128Pow5T3, ConstantLength<4>, 3, 2>::init().hash([
+        Fp::from(LINK_DOMAIN),
+        digest,
+        salt,
+        Fp::ZERO,
+    ])
 }
 
 /// A variable-free term with the digest of every node precomputed.

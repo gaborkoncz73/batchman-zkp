@@ -3,11 +3,25 @@
 mod support;
 
 use ff::Field;
-use halo2_proofs::pasta::Fp;
+use policy_constraints::Fp;
+use policy_constraints::{Branch, ConstraintSystem};
 use policy_constraints::{BranchKind, RowKind};
-use support::{assignment, compile_error, compressed_residual, satisfied, system, violated};
+use support::{
+    assignment, compile_error, completed, compressed_residual, satisfied, system, violated,
+};
 
 const EXAMPLE: &str = "p(X, a) :- q(X).\n";
+
+/// The assignment of a node proving `parent` from `children`, completed for
+/// `branch` (so that its `is_clause` and `is_fact` cells are the branch's).
+fn assigned(
+    system: &ConstraintSystem,
+    branch: &Branch,
+    parent: &str,
+    children: &[&str],
+) -> Vec<Fp> {
+    completed(system, branch, &assignment(system, parent, children)).expect("steps compute")
+}
 
 #[test]
 fn example_clause_has_the_expected_rows() {
@@ -36,6 +50,9 @@ fn example_clause_has_the_expected_rows() {
             "arity(C0) = 1",
             "digest(P.1) = H(a)",
             "digest(P.0) = digest(C0.0)   (variable X)",
+            // q is an external fact, so every branch says whether it is one.
+            "is_fact = 0",
+            "is_clause = 1",
         ]
     );
 
@@ -52,6 +69,8 @@ fn example_clause_has_the_expected_rows() {
             "arity(P) = 1",
             "children = 0",
             "tag(C0) = absent",
+            "is_fact = 1",
+            "is_clause = 0",
         ]
     );
 }
@@ -90,7 +109,7 @@ fn each_kind_of_cheat_breaks_the_row_that_checks_it() {
         ),
     ];
     for (parent, children, expected) in cases {
-        let cheat = assignment(&system, parent, children);
+        let cheat = assigned(&system, clause, parent, children);
         assert_eq!(violated(clause, &cheat), expected, "{parent} {children:?}");
         assert!(
             satisfied(&system, &cheat).is_empty(),
@@ -103,11 +122,11 @@ fn each_kind_of_cheat_breaks_the_row_that_checks_it() {
 fn compressed_branch_agrees_with_the_rows() {
     let system = system(EXAMPLE);
     let clause = &system.branches()[0];
-    let honest = assignment(&system, "p(5, a)", &["q(5)"]);
+    let honest = assigned(&system, clause, "p(5, a)", &["q(5)"]);
     assert_eq!(compressed_residual(&system, clause, &honest), Fp::ZERO);
     for cheat in [
-        assignment(&system, "p(5, b)", &["q(5)"]),
-        assignment(&system, "p(5, a)", &["q(7)"]),
+        assigned(&system, clause, "p(5, b)", &["q(5)"]),
+        assigned(&system, clause, "p(5, a)", &["q(7)"]),
     ] {
         assert_ne!(compressed_residual(&system, clause, &cheat), Fp::ZERO);
     }
@@ -119,7 +138,7 @@ fn compression_cannot_cancel_opposite_residuals() {
     // not in a randomly weighted one.
     let system = system("p(X, X, Y, Y).\n");
     let clause = &system.branches()[0];
-    let cheat = assignment(&system, "p(1, 2, 2, 1)", &[]);
+    let cheat = assigned(&system, clause, "p(1, 2, 2, 1)", &[]);
     let rows: Vec<Fp> = clause.rows.iter().map(|row| row.evaluate(&cheat)).collect();
     let shared: Vec<Fp> = clause
         .rows
@@ -188,9 +207,19 @@ fn lists_and_nested_patterns_are_opened_by_shape() {
         ]
     );
 
-    let honest = assignment(&system, "p([(c, nominal, 10), x], nominal, 10, [x])", &[]);
+    let honest = assigned(
+        &system,
+        clause,
+        "p([(c, nominal, 10), x], nominal, 10, [x])",
+        &[],
+    );
     assert!(clause.is_satisfied_by(&honest));
-    let cheat = assignment(&system, "p([(c, nominal, 10), x], percent, 10, [x])", &[]);
+    let cheat = assigned(
+        &system,
+        clause,
+        "p([(c, nominal, 10), x], percent, 10, [x])",
+        &[],
+    );
     assert!(!clause.is_satisfied_by(&cheat));
 }
 

@@ -1,15 +1,8 @@
-use common::circuit_dialect::{CircuitLimits, validate_ground_goal_for_circuit};
-use common::data::{ClauseTemplate, ProofNode, RuleTemplateFile, TermSide};
-use common::policy_compiler::compile_policy_for_current_circuit;
 use policy_ir::{Clause, PolicyFile, PredicateDef, Term};
 use policy_parser::{parse_goal, parse_policy, to_canonical_json};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-
-fn limits() -> CircuitLimits {
-    serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap()
-}
 
 fn predicate<'a>(policy: &'a PolicyFile, name: &str, arity: usize) -> &'a PredicateDef {
     policy
@@ -215,29 +208,6 @@ fn current_policy_regressions_are_fixed() {
     let division = compound(&first_is[1], "div", 2);
     let multiplication = compound(&division[0], "*", 2);
     assert_eq!(multiplication[1], Term::Variable { id: 1 });
-
-    let compiled = compile_policy_for_current_circuit(&policy, &limits()).unwrap();
-    let circuit = compiled.layout();
-    assert_eq!(circuit.predicates.len(), 10);
-    assert_eq!(
-        circuit
-            .predicates
-            .iter()
-            .find(|predicate| predicate.name == "savingsClass")
-            .unwrap()
-            .clauses
-            .len(),
-        4
-    );
-    validate_circuit_references(circuit);
-
-    let circuit_percent = &circuit
-        .predicates
-        .iter()
-        .find(|predicate| predicate.name == "applySupport")
-        .unwrap()
-        .clauses[1];
-    assert!(has_head_variable_reference(circuit_percent, 2));
 }
 
 #[test]
@@ -296,84 +266,27 @@ fn syntax_errors_never_produce_a_partial_policy() {
     assert!(parse_policy(":- dynamic(p/1). p(a).", "directive.pl").is_err());
 }
 
+/// The semantic IR keeps constructs the circuit does not support; the
+/// circuit compiler (`policy-constraints`) rejects them with a reason.
 #[test]
-fn semantic_ir_may_preserve_constructs_that_circuit_v1_rejects_explicitly() {
+fn semantic_ir_preserves_constructs_the_circuit_rejects() {
     let cut = parse_policy("p :- !.", "cut.pl").unwrap();
     assert!(matches!(
         clause(&cut, "p", 0, 0).body,
         Term::Atom { ref value } if value == "!"
     ));
-    assert!(
-        compile_policy_for_current_circuit(&cut, &limits())
-            .unwrap_err()
-            .to_string()
-            .contains("cut")
-    );
 
-    let excessive_arity = parse_policy("p(A,B,C,D,E).", "arity.pl").unwrap();
-    assert!(
-        compile_policy_for_current_circuit(&excessive_arity, &limits())
-            .unwrap_err()
-            .to_string()
-            .contains("exceeds configured maximum")
-    );
+    let wide = parse_policy("p(A,B,C,D,E).", "arity.pl").unwrap();
+    assert_eq!(clause(&wide, "p", 5, 0).head.len(), 5);
 }
 
 #[test]
-fn every_current_proof_tree_goal_is_fully_parsed_and_in_the_circuit_dialect() {
-    fn visit(node: &ProofNode, limits: &CircuitLimits, count: &mut usize) {
-        if let ProofNode::GoalNode(goal) = node {
-            let term = parse_goal(&goal.goal, "input/proof_tree.json").unwrap();
-            validate_ground_goal_for_circuit(&term, limits).unwrap();
-            *count += 1;
-            for child in &goal.subtree {
-                visit(child, limits, count);
-            }
-        }
-    }
-
-    let limits: CircuitLimits =
-        serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
-    let tree: Vec<ProofNode> =
-        serde_json::from_str(include_str!("../../tests/fixtures/current-proof-tree.json")).unwrap();
-    let mut count = 0;
-    for node in &tree {
-        visit(node, &limits, &mut count);
-    }
-    assert_eq!(count, 50);
-}
-
-#[test]
-fn goal_parser_rejects_partial_input_and_validator_rejects_unsupported_goals() {
-    let limits: CircuitLimits =
-        serde_json::from_str(include_str!("../../config/circuit-limits.json")).unwrap();
-
+fn goal_parser_rejects_partial_input() {
     assert!(parse_goal("p(a). trailing", "trailing-goal").is_err());
     assert!(parse_goal("", "empty-goal").is_err());
-
-    let variable = parse_goal("p(X)", "variable-goal").unwrap();
-    assert!(
-        validate_ground_goal_for_circuit(&variable, &limits)
-            .unwrap_err()
-            .message
-            .contains("ground")
-    );
-
-    let power = parse_goal("4 is 2 ** 2", "power-goal").unwrap();
-    assert!(
-        validate_ground_goal_for_circuit(&power, &limits)
-            .unwrap_err()
-            .message
-            .contains("**/2")
-    );
-
-    let conjunction = parse_goal("p(a), q(a)", "conjunction-goal").unwrap();
-    assert!(
-        validate_ground_goal_for_circuit(&conjunction, &limits)
-            .unwrap_err()
-            .message
-            .contains("one goal")
-    );
+    // A goal with variables or several goals parses; whether it can be
+    // proved is decided later (policy-constraints, proof-witness).
+    assert!(parse_goal("p(X)", "variable-goal").is_ok());
 }
 
 #[test]
@@ -404,10 +317,7 @@ fn cli_output_is_byte_identical_across_processes() {
 
     let first = fs::read_to_string(first).unwrap();
     assert_eq!(first, fs::read_to_string(second).unwrap());
-    assert_eq!(
-        first,
-        include_str!("../../tests/fixtures/current-policy.rules.json")
-    );
+    assert_eq!(first, include_str!("fixtures/policy.rules.json"));
     fs::remove_dir_all(directory).unwrap();
 }
 
@@ -443,38 +353,4 @@ fn cli_rejects_bad_input_before_writing() {
     assert!(!output.exists());
 
     fs::remove_dir_all(directory).unwrap();
-}
-
-fn has_head_variable_reference(clause: &ClauseTemplate, head_argument: usize) -> bool {
-    clause.equalities.iter().any(|equality| {
-        [&equality.left, &equality.right].iter().any(|side| {
-            matches!(
-                side,
-                TermSide::Ref(reference)
-                    if reference.children_node_list == 0 && reference.arg == head_argument
-            )
-        })
-    })
-}
-
-fn validate_circuit_references(rules: &RuleTemplateFile) {
-    for predicate in &rules.predicates {
-        for clause in &predicate.clauses {
-            for equality in &clause.equalities {
-                for side in [&equality.left, &equality.right] {
-                    let TermSide::Ref(reference) = side else {
-                        continue;
-                    };
-                    if reference.children_node_list == 0 {
-                        assert_eq!(reference.predicate, 0);
-                        assert!(reference.arg < predicate.arity);
-                    } else {
-                        let row = &clause.children[reference.children_node_list - 1];
-                        let child = &row[reference.predicate];
-                        assert!(reference.arg < child.arity);
-                    }
-                }
-            }
-        }
-    }
 }

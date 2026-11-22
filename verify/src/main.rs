@@ -1,135 +1,97 @@
-mod reader;
+//! The verifier.
+//!
+//! ```text
+//! verify [proof file]... [options]
+//! ```
+//!
+//! Checks shard proofs (by default every `output/shard-<i>.proof.json`)
+//! against inputs the verifier controls:
+//!
+//! ```text
+//! --policy prolog/policy.pl                 the public policy
+//! --roots input/trusted_roots.json          the goals the verifier wants proved
+//! --commitments registry/commitments.json   the fact issuer's published commitments
+//! --config config/circuit.json              the circuit sizes
+//! ```
+//!
+//! The verifying keys are generated here from the policy and the sizes, never
+//! taken from the prover. Exactly one proof must have the trusted roots, every
+//! proof must verify, and the link commitments of the proofs must match.
 
-use common::circuit_dialect::CircuitLimits;
-use common::circuit_witness::TypedGoalFp;
-use common::commitments::{
-    LOCAL_STEP_PUBLIC_INPUT_COUNT, append_local_step_public_inputs, circuit_policy_commitment,
-};
-use common::data::UnificationInputFp;
-use common::io::read_fact_hashes::{read_fact_hashes, validate_fact_hashes_for_current_circuit};
-use common::policy_compiler::compile_policy_for_current_circuit;
-use common::policy_ir::PolicyFile;
-use common::proof_tree::{TrustedRootsV1, validate_compositional_proof_tree};
-use common::unification_checker_circuit::UnificationCircuit;
-//use common::utils_2::off_circuit_poseidon::poseidon_hash_list_native;
-use reader::read_proofs;
+use std::path::PathBuf;
+use std::time::Instant;
 
-use anyhow::{Result, bail, ensure};
-use rayon::prelude::*;
-use std::sync::Arc;
-use std::{fs, path::Path};
-
-use halo2_proofs::{
-    pasta::{EqAffine, Fp},
-    plonk::{SingleVerifier, VerifyingKey, keygen_vk, verify_proof},
-    poly::commitment::Params,
-    transcript::{Blake2bRead, Challenge255},
-};
+use anyhow::{Context, Result, bail};
+use node_circuit::{ShardProof, Sizes, verify_proofs};
+use policy_constraints::compile;
+use policy_parser::parse_policy;
+use proof_witness::{TrustedRoots, parse_commitments};
 
 fn main() -> Result<()> {
-    // Load proofs
-    let proof_tree = read_proofs("unif")?;
-    let proofs = &proof_tree.proofs;
-    if proofs.is_empty() {
-        bail!("proof set is empty");
+    let mut policy = "prolog/policy.pl".to_owned();
+    let mut roots = "input/trusted_roots.json".to_owned();
+    let mut commitments = "registry/commitments.json".to_owned();
+    let mut config = "config/circuit.json".to_owned();
+    let mut files: Vec<PathBuf> = Vec::new();
+    let mut arguments = std::env::args().skip(1);
+    while let Some(argument) = arguments.next() {
+        let mut value = || {
+            arguments
+                .next()
+                .with_context(|| format!("{argument} needs a value"))
+        };
+        match argument.as_str() {
+            "--policy" => policy = value()?,
+            "--roots" => roots = value()?,
+            "--commitments" => commitments = value()?,
+            "--config" => config = value()?,
+            flag if flag.starts_with("--") => bail!("unknown option {flag}"),
+            _ => files.push(PathBuf::from(argument)),
+        }
     }
-    // Load public hashes
-    let path = Path::new("input/fact_hashes.json");
-    let public_hashes = read_fact_hashes(path)?;
+    if files.is_empty() {
+        for entry in std::fs::read_dir("output").context("reading output")? {
+            let path = entry?.path();
+            let name = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("");
+            if name.starts_with("shard-") && name.ends_with(".proof.json") {
+                files.push(path);
+            }
+        }
+        files.sort();
+        if files.is_empty() {
+            bail!("no output/shard-*.proof.json; run `prove all` first or name the proof files");
+        }
+    }
 
-    // Debug (12 bytes/proof)
-    println!("Verifying {} unification proofs", proofs.len());
-
-    // The semantic policy is the only persisted rule source. Prover and
-    // verifier call the same deterministic in-memory compiler.
-    let limits_text = fs::read_to_string("config/circuit-limits.json")?;
-    let limits: CircuitLimits = serde_json::from_str(&limits_text)?;
-    validate_fact_hashes_for_current_circuit(&public_hashes, &limits)?;
-    let policy_text = fs::read_to_string("input/rules.json")?;
-    let policy: PolicyFile = serde_json::from_str(&policy_text)?;
-    let trusted_roots_text = fs::read_to_string("input/trusted_roots.json")?;
-    let trusted_roots: TrustedRootsV1 = serde_json::from_str(&trusted_roots_text)?;
-    let trusted_root_goals = policy_parser::parse_trusted_root_goals(
-        &trusted_roots,
-        &policy,
-        &limits,
-        "input/trusted_roots.json",
-    )?;
-    let trusted_root_commitments = trusted_root_goals
+    let read =
+        |path: &str| std::fs::read_to_string(path).with_context(|| format!("reading {path}"));
+    let system = compile(&parse_policy(&read(&policy)?, &policy)?)
+        .with_context(|| format!("compiling {policy}"))?;
+    let sizes = Sizes::from_json(&read(&config)?, &config)?;
+    let trusted = TrustedRoots::from_json(&read(&roots)?, &roots)?;
+    let published = parse_commitments(&read(&commitments)?, &commitments)?;
+    let proofs = files
         .iter()
-        .map(|goal| TypedGoalFp::from_ground_call(goal).map(|typed| typed.hash()))
-        .collect::<Result<Vec<_>, _>>()?;
-    let compiled_policy = compile_policy_for_current_circuit(&policy, &limits)?;
-    let (rules_fp, typed_policy) = compiled_policy.into_circuit_parts();
-    let expected_policy_commitment = circuit_policy_commitment(&rules_fp, &typed_policy);
-    let proof_commitments = proofs
-        .iter()
-        .map(|proof| proof.commitments)
-        .collect::<Vec<_>>();
-    validate_compositional_proof_tree(
-        &proof_tree.manifest,
-        &proof_commitments,
-        &trusted_root_commitments,
-        expected_policy_commitment,
-        &limits,
-    )?;
-    let public_instances = proofs
-        .iter()
-        .enumerate()
-        .map(|(index, proof)| {
-            ensure!(
-                proof.commitments.policy == expected_policy_commitment,
-                "proof entry {index} belongs to a different policy"
-            );
-            let public_instance =
-                append_local_step_public_inputs(&public_hashes, &proof.commitments);
-            ensure!(
-                public_instance.len() == LOCAL_STEP_PUBLIC_INPUT_COUNT,
-                "proof entry {index} produced {} public inputs; expected {LOCAL_STEP_PUBLIC_INPUT_COUNT}",
-                public_instance.len()
-            );
-            Ok(public_instance)
+        .map(|path| {
+            let label = path.display().to_string();
+            ShardProof::from_json(
+                &std::fs::read_to_string(path).with_context(|| format!("reading {label}"))?,
+                &label,
+            )
         })
         .collect::<Result<Vec<_>>>()?;
-    //let flatten_rules_fp = RuleTemplateFileFp::to_flat_vec(&rules_fp);
-    //let public_rules_hashes = poseidon_hash_list_native(&flatten_rules_fp);
-    // Same params + vkgen
-    let params: Params<EqAffine> = Params::new(16);
-    let shape = UnificationCircuit {
-        rules: rules_fp,
-        typed_policy,
-        unif: UnificationInputFp::default(),
-    };
 
-    let vk: VerifyingKey<EqAffine> = keygen_vk(&params, &shape)?;
-    let params = Arc::new(params);
-    let vk = Arc::new(vk);
-
-    // Parallel verification
-    let ok = proofs
-        .par_iter()
-        .zip(public_instances.par_iter())
-        .all(|(proof, public_instance)| {
-            let instance_columns: &[&[Fp]] = &[public_instance];
-            let public_inputs: &[&[&[Fp]]] = &[instance_columns];
-            let mut transcript =
-                Blake2bRead::<_, EqAffine, Challenge255<_>>::init(&proof.proof_bytes[..]);
-            let strategy = SingleVerifier::new(params.as_ref());
-            verify_proof(
-                params.as_ref(),
-                vk.as_ref(),
-                strategy,
-                &public_inputs,
-                &mut transcript,
-            )
-            .is_ok()
-        });
-
-    if ok {
-        println!("All proofs verified successfully!");
-    } else {
-        bail!("one or more proofs failed verification");
-    }
-
+    let started = Instant::now();
+    let verified = verify_proofs(&system, sizes, &trusted, &published, &proofs)?;
+    println!(
+        "verified: {} shard proofs, {} links between them, the {} trusted root(s) hold ({:.2?}, key generation included)",
+        verified.shards,
+        verified.links,
+        trusted.goals().count(),
+        started.elapsed()
+    );
     Ok(())
 }

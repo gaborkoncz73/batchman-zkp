@@ -48,6 +48,14 @@ impl Position {
         }
     }
 
+    /// The same path in another goal slot: `C0.1.0` in `P` is `P.1.0`.
+    pub fn in_slot(&self, slot: Slot) -> Self {
+        Self {
+            slot,
+            path: self.path.clone(),
+        }
+    }
+
     /// The strict prefixes of this position, from the goal root downwards.
     pub fn ancestors(&self) -> impl Iterator<Item = Position> + '_ {
         (0..self.path.len()).map(|length| Self {

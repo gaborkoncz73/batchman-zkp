@@ -1,7 +1,7 @@
 //! One linear constraint of a branch.
 
+use crate::Fp;
 use ff::Field;
-use halo2_proofs::pasta::Fp;
 
 /// What a row checks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -22,6 +22,13 @@ pub enum RowKind {
     IntegerOperand,
     /// The two arguments of `=/2` are equal.
     Unification,
+    /// An arithmetic step slot: its operands, its operation flags, or zero
+    /// (see [`crate::arith`]); also `=:=` and the result of `is/2`.
+    Arithmetic,
+    /// Whether the node is an external fact.
+    Fact,
+    /// Whether the node is proved by a clause.
+    Clause,
 }
 
 /// `Σ coefficient·w[column] + constant = 0` over a node assignment `w`.
