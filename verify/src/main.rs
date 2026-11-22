@@ -12,6 +12,8 @@
 //! --roots input/trusted_roots.json          the goals the verifier wants proved
 //! --commitments registry/commitments.json   the fact issuer's published commitments
 //! --config config/circuit.json              the circuit sizes
+//! --cache output/cache                      the verifier's own IPA parameters between runs
+//! --no-cache                                generate the parameters every time
 //! ```
 //!
 //! The verifying keys are generated here from the policy and the sizes, never
@@ -22,7 +24,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
-use node_circuit::{ShardProof, Sizes, verify_proofs};
+use node_circuit::{ParamsCache, ShardProof, Sizes, VerifierKeys, verify_proofs_with};
 use policy_constraints::compile;
 use policy_parser::parse_policy;
 use proof_witness::{TrustedRoots, parse_commitments};
@@ -32,6 +34,7 @@ fn main() -> Result<()> {
     let mut roots = "input/trusted_roots.json".to_owned();
     let mut commitments = "registry/commitments.json".to_owned();
     let mut config = "config/circuit.json".to_owned();
+    let mut cache = Some(PathBuf::from("output/cache"));
     let mut files: Vec<PathBuf> = Vec::new();
     let mut arguments = std::env::args().skip(1);
     while let Some(argument) = arguments.next() {
@@ -45,6 +48,8 @@ fn main() -> Result<()> {
             "--roots" => roots = value()?,
             "--commitments" => commitments = value()?,
             "--config" => config = value()?,
+            "--cache" => cache = Some(PathBuf::from(value()?)),
+            "--no-cache" => cache = None,
             flag if flag.starts_with("--") => bail!("unknown option {flag}"),
             _ => files.push(PathBuf::from(argument)),
         }
@@ -85,7 +90,9 @@ fn main() -> Result<()> {
         .collect::<Result<Vec<_>>>()?;
 
     let started = Instant::now();
-    let verified = verify_proofs(&system, sizes, &trusted, &published, &proofs)?;
+    let cache = cache.map_or_else(ParamsCache::none, ParamsCache::new);
+    let mut keys = VerifierKeys::new(sizes, &trusted).with_cache(cache);
+    let verified = verify_proofs_with(&system, &mut keys, &trusted, &published, &proofs)?;
     println!(
         "verified: {} shard proofs, {} links between them, the {} trusted root(s) hold ({:.2?}, key generation included)",
         verified.shards,

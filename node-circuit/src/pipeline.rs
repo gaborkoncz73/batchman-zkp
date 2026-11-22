@@ -6,6 +6,13 @@
 //! key from the prover. A proof file ([`ShardProof`]) holds a shard proof and
 //! its link commitments; the fact commitments and the trusted roots are
 //! public inputs the verifier supplies itself.
+//!
+//! Most of the cost of key generation is the IPA public parameters, which
+//! depend on `k` alone; a [`ParamsCache`] keeps them on disk between runs.
+
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow, bail};
 use halo2_poseidon::poseidon::primitives::P128Pow5T3;
@@ -14,7 +21,7 @@ use halo2_proofs::plonk::{
     ProvingKey, VerifyingKey, create_proof, keygen_pk, keygen_vk, verify_proof,
 };
 use halo2_proofs::poly::VerificationStrategy;
-use halo2_proofs::poly::commitment::ParamsProver;
+use halo2_proofs::poly::commitment::{Params, ParamsProver};
 use halo2_proofs::poly::ipa::commitment::{IPACommitmentScheme, ParamsIPA};
 use halo2_proofs::poly::ipa::multiopen::{ProverIPA, VerifierIPA};
 use halo2_proofs::poly::ipa::strategy::SingleStrategy;
@@ -66,16 +73,121 @@ pub fn shape(system: &ConstraintSystem, sizes: Sizes, roots: usize) -> TreeCircu
     )
 }
 
+/// The `k` of a shard circuit: it has `2^k` rows.
+pub fn circuit_k(system: &ConstraintSystem, sizes: Sizes, roots: usize) -> u32 {
+    minimum_k(&shape(system, sizes, roots))
+}
+
+/// Where the public parameters came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeySource {
+    Generated,
+    Cached,
+}
+
+/// A directory of IPA public parameters, `ipa-params-k<k>.bin`.
+///
+/// The parameters depend on `k` alone, not on the policy or the circuit,
+/// and they are most of the cost of key generation (7.5 s of 10.5 s at
+/// `k = 16`); the keys themselves are generated from them each run. The
+/// parameters must be the honestly generated ones (a forged set breaks the
+/// binding of the commitments), so the directory must be as trusted as the
+/// program itself: the verifier keeps its own.
+#[derive(Debug, Clone, Default)]
+pub struct ParamsCache {
+    dir: Option<PathBuf>,
+}
+
+impl ParamsCache {
+    /// Parameters kept in `dir` between runs.
+    pub fn new(dir: impl Into<PathBuf>) -> Self {
+        Self {
+            dir: Some(dir.into()),
+        }
+    }
+
+    /// No cache: parameters are generated every time.
+    pub fn none() -> Self {
+        Self::default()
+    }
+
+    /// The parameters for `2^k` rows, from the cache if it has them, else
+    /// generated (and stored).
+    pub fn params(&self, k: u32) -> Result<(ParamsIPA<EqAffine>, KeySource)> {
+        let path = self
+            .dir
+            .as_ref()
+            .map(|dir| dir.join(format!("ipa-params-k{k}.bin")));
+        if let Some(path) = path.as_ref().filter(|path| path.exists()) {
+            match std::fs::read(path)
+                .map_err(|error| error.to_string())
+                .and_then(|bytes| {
+                    // Check the header and the length before parsing: the parser
+                    // trusts the k it reads and would shift and allocate by it.
+                    let expected = 4 + 64 * ((1_usize << k) + 1);
+                    if bytes.len() != expected || bytes[..4] != k.to_le_bytes() {
+                        return Err(format!("not the parameters for k = {k}"));
+                    }
+                    ParamsIPA::<EqAffine>::read(&mut &bytes[..]).map_err(|error| error.to_string())
+                }) {
+                Ok(params) => return Ok((params, KeySource::Cached)),
+                Err(error) => eprintln!("warning: {}: {error}; generating anew", path.display()),
+            }
+        }
+        // IPA needs no trusted setup: both sides generate the same parameters.
+        let params = ParamsIPA::<EqAffine>::new(k);
+        if let Some(path) = &path {
+            store(path, |writer| params.write(writer));
+        }
+        Ok((params, KeySource::Generated))
+    }
+}
+
+/// Writes through a temporary file, so a reader never sees half a file.
+fn store(path: &Path, write: impl FnOnce(&mut BufWriter<File>) -> std::io::Result<()>) {
+    let temporary = path.with_extension(format!("tmp{}", std::process::id()));
+    let stored = path
+        .parent()
+        .map_or(Ok(()), std::fs::create_dir_all)
+        .and_then(|()| {
+            let mut writer = BufWriter::new(File::create(&temporary)?);
+            write(&mut writer)?;
+            writer.flush()
+        })
+        .and_then(|()| std::fs::rename(&temporary, path));
+    if let Err(error) = stored {
+        let _ = std::fs::remove_file(&temporary);
+        eprintln!("warning: could not store {}: {error}", path.display());
+    }
+}
+
+/// The verifying key of a shard circuit with the given parameters (for its
+/// `k`, see [`circuit_k`]).
+pub fn verifying_key_with(
+    params: &ParamsIPA<EqAffine>,
+    system: &ConstraintSystem,
+    sizes: Sizes,
+    roots: usize,
+) -> Result<VerifyingKey<EqAffine>> {
+    let shape = shape(system, sizes, roots);
+    if params.k() != minimum_k(&shape) {
+        bail!(
+            "the parameters are for k = {}, the circuit needs {}",
+            params.k(),
+            minimum_k(&shape)
+        );
+    }
+    keygen_vk(params, &shape).map_err(|error| anyhow!("key generation: {error:?}"))
+}
+
 /// The public parameters and the verifying key of a shard circuit.
 pub fn verifying_key(
     system: &ConstraintSystem,
     sizes: Sizes,
     roots: usize,
 ) -> Result<(ParamsIPA<EqAffine>, VerifyingKey<EqAffine>)> {
-    let shape = shape(system, sizes, roots);
-    // IPA needs no trusted setup: both sides generate the same parameters.
-    let params: ParamsIPA<EqAffine> = ParamsIPA::new(minimum_k(&shape));
-    let vk = keygen_vk(&params, &shape).map_err(|error| anyhow!("key generation: {error:?}"))?;
+    let (params, _) = ParamsCache::none().params(circuit_k(system, sizes, roots))?;
+    let vk = verifying_key_with(&params, system, sizes, roots)?;
     Ok((params, vk))
 }
 
@@ -87,7 +199,19 @@ pub struct ShardKey {
 
 impl ShardKey {
     pub fn generate(system: &ConstraintSystem, sizes: Sizes, roots: usize) -> Result<Self> {
-        let (params, vk) = verifying_key(system, sizes, roots)?;
+        let (params, _) = ParamsCache::none().params(circuit_k(system, sizes, roots))?;
+        Self::with_params(params, system, sizes, roots)
+    }
+
+    /// The key generated from the given parameters (for the circuit's `k`,
+    /// see [`circuit_k`]).
+    pub fn with_params(
+        params: ParamsIPA<EqAffine>,
+        system: &ConstraintSystem,
+        sizes: Sizes,
+        roots: usize,
+    ) -> Result<Self> {
+        let vk = verifying_key_with(&params, system, sizes, roots)?;
         let pk = keygen_pk(&params, vk, &shape(system, sizes, roots))
             .map_err(|error| anyhow!("key generation: {error:?}"))?;
         Ok(Self { params, pk })
@@ -235,6 +359,7 @@ pub struct Verified {
 pub struct VerifierKeys {
     sizes: Sizes,
     roots: usize,
+    cache: ParamsCache,
     keys: [Option<(ParamsIPA<EqAffine>, VerifyingKey<EqAffine>)>; 2],
 }
 
@@ -244,8 +369,15 @@ impl VerifierKeys {
         Self {
             sizes,
             roots: trusted.goals().count(),
+            cache: ParamsCache::none(),
             keys: [None, None],
         }
+    }
+
+    /// The same, with the public parameters kept in `cache` between runs.
+    pub fn with_cache(mut self, cache: ParamsCache) -> Self {
+        self.cache = cache;
+        self
     }
 
     /// Generates the key of the root shard and, if `others`, of the others.
@@ -271,7 +403,18 @@ impl VerifierKeys {
         let slot = usize::from(root);
         if self.keys[slot].is_none() {
             let roots = if root { self.roots } else { 0 };
-            self.keys[slot] = Some(verifying_key(system, self.sizes, roots)?);
+            let k = circuit_k(system, self.sizes, roots);
+            // The other kind's parameters, if it has the same k.
+            let shared = self.keys[1 - slot]
+                .as_ref()
+                .filter(|(params, _)| params.k() == k)
+                .map(|(params, _)| params.clone());
+            let params = match shared {
+                Some(params) => params,
+                None => self.cache.params(k)?.0,
+            };
+            let vk = verifying_key_with(&params, system, self.sizes, roots)?;
+            self.keys[slot] = Some((params, vk));
         }
         Ok(self.keys[slot].as_ref().expect("generated above"))
     }

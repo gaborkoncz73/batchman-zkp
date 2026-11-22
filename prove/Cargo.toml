@@ -8,6 +8,7 @@ description = "The prover: splits a proof tree into shards and proves each shard
 anyhow = { workspace = true, features = ["std"] }
 ff = { version = "0.13" }
 rand_core = { workspace = true, features = ["getrandom"] }
+rayon = { workspace = true }
 policy-parser = { path = "../policy-parser" }
 policy-constraints = { path = "../policy-constraints" }
 proof-witness = { path = "../proof-witness" }

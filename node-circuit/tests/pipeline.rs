@@ -138,3 +138,32 @@ fn malformed_files_are_rejected() {
     assert!(ShardProof::from_json(&json.replace("ab01", "ab0"), "proof").is_err());
     assert!(Sizes::from_json(r#"{"capacity": 0, "incoming": 0, "outgoing": 0}"#, "sizes").is_err());
 }
+
+#[test]
+fn the_parameters_cache_stores_and_reloads() {
+    use halo2_proofs::poly::commitment::Params;
+    use node_circuit::{KeySource, ParamsCache};
+
+    let dir = std::env::temp_dir().join(format!("batchman-params-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let cache = ParamsCache::new(&dir);
+    let (generated, source) = cache.params(6).unwrap();
+    assert_eq!(source, KeySource::Generated);
+    let (cached, source) = cache.params(6).unwrap();
+    assert_eq!(source, KeySource::Cached);
+    let bytes = |params: &halo2_proofs::poly::ipa::commitment::ParamsIPA<_>| {
+        let mut bytes = Vec::new();
+        params.write(&mut bytes).unwrap();
+        bytes
+    };
+    assert_eq!(bytes(&generated), bytes(&cached));
+
+    // A damaged file, or one for another k, is replaced.
+    let file = dir.join("ipa-params-k6.bin");
+    std::fs::write(&file, b"not parameters").unwrap();
+    assert_eq!(cache.params(6).unwrap().1, KeySource::Generated);
+    std::fs::copy(dir.join("ipa-params-k6.bin"), dir.join("ipa-params-k7.bin")).unwrap();
+    let (params, source) = cache.params(7).unwrap();
+    assert_eq!((params.k(), source), (7, KeySource::Generated));
+    std::fs::remove_dir_all(&dir).unwrap();
+}

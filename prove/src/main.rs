@@ -2,8 +2,8 @@
 //!
 //! ```text
 //! prove plan            [options]               # proof tree → output/shard-<i>.witness.json
-//! prove shard <file>... [options]               # a shard witness → output/shard-<i>.proof.json
-//! prove all             [options]               # both, one shard after the other
+//! prove shard <file>... [options]               # shard witnesses → output/shard-<i>.proof.json
+//! prove all             [options]               # both
 //! ```
 //!
 //! Options and their defaults:
@@ -16,19 +16,34 @@
 //! --commitments registry/commitments.json   the published fact commitments (public)
 //! --config config/circuit.json         the circuit sizes the verifier uses (public)
 //! --out output                         where the files go
+//! --jobs N                             shards proved at the same time (default:
+//!                                      all of them, at most one per thread)
+//! --cache output/cache                 where the IPA parameters are kept between runs
+//! --no-cache                           generate the parameters every time
 //! ```
 //!
 //! `plan` splits the tree into shards of at most `capacity` nodes and gives
 //! every link between them a fresh random salt. A witness file is secret:
 //! it holds the shard's assignments and salts, and goes only to the machine
 //! that proves the shard. A proof file is public.
+//!
+//! Before proving, `shard` and `all` generate the keys the shards need: one
+//! for the shard with the roots and one for all the others. Both are made
+//! from the same IPA parameters (they depend on `k` alone and are most of the
+//! cost), which are read from the cache or generated once and stored; then
+//! the two keys are generated at the same time, each on half of the threads.
+//! Then `N` shards are proved at a time, each on `threads / N` threads; a
+//! worker that is done takes the next shard. One proof uses many threads
+//! poorly (about 5× on 32 threads), so several smaller proofs at a time
+//! finish sooner on the same machine.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
 use ff::Field;
-use node_circuit::{ShardKey, Sizes, prove_shard};
+use node_circuit::{KeySource, ParamsCache, ShardKey, Sizes, circuit_k, prove_shard};
 use policy_constraints::{ConstraintSystem, Fp, compile};
 use policy_parser::parse_policy;
 use proof_witness::{
@@ -44,6 +59,8 @@ struct Options {
     commitments: String,
     config: String,
     out: PathBuf,
+    jobs: Option<usize>,
+    cache: Option<PathBuf>,
     files: Vec<String>,
 }
 
@@ -58,6 +75,8 @@ fn main() -> Result<()> {
         commitments: "registry/commitments.json".to_owned(),
         config: "config/circuit.json".to_owned(),
         out: PathBuf::from("output"),
+        jobs: None,
+        cache: Some(PathBuf::from("output/cache")),
         files: Vec::new(),
     };
     while let Some(argument) = arguments.next() {
@@ -74,6 +93,15 @@ fn main() -> Result<()> {
             "--commitments" => options.commitments = value()?,
             "--config" => options.config = value()?,
             "--out" => options.out = PathBuf::from(value()?),
+            "--cache" => options.cache = Some(PathBuf::from(value()?)),
+            "--no-cache" => options.cache = None,
+            "--jobs" => {
+                let jobs: usize = value()?.parse().context("--jobs needs a positive number")?;
+                if jobs == 0 {
+                    bail!("--jobs needs a positive number");
+                }
+                options.jobs = Some(jobs);
+            }
             flag if flag.starts_with("--") => bail!("unknown option {flag}"),
             _ => options.files.push(argument),
         }
@@ -86,19 +114,12 @@ fn main() -> Result<()> {
             if options.files.is_empty() {
                 bail!("prove shard needs at least one shard witness file");
             }
-            let public = Public::load(&options)?;
-            let mut keys = Keys::default();
-            for file in &options.files {
-                prove_file(&options, &public, &mut keys, Path::new(file))?;
-            }
+            let files: Vec<PathBuf> = options.files.iter().map(PathBuf::from).collect();
+            prove_files(&options, &files)?;
         }
         "all" => {
             let files = write_plan(&options)?;
-            let public = Public::load(&options)?;
-            let mut keys = Keys::default();
-            for file in &files {
-                prove_file(&options, &public, &mut keys, file)?;
-            }
+            prove_files(&options, &files)?;
         }
         _ => bail!("usage: prove plan | prove shard <shard witness>... | prove all  [options]"),
     }
@@ -202,63 +223,190 @@ impl Public {
     }
 }
 
-/// The proving keys generated so far: for the shard with the roots, and
-/// for the others.
-#[derive(Default)]
+/// The proving keys: for the shard with the roots, and for the others.
 struct Keys {
     root: Option<ShardKey>,
     other: Option<ShardKey>,
 }
 
-fn prove_file(options: &Options, public: &Public, keys: &mut Keys, path: &Path) -> Result<()> {
-    let label = path.display().to_string();
-    let index = shard_index(path, ".witness.json").unwrap_or(0);
-    let shard = Shard::from_json(
-        &std::fs::read_to_string(path).with_context(|| format!("reading {label}"))?,
-        &label,
-    )?;
-    let root = !shard.witness.roots.is_empty();
-    let slot = if root {
-        &mut keys.root
-    } else {
-        &mut keys.other
-    };
-    if slot.is_none() {
+impl Keys {
+    /// Generates the keys that are needed, from parameters read from `cache`
+    /// or generated once; both keys at the same time, each on half of the
+    /// threads, when both are needed.
+    fn generate(public: &Public, cache: &ParamsCache, root: bool, other: bool) -> Result<Self> {
         let started = Instant::now();
-        let roots = if root {
-            public.roots.goals().count()
-        } else {
-            0
+        let roots = public.roots.goals().count();
+        let kinds: Vec<bool> = [(root, true), (other, false)]
+            .into_iter()
+            .filter_map(|(needed, is_root)| needed.then_some(is_root))
+            .collect();
+        let k_of = |is_root: bool| {
+            circuit_k(
+                &public.system,
+                public.sizes,
+                if is_root { roots } else { 0 },
+            )
         };
-        let key = ShardKey::generate(&public.system, public.sizes, roots)?;
+        // One parameter set per k (the two kinds usually share it).
+        let mut params = Vec::new();
+        for &is_root in &kinds {
+            let k = k_of(is_root);
+            if !params.iter().any(|(known, _, _)| *known == k) {
+                let (set, source) = cache.params(k)?;
+                params.push((k, set, source));
+            }
+        }
+        let parameters = started.elapsed();
+        let params_for = |is_root: bool| {
+            let k = k_of(is_root);
+            params
+                .iter()
+                .find(|(known, _, _)| *known == k)
+                .map(|(_, set, _)| set.clone())
+                .expect("loaded above")
+        };
+        let generate = |is_root: bool| {
+            ShardKey::with_params(
+                params_for(is_root),
+                &public.system,
+                public.sizes,
+                if is_root { roots } else { 0 },
+            )
+        };
+        let keys = if kinds.len() == 2 {
+            let half = (rayon::current_num_threads() / 2).max(1);
+            std::thread::scope(|scope| -> Result<Self> {
+                let spawn = |is_root: bool| {
+                    scope.spawn(move || -> Result<ShardKey> {
+                        rayon::ThreadPoolBuilder::new()
+                            .num_threads(half)
+                            .build()?
+                            .install(|| generate(is_root))
+                    })
+                };
+                let (root, other) = (spawn(true), spawn(false));
+                let join = |handle: std::thread::ScopedJoinHandle<'_, Result<ShardKey>>| {
+                    handle.join().expect("key generation panicked")
+                };
+                Ok(Self {
+                    root: Some(join(root)?),
+                    other: Some(join(other)?),
+                })
+            })?
+        } else {
+            Self {
+                root: root.then(|| generate(true)).transpose()?,
+                other: other.then(|| generate(false)).transpose()?,
+            }
+        };
+        let sources: Vec<String> = params
+            .iter()
+            .map(|(k, _, source)| match source {
+                KeySource::Cached => format!("k = {k} parameters from the cache"),
+                KeySource::Generated => format!("k = {k} parameters generated"),
+            })
+            .collect();
         println!(
-            "key for {} shards: k = {}, {:.2?}",
-            if root { "root" } else { "other" },
-            key.k(),
+            "{} ({parameters:.2?}); {} key(s){} in {:.2?} in all",
+            sources.join(", "),
+            kinds.len(),
+            if kinds.len() == 2 {
+                " at the same time"
+            } else {
+                ""
+            },
             started.elapsed()
         );
-        *slot = Some(key);
+        Ok(keys)
     }
-    let key = slot.as_ref().expect("generated above");
-    let started = Instant::now();
-    let proof = prove_shard(
-        &public.system,
-        public.sizes,
-        key,
-        index,
-        &shard,
-        &public.roots,
-        &public.commitments,
+
+    fn get(&self, root: bool) -> &ShardKey {
+        if root { &self.root } else { &self.other }
+            .as_ref()
+            .expect("generated for every shard")
+    }
+}
+
+/// Reads the shard witness files, generates the keys they need, and proves
+/// them `--jobs` at a time.
+fn prove_files(options: &Options, files: &[PathBuf]) -> Result<()> {
+    let public = Public::load(options)?;
+    let shards = files
+        .iter()
+        .map(|path| {
+            let label = path.display().to_string();
+            let source =
+                std::fs::read_to_string(path).with_context(|| format!("reading {label}"))?;
+            let index = shard_index(path, ".witness.json").unwrap_or(0);
+            Ok((index, Shard::from_json(&source, &label)?))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let has_roots = |shard: &Shard| !shard.witness.roots.is_empty();
+    let cache = options
+        .cache
+        .as_ref()
+        .map_or_else(ParamsCache::none, ParamsCache::new);
+    let keys = Keys::generate(
+        &public,
+        &cache,
+        shards.iter().any(|(_, shard)| has_roots(shard)),
+        shards.iter().any(|(_, shard)| !has_roots(shard)),
     )?;
-    let out = options.out.join(format!("shard-{index}.proof.json"));
-    std::fs::create_dir_all(&options.out)?;
-    std::fs::write(&out, proof.to_json()?).with_context(|| format!("writing {}", out.display()))?;
+
+    let threads = rayon::current_num_threads();
+    let jobs = options
+        .jobs
+        .unwrap_or(shards.len())
+        .clamp(1, shards.len().clamp(1, threads));
+    let per_job = (threads / jobs).max(1);
     println!(
-        "shard {index}: {} nodes, proved in {:.2?}, {} bytes: {}",
-        shard.witness.nodes.len(),
-        started.elapsed(),
-        proof.proof.len(),
-        out.display()
+        "proving {} shard(s), {jobs} at a time on {per_job} thread(s) each",
+        shards.len()
     );
+    std::fs::create_dir_all(&options.out)?;
+    let started = Instant::now();
+    let next = AtomicUsize::new(0);
+    std::thread::scope(|scope| -> Result<()> {
+        let workers: Vec<_> = (0..jobs)
+            .map(|_| {
+                scope.spawn(|| -> Result<()> {
+                    let pool = rayon::ThreadPoolBuilder::new()
+                        .num_threads(per_job)
+                        .build()?;
+                    while let Some((index, shard)) = shards.get(next.fetch_add(1, Ordering::SeqCst))
+                    {
+                        let shard_started = Instant::now();
+                        let proof = pool.install(|| {
+                            prove_shard(
+                                &public.system,
+                                public.sizes,
+                                keys.get(has_roots(shard)),
+                                *index,
+                                shard,
+                                &public.roots,
+                                &public.commitments,
+                            )
+                        })?;
+                        let out = options.out.join(format!("shard-{index}.proof.json"));
+                        std::fs::write(&out, proof.to_json()?)
+                            .with_context(|| format!("writing {}", out.display()))?;
+                        println!(
+                            "shard {index}: {} nodes, proved in {:.2?}, {} bytes: {}",
+                            shard.witness.nodes.len(),
+                            shard_started.elapsed(),
+                            proof.proof.len(),
+                            out.display()
+                        );
+                    }
+                    Ok(())
+                })
+            })
+            .collect();
+        for worker in workers {
+            worker.join().expect("a prover thread panicked")?;
+        }
+        Ok(())
+    })?;
+    println!("all shards proved in {:.2?}", started.elapsed());
     Ok(())
 }

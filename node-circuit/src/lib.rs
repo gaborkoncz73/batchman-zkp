@@ -48,8 +48,8 @@ pub use circuit::{
 pub use fact::{FactChip, FactConfig};
 pub use link::{LinkChip, LinkConfig, Role, Side};
 pub use pipeline::{
-    ShardKey, ShardProof, Sizes, Verified, VerifierKeys, prove_shard, verify_proofs,
-    verify_proofs_with, verifying_key,
+    KeySource, ParamsCache, ShardKey, ShardProof, Sizes, Verified, VerifierKeys, circuit_k,
+    prove_shard, verify_proofs, verify_proofs_with, verifying_key, verifying_key_with,
 };
 pub use rows::{minimum_k, rows_used};
 pub use shape::Shape;

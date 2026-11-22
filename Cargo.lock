@@ -609,6 +609,7 @@ dependencies = [
  "policy-parser",
  "proof-witness",
  "rand_core",
+ "rayon",
 ]
 
 [[package]]
